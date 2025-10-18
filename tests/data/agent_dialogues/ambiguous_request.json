@@ -1,0 +1,10 @@
+{
+  "dialogue": [
+    {"speaker": "user", "message": "Make the subject heavier."},
+    {"speaker": "agent", "message": "The request is ambiguous. Please provide the new weight in kilograms."},
+    {"speaker": "user", "message": "Increase weight to 2.3 kg."},
+    {"speaker": "agent", "message": "Parameter change summary: Organ.Liver.Weight -> 2.3 kg. Approve?"},
+    {"speaker": "user", "message": "yes"},
+    {"speaker": "agent", "message": "Parameter updated."}
+  ]
+}

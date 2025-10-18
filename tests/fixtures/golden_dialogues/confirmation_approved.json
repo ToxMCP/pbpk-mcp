@@ -1,0 +1,59 @@
+{
+  "id": "confirmation-approved",
+  "description": "User approves loading a simulation and then running it after explicit confirmation prompts.",
+  "turns": [
+    {
+      "role": "user",
+      "content": "Load tests/fixtures/demo.pkml as renal-study"
+    },
+    {
+      "role": "assistant",
+      "check": {
+        "awaiting_confirmation": true,
+        "contains": [
+          "I am about to load the simulation file tests/fixtures/demo.pkml",
+          "register it as 'renal-study'"
+        ]
+      }
+    },
+    {
+      "role": "user",
+      "content": "yes",
+      "asFeedback": true
+    },
+    {
+      "role": "assistant",
+      "check": {
+        "awaiting_confirmation": false,
+        "contains": ["Loaded simulation 'renal-study'"]
+      }
+    },
+    {
+      "role": "user",
+      "content": "run simulation renal-study"
+    },
+    {
+      "role": "assistant",
+      "check": {
+        "awaiting_confirmation": true,
+        "contains": ["I am about to run the simulation 'renal-study'"]
+      }
+    },
+    {
+      "role": "user",
+      "content": "approve",
+      "asFeedback": true
+    },
+    {
+      "role": "assistant",
+      "check": {
+        "awaiting_confirmation": false,
+        "contains": ["Simulation job ", "queued. Check status when ready."],
+        "state": {
+          "simulation_context.simulationId": "renal-study",
+          "simulation_context.lastJobId": "!not-empty"
+        }
+      }
+    }
+  ]
+}

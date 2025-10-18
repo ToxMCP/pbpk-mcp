@@ -1,0 +1,286 @@
+{
+  "timestamp": "20251016T171028Z",
+  "scenario": "smoke",
+  "label": "dev-profile",
+  "config": {
+    "iterations": 1,
+    "concurrency": 1,
+    "simulationFile": "/Users/ivodjidrovski/PBPK_MCP/tests/fixtures/demo.pkml",
+    "parameterPath": "Organism|Weight",
+    "transport": "asgi",
+    "baseUrl": "http://benchmark.local",
+    "pollInterval": 0.5,
+    "jobTimeout": 300.0,
+    "roles": [
+      "operator",
+      "viewer"
+    ],
+    "subject": "benchmark-client"
+  },
+  "summary": {
+    "count": 1,
+    "min": 45.572,
+    "max": 45.572,
+    "mean": 45.572,
+    "p50": 45.572,
+    "p90": 45.572,
+    "p95": 45.572
+  },
+  "steps": {
+    "get_parameter_value": {
+      "count": 1,
+      "min": 3.352,
+      "max": 3.352,
+      "mean": 3.352,
+      "p50": 3.352,
+      "p90": 3.352,
+      "p95": 3.352
+    },
+    "get_simulation_results": {
+      "count": 1,
+      "min": 4.071,
+      "max": 4.071,
+      "mean": 4.071,
+      "p50": 4.071,
+      "p90": 4.071,
+      "p95": 4.071
+    },
+    "load_simulation": {
+      "count": 1,
+      "min": 24.983,
+      "max": 24.983,
+      "mean": 24.983,
+      "p50": 24.983,
+      "p90": 24.983,
+      "p95": 24.983
+    },
+    "run_simulation": {
+      "count": 1,
+      "min": 5.1,
+      "max": 5.1,
+      "mean": 5.1,
+      "p50": 5.1,
+      "p90": 5.1,
+      "p95": 5.1
+    },
+    "set_parameter_value": {
+      "count": 1,
+      "min": 3.948,
+      "max": 3.948,
+      "mean": 3.948,
+      "p50": 3.948,
+      "p90": 3.948,
+      "p95": 3.948
+    },
+    "wait_for_job": {
+      "count": 1,
+      "min": 3.924,
+      "max": 3.924,
+      "mean": 3.924,
+      "p50": 3.924,
+      "p90": 3.924,
+      "p95": 3.924
+    }
+  },
+  "jobMetrics": {
+    "queueWaitSeconds": {
+      "count": 1,
+      "min": 0.0,
+      "max": 0.0,
+      "mean": 0.0,
+      "p50": 0.0,
+      "p90": 0.0,
+      "p95": 0.0
+    },
+    "runtimeSeconds": {
+      "count": 1,
+      "min": 0.001,
+      "max": 0.001,
+      "mean": 0.001,
+      "p50": 0.001,
+      "p90": 0.001,
+      "p95": 0.001
+    },
+    "pollCount": {
+      "count": 1,
+      "min": 1.0,
+      "max": 1.0,
+      "mean": 1.0,
+      "p50": 1.0,
+      "p90": 1.0,
+      "p95": 1.0
+    },
+    "statuses": {
+      "succeeded": 1
+    }
+  },
+  "runs": [
+    {
+      "iteration": 1,
+      "startedAt": "2025-10-16T17:10:28.790265+00:00",
+      "finishedAt": "2025-10-16T17:10:28.835837+00:00",
+      "wallTimeMs": 45.572,
+      "steps": [
+        {
+          "name": "load_simulation",
+          "durationMs": 24.983
+        },
+        {
+          "name": "set_parameter_value",
+          "durationMs": 3.948
+        },
+        {
+          "name": "get_parameter_value",
+          "durationMs": 3.352
+        },
+        {
+          "name": "run_simulation",
+          "durationMs": 5.1
+        },
+        {
+          "name": "wait_for_job",
+          "durationMs": 3.924,
+          "metadata": {
+            "pollCount": 1,
+            "queueWaitSeconds": 0.000332,
+            "runtimeSeconds": 0.000712,
+            "status": "succeeded"
+          }
+        },
+        {
+          "name": "get_simulation_results",
+          "durationMs": 4.071
+        }
+      ],
+      "metadata": {
+        "simulationId": "bench-257d52ed",
+        "jobId": "955d408d-1253-425c-9a11-2cb2754299d1",
+        "jobStatus": "succeeded",
+        "jobResultHandle": {
+          "resultsId": "bench-1"
+        },
+        "jobAttempts": 1,
+        "resultsId": "bench-1"
+      }
+    }
+  ],
+  "processMetrics": {
+    "supported": true,
+    "cpuSeconds": 0.05156,
+    "wallSeconds": 0.055939,
+    "cpuUtilisationPercent": 7.681,
+    "rssBytesStart": 78200832,
+    "rssBytesEnd": 80969728
+  },
+  "warnings": [],
+  "profile": {
+    "statsFile": "var/benchmarks/profiles/20251016T171028Z-smoke.prof",
+    "top": [
+      {
+        "function": "base_events.py:1830:_run_once",
+        "primitiveCalls": 169,
+        "totalCalls": 169,
+        "totalTime": 0.001034,
+        "cumulativeTime": 0.045742
+      },
+      {
+        "function": "events.py:78:_run",
+        "primitiveCalls": 302,
+        "totalCalls": 302,
+        "totalTime": 0.000212,
+        "cumulativeTime": 0.040184
+      },
+      {
+        "function": "~:0:<method 'run' of 'Context' objects>",
+        "primitiveCalls": 302,
+        "totalCalls": 315,
+        "totalTime": 0.000542,
+        "cumulativeTime": 0.039972
+      },
+      {
+        "function": "cli.py:274:worker",
+        "primitiveCalls": 37,
+        "totalCalls": 37,
+        "totalTime": 2.5e-05,
+        "cumulativeTime": 0.026064
+      },
+      {
+        "function": "cli.py:292:_run_smoke_iteration",
+        "primitiveCalls": 37,
+        "totalCalls": 37,
+        "totalTime": 6.4e-05,
+        "cumulativeTime": 0.026034
+      },
+      {
+        "function": "cli.py:121:post_json",
+        "primitiveCalls": 42,
+        "totalCalls": 42,
+        "totalTime": 6e-05,
+        "cumulativeTime": 0.025879
+      },
+      {
+        "function": "_client.py:1884:post",
+        "primitiveCalls": 42,
+        "totalCalls": 42,
+        "totalTime": 2e-05,
+        "cumulativeTime": 0.025681
+      },
+      {
+        "function": "_client.py:1530:request",
+        "primitiveCalls": 42,
+        "totalCalls": 42,
+        "totalTime": 2.8e-05,
+        "cumulativeTime": 0.025661
+      },
+      {
+        "function": "_client.py:1639:send",
+        "primitiveCalls": 42,
+        "totalCalls": 42,
+        "totalTime": 4.3e-05,
+        "cumulativeTime": 0.023982
+      },
+      {
+        "function": "base.py:101:__call__",
+        "primitiveCalls": 96,
+        "totalCalls": 96,
+        "totalTime": 0.000254,
+        "cumulativeTime": 0.023904
+      },
+      {
+        "function": "_client.py:1690:_send_handling_auth",
+        "primitiveCalls": 42,
+        "totalCalls": 42,
+        "totalTime": 6e-05,
+        "cumulativeTime": 0.02343
+      },
+      {
+        "function": "_client.py:1724:_send_handling_redirects",
+        "primitiveCalls": 42,
+        "totalCalls": 42,
+        "totalTime": 2.6e-05,
+        "cumulativeTime": 0.023334
+      },
+      {
+        "function": "_client.py:1762:_send_single_request",
+        "primitiveCalls": 42,
+        "totalCalls": 42,
+        "totalTime": 9.6e-05,
+        "cumulativeTime": 0.023289
+      },
+      {
+        "function": "asgi.py:86:handle_async_request",
+        "primitiveCalls": 42,
+        "totalCalls": 42,
+        "totalTime": 9.3e-05,
+        "cumulativeTime": 0.021606
+      },
+      {
+        "function": "applications.py:1130:__call__",
+        "primitiveCalls": 42,
+        "totalCalls": 42,
+        "totalTime": 3.5e-05,
+        "cumulativeTime": 0.021365
+      }
+    ]
+  }
+}

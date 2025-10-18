@@ -1,0 +1,176 @@
+{
+  "timestamp": "20251016T170255Z",
+  "scenario": "smoke",
+  "label": "dev-smoke",
+  "config": {
+    "iterations": 1,
+    "concurrency": 1,
+    "simulationFile": "/Users/ivodjidrovski/PBPK_MCP/tests/fixtures/demo.pkml",
+    "parameterPath": "Organism|Weight",
+    "transport": "asgi",
+    "baseUrl": "http://benchmark.local",
+    "pollInterval": 0.5,
+    "jobTimeout": 300.0,
+    "roles": [
+      "operator",
+      "viewer"
+    ],
+    "subject": "benchmark-client"
+  },
+  "summary": {
+    "count": 1,
+    "min": 33.258,
+    "max": 33.258,
+    "mean": 33.258,
+    "p50": 33.258,
+    "p90": 33.258,
+    "p95": 33.258
+  },
+  "steps": {
+    "get_parameter_value": {
+      "count": 1,
+      "min": 1.986,
+      "max": 1.986,
+      "mean": 1.986,
+      "p50": 1.986,
+      "p90": 1.986,
+      "p95": 1.986
+    },
+    "get_simulation_results": {
+      "count": 1,
+      "min": 2.238,
+      "max": 2.238,
+      "mean": 2.238,
+      "p50": 2.238,
+      "p90": 2.238,
+      "p95": 2.238
+    },
+    "load_simulation": {
+      "count": 1,
+      "min": 7.326,
+      "max": 7.326,
+      "mean": 7.326,
+      "p50": 7.326,
+      "p90": 7.326,
+      "p95": 7.326
+    },
+    "run_simulation": {
+      "count": 1,
+      "min": 16.819,
+      "max": 16.819,
+      "mean": 16.819,
+      "p50": 16.819,
+      "p90": 16.819,
+      "p95": 16.819
+    },
+    "set_parameter_value": {
+      "count": 1,
+      "min": 2.28,
+      "max": 2.28,
+      "mean": 2.28,
+      "p50": 2.28,
+      "p90": 2.28,
+      "p95": 2.28
+    },
+    "wait_for_job": {
+      "count": 1,
+      "min": 2.424,
+      "max": 2.424,
+      "mean": 2.424,
+      "p50": 2.424,
+      "p90": 2.424,
+      "p95": 2.424
+    }
+  },
+  "jobMetrics": {
+    "queueWaitSeconds": {
+      "count": 1,
+      "min": 0.0,
+      "max": 0.0,
+      "mean": 0.0,
+      "p50": 0.0,
+      "p90": 0.0,
+      "p95": 0.0
+    },
+    "runtimeSeconds": {
+      "count": 1,
+      "min": 0.014,
+      "max": 0.014,
+      "mean": 0.014,
+      "p50": 0.014,
+      "p90": 0.014,
+      "p95": 0.014
+    },
+    "pollCount": {
+      "count": 1,
+      "min": 1.0,
+      "max": 1.0,
+      "mean": 1.0,
+      "p50": 1.0,
+      "p90": 1.0,
+      "p95": 1.0
+    },
+    "statuses": {
+      "succeeded": 1
+    }
+  },
+  "runs": [
+    {
+      "iteration": 1,
+      "startedAt": "2025-10-16T17:02:55.031039+00:00",
+      "finishedAt": "2025-10-16T17:02:55.064297+00:00",
+      "wallTimeMs": 33.258,
+      "steps": [
+        {
+          "name": "load_simulation",
+          "durationMs": 7.326
+        },
+        {
+          "name": "set_parameter_value",
+          "durationMs": 2.28
+        },
+        {
+          "name": "get_parameter_value",
+          "durationMs": 1.986
+        },
+        {
+          "name": "run_simulation",
+          "durationMs": 16.819
+        },
+        {
+          "name": "wait_for_job",
+          "durationMs": 2.424,
+          "metadata": {
+            "pollCount": 1,
+            "queueWaitSeconds": 0.000188,
+            "runtimeSeconds": 0.014468,
+            "status": "succeeded"
+          }
+        },
+        {
+          "name": "get_simulation_results",
+          "durationMs": 2.238
+        }
+      ],
+      "metadata": {
+        "simulationId": "bench-dce6d95c",
+        "jobId": "579102a1-7ab9-44ce-85e2-f03a2ac0acb7",
+        "jobStatus": "succeeded",
+        "jobResultHandle": {
+          "resultsId": "bench-1"
+        },
+        "jobAttempts": 1,
+        "resultsId": "bench-1"
+      }
+    }
+  ],
+  "processMetrics": {
+    "supported": true,
+    "cpuSeconds": 0.031695,
+    "wallSeconds": 0.033797,
+    "cpuUtilisationPercent": 7.815,
+    "rssBytesStart": 77283328,
+    "rssBytesEnd": 78069760
+  },
+  "warnings": []
+}

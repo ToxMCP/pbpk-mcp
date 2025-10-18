@@ -1,0 +1,34 @@
+{
+  "pages": [
+    {
+      "page": 1,
+      "blocks": [
+        {
+          "id": "text-1",
+          "type": "text",
+          "bbox": [10, 20, 200, 80],
+          "text": "Subject body weight is 72.5 kg and the oral dose is 40 mg." 
+        },
+        {
+          "id": "table-1",
+          "type": "table",
+          "bbox": [15, 120, 250, 260],
+          "table": {
+            "headers": ["Subject", "Weight (kg)", "Dose (mg)"] ,
+            "rows": [
+              ["A", "72.5", "40"],
+              ["B", "68.0", "40"]
+            ]
+          }
+        },
+        {
+          "id": "figure-1",
+          "type": "figure",
+          "bbox": [30, 280, 260, 420],
+          "image_path": "page1_fig1.png",
+          "caption": "Figure 1. Plasma concentration-time profile."
+        }
+      ]
+    }
+  ]
+}

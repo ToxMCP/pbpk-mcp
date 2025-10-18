@@ -1,0 +1,16 @@
+{
+  "dialogue": [
+    {"speaker": "user", "message": "Load the demo simulation."},
+    {"speaker": "agent", "message": "I will load tests/fixtures/demo.pkml as simulation sim-001. Do you approve?"},
+    {"speaker": "user", "message": "yes"},
+    {"speaker": "agent", "message": "Simulation sim-001 loaded."},
+    {"speaker": "user", "message": "Set the liver weight to 2.5 kg."},
+    {"speaker": "agent", "message": "Parameter change summary: Organ.Liver.Weight -> 2.5 kg. Approve?"},
+    {"speaker": "user", "message": "yes"},
+    {"speaker": "agent", "message": "Parameter updated."},
+    {"speaker": "user", "message": "Run the simulation."},
+    {"speaker": "agent", "message": "About to start run on sim-001. Approve?"},
+    {"speaker": "user", "message": "yes"},
+    {"speaker": "agent", "message": "Simulation job submitted. Job ID: demo-job."}
+  ]
+}

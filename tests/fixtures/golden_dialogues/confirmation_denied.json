@@ -1,0 +1,36 @@
+{
+  "id": "confirmation-denied",
+  "description": "User rejects a parameter update after the assistant highlights the impact.",
+  "turns": [
+    {
+      "role": "user",
+      "content": "Set Organism|Weight to 50 kg for renal-study"
+    },
+    {
+      "role": "assistant",
+      "check": {
+        "awaiting_confirmation": true,
+        "contains": [
+          "I am ready to update Organism|Weight",
+          "50.0 kg",
+          "Do you approve?"
+        ]
+      }
+    },
+    {
+      "role": "user",
+      "content": "no",
+      "asFeedback": true
+    },
+    {
+      "role": "assistant",
+      "check": {
+        "awaiting_confirmation": false,
+        "contains": ["Action cancelled by user"],
+        "state": {
+          "last_error": "Action cancelled by user."
+        }
+      }
+    }
+  ]
+}

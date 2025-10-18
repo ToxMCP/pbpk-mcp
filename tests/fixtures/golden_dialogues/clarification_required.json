@@ -1,0 +1,20 @@
+{
+  "id": "clarification-required",
+  "description": "Assistant requests missing simulation identifier before planning a safe action.",
+  "turns": [
+    {
+      "role": "user",
+      "content": "Increase the liver weight parameter by 10%."
+    },
+    {
+      "role": "assistant",
+      "check": {
+        "awaiting_confirmation": false,
+        "contains": [
+          "I want to help but need more details.",
+          "identifiers"
+        ]
+      }
+    }
+  ]
+}

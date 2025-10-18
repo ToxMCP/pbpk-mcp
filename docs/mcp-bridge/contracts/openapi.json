@@ -1,0 +1,1592 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MCP Bridge",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/load_simulation": {
+      "post": {
+        "summary": "Load Simulation",
+        "operationId": "load_simulation_load_simulation_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoadSimulationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadSimulationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/list_parameters": {
+      "post": {
+        "summary": "List Parameters",
+        "operationId": "list_parameters_list_parameters_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListParametersRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListParametersResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/get_parameter_value": {
+      "post": {
+        "summary": "Get Parameter Value",
+        "operationId": "get_parameter_value_get_parameter_value_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetParameterValueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParameterValueResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/set_parameter_value": {
+      "post": {
+        "summary": "Set Parameter Value",
+        "operationId": "set_parameter_value_set_parameter_value_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetParameterValueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParameterValueResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/run_simulation": {
+      "post": {
+        "summary": "Run Simulation",
+        "operationId": "run_simulation_run_simulation_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunSimulationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSimulationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/run_population_simulation": {
+      "post": {
+        "summary": "Run Population Simulation",
+        "operationId": "run_population_simulation_run_population_simulation_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunPopulationSimulationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunPopulationSimulationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/get_job_status": {
+      "post": {
+        "summary": "Get Job Status",
+        "operationId": "get_job_status_get_job_status_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetJobStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/get_simulation_results": {
+      "post": {
+        "summary": "Get Simulation Results",
+        "operationId": "get_simulation_results_get_simulation_results_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetSimulationResultsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSimulationResultsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/get_population_results": {
+      "post": {
+        "summary": "Get Population Results",
+        "operationId": "get_population_results_get_population_results_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetPopulationResultsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PopulationResultsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/population_results/{results_id}/chunks/{chunk_id}": {
+      "get": {
+        "summary": "Download Population Chunk",
+        "operationId": "download_population_chunk_population_results__results_id__chunks__chunk_id__get",
+        "parameters": [
+          {
+            "name": "results_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Results Id"
+            }
+          },
+          {
+            "name": "chunk_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Chunk Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calculate_pk_parameters": {
+      "post": {
+        "summary": "Calculate Pk Parameters",
+        "operationId": "calculate_pk_parameters_calculate_pk_parameters_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculatePkParametersRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculatePkParametersResponseBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cancel_job": {
+      "post": {
+        "summary": "Cancel Job",
+        "operationId": "cancel_job_cancel_job_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelJobRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelJobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CalculatePkParametersRequestBody": {
+        "properties": {
+          "resultsId": {
+            "type": "string",
+            "title": "Resultsid"
+          },
+          "outputPath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outputpath"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resultsId"
+        ],
+        "title": "CalculatePkParametersRequestBody"
+      },
+      "CalculatePkParametersResponseBody": {
+        "properties": {
+          "resultsId": {
+            "type": "string",
+            "title": "Resultsid"
+          },
+          "simulationId": {
+            "type": "string",
+            "title": "Simulationid"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/PkMetricModel"
+            },
+            "type": "array",
+            "title": "Metrics"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resultsId",
+          "simulationId",
+          "metrics"
+        ],
+        "title": "CalculatePkParametersResponseBody"
+      },
+      "CancelJobRequest": {
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "title": "Jobid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jobId"
+        ],
+        "title": "CancelJobRequest"
+      },
+      "CancelJobResponse": {
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "title": "Jobid"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jobId",
+          "status"
+        ],
+        "title": "CancelJobResponse"
+      },
+      "CohortConfig": {
+        "properties": {
+          "size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Size"
+          },
+          "sampling": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sampling"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          },
+          "covariates": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Covariates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "size"
+        ],
+        "title": "CohortConfig"
+      },
+      "GetJobStatusRequest": {
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "title": "Jobid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jobId"
+        ],
+        "title": "GetJobStatusRequest"
+      },
+      "GetParameterValueRequest": {
+        "properties": {
+          "simulationId": {
+            "type": "string",
+            "title": "Simulationid"
+          },
+          "parameterPath": {
+            "type": "string",
+            "title": "Parameterpath"
+          }
+        },
+        "type": "object",
+        "required": [
+          "simulationId",
+          "parameterPath"
+        ],
+        "title": "GetParameterValueRequest"
+      },
+      "GetPopulationResultsRequest": {
+        "properties": {
+          "resultsId": {
+            "type": "string",
+            "title": "Resultsid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resultsId"
+        ],
+        "title": "GetPopulationResultsRequest"
+      },
+      "GetSimulationResultsRequest": {
+        "properties": {
+          "resultsId": {
+            "type": "string",
+            "title": "Resultsid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resultsId"
+        ],
+        "title": "GetSimulationResultsRequest"
+      },
+      "GetSimulationResultsResponse": {
+        "properties": {
+          "resultsId": {
+            "type": "string",
+            "title": "Resultsid"
+          },
+          "generatedAt": {
+            "type": "string",
+            "title": "Generatedat"
+          },
+          "simulationMetadata": {
+            "$ref": "#/components/schemas/SimulationMetadata"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/ResultSeriesModel"
+            },
+            "type": "array",
+            "title": "Series"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resultsId",
+          "generatedAt",
+          "series"
+        ],
+        "title": "GetSimulationResultsResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "ok"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "uptimeSeconds": {
+            "type": "number",
+            "title": "Uptimeseconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "service",
+          "version",
+          "uptimeSeconds"
+        ],
+        "title": "HealthResponse"
+      },
+      "JobProgressModel": {
+        "properties": {
+          "percentage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percentage"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "title": "JobProgressModel"
+      },
+      "JobStatusResponse": {
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "title": "Jobid"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobProgressModel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "submittedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submittedat"
+          },
+          "startedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startedat"
+          },
+          "finishedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finishedat"
+          },
+          "attempts": {
+            "type": "integer",
+            "title": "Attempts",
+            "default": 0
+          },
+          "maxRetries": {
+            "type": "integer",
+            "title": "Maxretries",
+            "default": 0
+          },
+          "timeoutSeconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeoutseconds"
+          },
+          "resultHandle": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resulthandle"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "cancelRequested": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelrequested"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jobId",
+          "status"
+        ],
+        "title": "JobStatusResponse"
+      },
+      "ListParametersRequest": {
+        "properties": {
+          "simulationId": {
+            "type": "string",
+            "title": "Simulationid"
+          },
+          "searchPattern": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Searchpattern"
+          }
+        },
+        "type": "object",
+        "required": [
+          "simulationId"
+        ],
+        "title": "ListParametersRequest"
+      },
+      "ListParametersResponse": {
+        "properties": {
+          "parameters": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Parameters"
+          }
+        },
+        "type": "object",
+        "required": [
+          "parameters"
+        ],
+        "title": "ListParametersResponse"
+      },
+      "LoadSimulationRequest": {
+        "properties": {
+          "filePath": {
+            "type": "string",
+            "title": "Filepath"
+          },
+          "simulationId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Simulationid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filePath"
+        ],
+        "title": "LoadSimulationRequest"
+      },
+      "LoadSimulationResponse": {
+        "properties": {
+          "simulationId": {
+            "type": "string",
+            "title": "Simulationid"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/SimulationMetadata",
+            "default": {}
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "simulationId"
+        ],
+        "title": "LoadSimulationResponse"
+      },
+      "OutputsConfig": {
+        "properties": {
+          "timeSeries": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Timeseries"
+          },
+          "aggregates": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Aggregates"
+          }
+        },
+        "type": "object",
+        "title": "OutputsConfig"
+      },
+      "ParameterValueModel": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displayname"
+          },
+          "lastUpdatedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastupdatedat"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "value",
+          "unit"
+        ],
+        "title": "ParameterValueModel"
+      },
+      "ParameterValueResponse": {
+        "properties": {
+          "parameter": {
+            "$ref": "#/components/schemas/ParameterValueModel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "parameter"
+        ],
+        "title": "ParameterValueResponse"
+      },
+      "PkMetricModel": {
+        "properties": {
+          "parameter": {
+            "type": "string",
+            "title": "Parameter"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "cmax": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cmax"
+          },
+          "tmax": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tmax"
+          },
+          "auc": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "parameter"
+        ],
+        "title": "PkMetricModel"
+      },
+      "PopulationChunkModel": {
+        "properties": {
+          "chunkId": {
+            "type": "string",
+            "title": "Chunkid"
+          },
+          "uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uri"
+          },
+          "contentType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contenttype"
+          },
+          "sizeBytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sizebytes"
+          },
+          "subjectRange": {
+            "anyOf": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectrange"
+          },
+          "timeRange": {
+            "anyOf": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timerange"
+          },
+          "preview": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chunkId"
+        ],
+        "title": "PopulationChunkModel"
+      },
+      "PopulationResultsResponse": {
+        "properties": {
+          "resultsId": {
+            "type": "string",
+            "title": "Resultsid"
+          },
+          "simulationId": {
+            "type": "string",
+            "title": "Simulationid"
+          },
+          "generatedAt": {
+            "type": "string",
+            "title": "Generatedat"
+          },
+          "cohort": {
+            "type": "object",
+            "title": "Cohort"
+          },
+          "aggregates": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Aggregates"
+          },
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/PopulationChunkModel"
+            },
+            "type": "array",
+            "title": "Chunks"
+          },
+          "metadata": {
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resultsId",
+          "simulationId",
+          "generatedAt",
+          "cohort",
+          "aggregates"
+        ],
+        "title": "PopulationResultsResponse"
+      },
+      "ResultSeriesModel": {
+        "properties": {
+          "parameter": {
+            "type": "string",
+            "title": "Parameter"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "values": {
+            "items": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Values"
+          }
+        },
+        "type": "object",
+        "required": [
+          "parameter",
+          "unit",
+          "values"
+        ],
+        "title": "ResultSeriesModel"
+      },
+      "RunPopulationSimulationRequest": {
+        "properties": {
+          "modelPath": {
+            "type": "string",
+            "title": "Modelpath"
+          },
+          "simulationId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Simulationid"
+          },
+          "cohort": {
+            "$ref": "#/components/schemas/CohortConfig"
+          },
+          "outputs": {
+            "$ref": "#/components/schemas/OutputsConfig"
+          },
+          "metadata": {
+            "type": "object",
+            "title": "Metadata"
+          },
+          "timeoutSeconds": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeoutseconds"
+          },
+          "maxRetries": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxretries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "modelPath",
+          "simulationId",
+          "cohort"
+        ],
+        "title": "RunPopulationSimulationRequest"
+      },
+      "RunPopulationSimulationResponse": {
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "title": "Jobid"
+          },
+          "simulationId": {
+            "type": "string",
+            "title": "Simulationid"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "queuedAt": {
+            "type": "string",
+            "title": "Queuedat"
+          },
+          "timeoutSeconds": {
+            "type": "number",
+            "title": "Timeoutseconds"
+          },
+          "maxRetries": {
+            "type": "integer",
+            "title": "Maxretries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jobId",
+          "simulationId",
+          "status",
+          "queuedAt",
+          "timeoutSeconds",
+          "maxRetries"
+        ],
+        "title": "RunPopulationSimulationResponse"
+      },
+      "RunSimulationRequest": {
+        "properties": {
+          "simulationId": {
+            "type": "string",
+            "title": "Simulationid"
+          },
+          "runId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "simulationId"
+        ],
+        "title": "RunSimulationRequest"
+      },
+      "RunSimulationResponse": {
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "title": "Jobid"
+          },
+          "queuedAt": {
+            "type": "string",
+            "title": "Queuedat"
+          },
+          "estimatedDurationSeconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimateddurationseconds"
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiresat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jobId",
+          "queuedAt"
+        ],
+        "title": "RunSimulationResponse"
+      },
+      "SetParameterValueRequest": {
+        "properties": {
+          "simulationId": {
+            "type": "string",
+            "title": "Simulationid"
+          },
+          "parameterPath": {
+            "type": "string",
+            "title": "Parameterpath"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "updateMode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatemode",
+            "default": "absolute"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "simulationId",
+          "parameterPath",
+          "value"
+        ],
+        "title": "SetParameterValueRequest"
+      },
+      "SimulationMetadata": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "modelVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modelversion"
+          },
+          "createdBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdby"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          }
+        },
+        "type": "object",
+        "title": "SimulationMetadata"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

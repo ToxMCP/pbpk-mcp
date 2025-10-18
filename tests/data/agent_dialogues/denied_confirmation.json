@@ -1,0 +1,8 @@
+{
+  "dialogue": [
+    {"speaker": "user", "message": "Set the dose to 500 mg."},
+    {"speaker": "agent", "message": "Parameter change summary: Dose -> 500 mg. Approve?"},
+    {"speaker": "user", "message": "no"},
+    {"speaker": "agent", "message": "Change cancelled. Let me know if you want to adjust another value."}
+  ]
+}

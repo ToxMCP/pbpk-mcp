@@ -1,0 +1,34 @@
+{
+  "sourceId": "paper-renal",
+  "facts": [
+    {
+      "name": "body_weight_kg",
+      "value": 72.5,
+      "unit": "kg",
+      "tolerance": 1.0
+    },
+    {
+      "name": "dose_mg",
+      "value": 40.0,
+      "unit": "mg",
+      "tolerance": 0.1
+    }
+  ],
+  "tables": [
+    {
+      "componentId": "table-1",
+      "rows": [
+        {
+          "Subject": "A",
+          "Weight (kg)": "72.5",
+          "Dose (mg)": "40"
+        },
+        {
+          "Subject": "B",
+          "Weight (kg)": "68.0",
+          "Dose (mg)": "40"
+        }
+      ]
+    }
+  ]
+}
