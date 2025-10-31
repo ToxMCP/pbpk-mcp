@@ -38,23 +38,76 @@ jobs:
       - name: Run tests
         run: make test
 
+      - name: Run literature extraction quality gate
+        run: make goldset-eval
+
+      - name: Run MCP compliance harness
+        run: make compliance
+
       - name: Run smoke benchmark
         run: |
-          make benchmark
+          make benchmark BENCH_PROFILE=1
           latest=$(ls -t var/benchmarks/*.json | head -n 1)
           echo "BENCHMARK_JSON=$latest" >> "$GITHUB_ENV"
+
+      - name: Check benchmark regression
+        run: |
+          python scripts/check_benchmark_regression.py \
+            --benchmark "$BENCHMARK_JSON" \
+            --baseline benchmarks/thresholds/smoke.json \
+            --summary-output benchmark-summary.md
+
+      - name: Publish benchmark summary
+        if: always()
+        run: |
+          if [ -f benchmark-summary.md ]; then
+            cat benchmark-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Upload benchmark artefact
         if: env.BENCHMARK_JSON != ''
         uses: actions/upload-artifact@v4
         with:
           name: smoke-benchmark
-          path: ${{ env.BENCHMARK_JSON }}
+          path: |
+            ${{ env.BENCHMARK_JSON }}
+            benchmark-summary.md
+
+  e2e:
+    name: End-to-end regression
+    runs-on: ubuntu-latest
+    needs: quality
+    env:
+      MCP_RUN_R_TESTS: "0"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[dev]'
+
+      - name: Run end-to-end suite
+        run: make test-e2e
+
+      - name: Upload e2e artefacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-regression-artifacts
+          path: reports/e2e/
 
   r-tests:
     name: Integration (R-enabled)
     runs-on: ubuntu-latest
-    needs: quality
+    needs: [quality, e2e]
     env:
       MCP_RUN_R_TESTS: "1"
       MCP_MODEL_SEARCH_PATHS: tests/fixtures
@@ -76,10 +129,42 @@ jobs:
       - name: Run tests (R-enabled)
         run: make test
 
+  compatibility:
+    name: OSPSuite matrix (${{ matrix.ospsuite_version }})
+    runs-on: ubuntu-latest
+    needs: [quality]
+    strategy:
+      fail-fast: false
+      matrix:
+        ospsuite_version: ["11.0.0", "12.0.0"]
+    env:
+      OSPSUITE_VERSION: ${{ matrix.ospsuite_version }}
+      MCP_RUN_R_TESTS: "0"
+      ADAPTER_BACKEND: inmemory
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[dev]'
+
+      - name: Run compatibility tests
+        run: |
+          echo "Testing against OSPSuite version $OSPSUITE_VERSION"
+          pytest tests/unit/test_adapter_interface.py tests/unit/test_job_service.py
+
   docker:
     name: Build container image
     runs-on: ubuntu-latest
-    needs: r-tests
+    needs: [r-tests, compatibility]
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

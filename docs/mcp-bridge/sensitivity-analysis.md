@@ -58,6 +58,40 @@ For a hands-on walkthrough, start with `getting-started/quickstart-cli.md`.
      - Scenario table with columns: parameter path, delta %, absolute value, job status, metric deltas.
      - Optional CSV/JSON serialisation helpers.
 
+## MCP tool interface
+
+The bridge exposes the workflow as the `run_sensitivity_analysis` MCP tool. The
+request maps directly to the configuration fields above and accepts JSON like:
+
+```json
+{
+  "modelPath": "reference/models/standard/midazolam_adult.pkml",
+  "simulationId": "midazolam-sens",
+  "parameters": [
+    {
+      "path": "Organism|Weight",
+      "deltas": [-0.1, 0.1],
+      "baselineValue": 72,
+      "unit": "kg"
+    }
+  ],
+  "includeBaseline": true,
+  "pollIntervalSeconds": 0.25,
+  "jobTimeoutSeconds": 120
+}
+```
+
+Responses contain two structured elements:
+
+- `report`: JSON serialisation of `SensitivityAnalysisReport` (baseline metrics,
+  per-scenario deltas, failures).
+- `csv`: attachment metadata with `filename`, `contentType`, `path`, and a
+  Base64-encoded CSV payload.
+
+CSV artefacts are also persisted under `reports/sensitivity/<simulation>-<timestamp>.csv`
+so downstream automation and CI jobs can archive them without re-running the
+analysis.
+
 ## Error Handling
 
 - Any failed job is reported with status `failed` and associated error message; metric deltas default to `None`.

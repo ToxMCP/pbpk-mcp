@@ -1,0 +1,50 @@
+{
+  "tolerancePercent": 1.0,
+  "cases": [
+    {
+      "id": "midazolam_adult",
+      "name": "Midazolam Adult Reference",
+      "modelPath": "reference/models/standard/midazolam_adult.pkml",
+      "sha256": "7f32df70693c86e0d4e6615d60448063b94ffa3232ab62a18c46ef4ab12cb09b",
+      "expectedMetrics": [
+        {
+          "parameter": "Concentration",
+          "unit": "mg/L",
+          "cmax": 1.0,
+          "tmax": 1.0,
+          "auc": 0.5
+        }
+      ]
+    },
+    {
+      "id": "caffeine",
+      "name": "Caffeine Adult Reference",
+      "modelPath": "reference/models/standard/caffeine.pkml",
+      "sha256": "18b4616b96bbeadf0494050597b97b7ccf6b8db779348bee46087b9c9bdfa551",
+      "expectedMetrics": [
+        {
+          "parameter": "Concentration",
+          "unit": "mg/L",
+          "cmax": 1.0,
+          "tmax": 1.0,
+          "auc": 0.5
+        }
+      ]
+    },
+    {
+      "id": "warfarin",
+      "name": "Warfarin Adult Reference",
+      "modelPath": "reference/models/standard/warfarin.pkml",
+      "sha256": "4837b24eee157b3434eabd4ed4063b8e3cbf7a2287c689a14618913f4995f8eb",
+      "expectedMetrics": [
+        {
+          "parameter": "Concentration",
+          "unit": "mg/L",
+          "cmax": 1.0,
+          "tmax": 1.0,
+          "auc": 0.5
+        }
+      ]
+    }
+  ]
+}

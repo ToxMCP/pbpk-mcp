@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from mcp.session_registry import SessionRegistryError, registry
 from mcp_bridge.adapter.interface import OspsuiteAdapter
-from mcp_bridge.services.job_service import JobRecord, JobService
+from mcp_bridge.services.job_service import BaseJobService, JobRecord
 
 
 class RunSimulationValidationError(ValueError):
@@ -58,8 +58,11 @@ class RunSimulationResponse(BaseModel):
 
 def run_simulation(
     adapter: OspsuiteAdapter,
-    job_service: JobService,
+    job_service: BaseJobService,
     payload: RunSimulationRequest,
+    *,
+    idempotency_key: Optional[str] = None,
+    idempotency_fingerprint: Optional[str] = None,
 ) -> RunSimulationResponse:
     """Submit an asynchronous simulation job."""
 
@@ -74,6 +77,8 @@ def run_simulation(
         run_id=payload.run_id,
         timeout_seconds=payload.timeout_seconds,
         max_retries=payload.max_retries,
+        idempotency_key=idempotency_key,
+        idempotency_fingerprint=idempotency_fingerprint,
     )
     return RunSimulationResponse.from_record(record)
 

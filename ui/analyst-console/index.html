@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>MCP Analyst Console</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/console/static/console.css" />
+  </head>
+  <body>
+    <header>
+      <h1>MCP Analyst Console</h1>
+      <p>
+        Review extraction-driven parameter suggestions, inspect provenance, and apply or reject
+        updates before they are sent to the MCP bridge.
+      </p>
+    </header>
+
+    <main>
+      <section class="panel">
+        <h2>Sample Documents</h2>
+        <div class="controls">
+          <label for="sample-select">Select example</label>
+          <select id="sample-select"></select>
+          <label for="sample-simulation">Simulation ID</label>
+          <input id="sample-simulation" type="text" value="sample-sim" />
+          <button id="load-sample">Load Suggestions</button>
+        </div>
+        <p class="hint">
+          Samples are generated from the deterministic reference gold set (`reference/goldset/`).
+          Use this section to explore the console without uploading your own extraction results.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Paste Extraction JSON</h2>
+        <p class="hint">
+          Paste a <code>LiteratureExtractionResult</code> JSON payload to generate suggestions for
+          any simulation ID. You can export results directly from the ingestion pipeline.
+        </p>
+        <div class="controls column">
+          <label for="manual-simulation">Simulation ID</label>
+          <input id="manual-simulation" type="text" value="manual-sim" />
+          <label for="extraction-json">Extraction JSON</label>
+          <textarea id="extraction-json" rows="10" placeholder="{ ... }"></textarea>
+          <button id="generate-manual">Generate Suggestions</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Baseline &amp; Rollback</h2>
+        <div class="controls">
+          <button id="capture-baseline">Capture Baseline</button>
+          <button id="restore-baseline" class="button-secondary">Restore Baseline</button>
+        </div>
+        <p id="baseline-status" class="hint">Load suggestions to capture a baseline snapshot.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Suggestions</h2>
+        <div id="suggestion-summary" class="hint"></div>
+        <table id="suggestions-table">
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Value</th>
+              <th>Confidence</th>
+              <th>Summary</th>
+              <th>Provenance</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>Messages</h2>
+        <div id="messages"></div>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Suggestions are produced using the deterministic `LiteratureActionMapper`. Accepted
+        decisions invoke the standard <code>set_parameter_value</code> MCP tool and emit audit
+        events so changes remain traceable.
+      </p>
+    </footer>
+
+    <script src="/console/static/console.js" type="module"></script>
+  </body>
+</html>

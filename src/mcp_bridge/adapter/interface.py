@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import abc
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:  # pragma: no cover - used for type checking only
     from ..storage.population_store import PopulationResultStore
@@ -104,6 +104,10 @@ class OspsuiteAdapter(abc.ABC):
     @abc.abstractmethod
     def get_population_results(self, results_id: str) -> PopulationSimulationResult:
         """Retrieve stored population results by handle."""
+
+    @abc.abstractmethod
+    def export_simulation_state(self, simulation_id: str) -> dict[str, Any]:
+        """Return serializable state required to reproduce a simulation on remote workers."""
 
     # Error boundary ----------------------------------------------------
     def _raise(self, error: AdapterError) -> None:

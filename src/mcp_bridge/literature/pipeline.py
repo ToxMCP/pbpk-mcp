@@ -13,6 +13,7 @@ from .interfaces import (
     TextExtractor,
 )
 from .models import ComponentType, ExtractionRecord, LiteratureExtractionResult
+from .validation import ExtractionSchemaValidator, default_validator
 
 
 @dataclass
@@ -29,8 +30,14 @@ class PipelineDependencies:
 class LiteratureIngestionPipeline:
     """Run the literature extraction flow for a PDF document."""
 
-    def __init__(self, deps: PipelineDependencies) -> None:
+    def __init__(
+        self,
+        deps: PipelineDependencies,
+        *,
+        validator: ExtractionSchemaValidator | None = None,
+    ) -> None:
         self._deps = deps
+        self._validator = validator or default_validator
 
     def run(self, pdf_path: str, *, source_id: Optional[str] = None) -> LiteratureExtractionResult:
         components = list(self._deps.layout_extractor.extract(pdf_path))
@@ -55,5 +62,20 @@ class LiteratureIngestionPipeline:
         for processor in self._deps.post_processors or ():
             result = processor.refine(result)
 
+        self._inject_provenance_defaults(result)
+        self._validator.validate_result(result)
+
         return result
 
+    @staticmethod
+    def _inject_provenance_defaults(result: LiteratureExtractionResult) -> None:
+        for record in result.records:
+            component = record.source_component
+            for field in record.fields:
+                provenance = field.provenance
+                if not isinstance(provenance, dict):
+                    provenance = {}
+                    field.provenance = provenance
+                provenance.setdefault("sourceId", result.source_id)
+                provenance.setdefault("componentId", component.component_id)
+                provenance.setdefault("page", component.page)

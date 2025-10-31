@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import json
 import time
 
+import pytest
 from fastapi.testclient import TestClient
 
 from mcp_bridge.app import create_app
+
+
+pytestmark = pytest.mark.compliance
 
 
 def test_load_and_mutate_parameter_flow() -> None:
@@ -70,6 +75,73 @@ def test_load_and_mutate_parameter_flow() -> None:
     assert pk_payload["metrics"]
 
 
+def test_snapshot_and_restore_roundtrip() -> None:
+    client = TestClient(create_app())
+
+    load_resp = client.post(
+        "/load_simulation",
+        json={"filePath": "tests/fixtures/demo.pkml", "simulationId": "sim-snapshot"},
+    )
+    assert load_resp.status_code == 201
+
+    baseline_value = 72.0
+    set_resp = client.post(
+        "/set_parameter_value",
+        json={
+            "simulationId": "sim-snapshot",
+            "parameterPath": "Organ.Liver.Weight",
+            "value": baseline_value,
+            "unit": "kg",
+        },
+    )
+    assert set_resp.status_code == 200
+
+    snapshot_resp = client.post(
+        "/snapshot_simulation",
+        json={"simulationId": "sim-snapshot"},
+    )
+    assert snapshot_resp.status_code == 201
+    snapshot_payload = snapshot_resp.json()["snapshot"]
+    assert snapshot_payload["simulationId"] == "sim-snapshot"
+    assert snapshot_payload["snapshotId"]
+
+    modified_resp = client.post(
+        "/set_parameter_value",
+        json={
+            "simulationId": "sim-snapshot",
+            "parameterPath": "Organ.Liver.Weight",
+            "value": 90.0,
+            "unit": "kg",
+        },
+    )
+    assert modified_resp.status_code == 200
+
+    restore_resp = client.post(
+        "/restore_simulation",
+        json={"simulationId": "sim-snapshot"},
+    )
+    assert restore_resp.status_code == 200
+    restored_payload = restore_resp.json()["snapshot"]
+    assert restored_payload["snapshotId"] == snapshot_payload["snapshotId"]
+
+    value_resp = client.post(
+        "/get_parameter_value",
+        json={
+            "simulationId": "sim-snapshot",
+            "parameterPath": "Organ.Liver.Weight",
+        },
+    )
+    assert value_resp.status_code == 200
+    assert value_resp.json()["parameter"]["value"] == baseline_value
+
+    list_resp = client.get(
+        "/get_simulation_snapshot",
+        params={"simulationId": "sim-snapshot"},
+    )
+    assert list_resp.status_code == 200
+    list_payload = list_resp.json()
+    assert list_payload["latestSnapshot"]["snapshotId"] == snapshot_payload["snapshotId"]
+
 def test_missing_simulation_returns_not_found() -> None:
     client = TestClient(create_app())
 
@@ -78,6 +150,9 @@ def test_missing_simulation_returns_not_found() -> None:
         json={"simulationId": "missing", "parameterPath": "Path"},
     )
     assert resp.status_code == 404
+    body = resp.json()
+    assert body["error"]["code"] == "NotFound"
+    assert body["error"]["details"][0]["field"] == "parameterPath"
 
 
 def test_duplicate_simulation_returns_conflict() -> None:
@@ -86,6 +161,9 @@ def test_duplicate_simulation_returns_conflict() -> None:
     assert client.post("/load_simulation", json=payload).status_code == 201
     resp = client.post("/load_simulation", json=payload)
     assert resp.status_code == 409
+    body = resp.json()
+    assert body["error"]["code"] == "Conflict"
+    assert body["error"]["details"][0]["field"] == "simulationId"
 
 
 def test_invalid_extension_returns_bad_request() -> None:
@@ -95,6 +173,10 @@ def test_invalid_extension_returns_bad_request() -> None:
         json={"filePath": "tests/fixtures/demo.txt", "simulationId": "bad-ext"},
     )
     assert resp.status_code == 400
+    payload = resp.json()
+    assert payload["error"]["code"] == "InvalidInput"
+    details = payload["error"].get("details") or []
+    assert details and details[0]["field"] == "filePath"
 
 
 def test_list_parameters_route() -> None:
@@ -125,12 +207,19 @@ def test_list_parameters_route() -> None:
         json={"simulationId": "missing"},
     )
     assert missing.status_code == 404
+    missing_payload = missing.json()
+    assert missing_payload["error"]["code"] == "NotFound"
+    assert missing_payload["error"]["details"][0]["field"] == "simulationId"
+    assert "Load" in missing_payload["error"]["details"][0]["hint"]
 
     invalid = client.post(
         "/list_parameters",
         json={"simulationId": "sim-list", "searchPattern": "\n"},
     )
     assert invalid.status_code == 400
+    invalid_payload = invalid.json()
+    assert invalid_payload["error"]["code"] == "InvalidInput"
+    assert invalid_payload["error"]["details"][0]["field"] == "searchPattern"
 
 
 def test_population_simulation_endpoints() -> None:
@@ -165,6 +254,36 @@ def test_population_simulation_endpoints() -> None:
     assert chunk_resp.headers["content-type"].startswith("application/json")
     chunk_payload = chunk_resp.json()
     assert chunk_payload["chunkId"] == chunk["chunkId"]
+
+
+def test_job_event_stream() -> None:
+    client = TestClient(create_app())
+
+    load_resp = client.post(
+        "/load_simulation",
+        json={"filePath": "tests/fixtures/demo.pkml", "simulationId": "event-sim"},
+    )
+    assert load_resp.status_code == 201
+
+    run_resp = client.post(
+        "/run_simulation",
+        json={"simulationId": "event-sim"},
+    )
+    assert run_resp.status_code == 202
+    job_id = run_resp.json()["jobId"]
+
+    statuses = []
+    with client.stream("GET", f"/jobs/{job_id}/events") as stream:
+        for line in stream.iter_lines():
+            if not line or not line.startswith("data: "):
+                continue
+            payload = json.loads(line[len("data: "):])
+            statuses.append(payload["status"])
+            if payload["status"].lower() not in {"queued", "running"}:
+                break
+
+    assert statuses
+    assert statuses[-1].lower() == "succeeded"
 
 
 def _wait_for_job_completion(client: TestClient, job_id: str, timeout: float = 2.0) -> dict:

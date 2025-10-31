@@ -6,10 +6,10 @@ import operator
 import re
 import time
 from collections import defaultdict
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, TypedDict
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple, TypedDict
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from langchain_core.pydantic_v1 import BaseModel, Field
+from langchain_core.pydantic_v1 import BaseModel, Field, validator
 from langchain_core.tools import StructuredTool
 from langchain_core.utils.function_calling import convert_to_openai_function
 from langgraph.checkpoint.memory import MemorySaver
@@ -52,7 +52,10 @@ from mcp_bridge.agent.prompts import (
     format_error_response,
     format_success_response,
 )
-from mcp_bridge.services.job_service import JobService
+from mcp_bridge.services.job_service import BaseJobService
+
+if TYPE_CHECKING:  # pragma: no cover - import only for type hints
+    from mcp.tools.run_sensitivity_analysis import RunSensitivityAnalysisRequest
 
 
 class AgentState(TypedDict, total=False):
@@ -76,6 +79,7 @@ CRITICAL_TOOLS = {
     "set_parameter_value",
     "run_simulation",
     "load_simulation",
+    "run_sensitivity_analysis",
 }
 
 _APPROVAL_WORDS = {"yes", "y", "approve", "approved", "proceed", "ok", "okay"}
@@ -100,7 +104,7 @@ def _wrap_langchain_tool(
 def create_tool_registry(
     *,
     adapter: OspsuiteAdapter,
-    job_service: JobService,
+    job_service: BaseJobService,
 ) -> Dict[str, StructuredTool]:
     """Register MCP bridge tools as LangChain structured tools."""
 
@@ -201,6 +205,77 @@ def create_tool_registry(
         response = get_parameter_value(adapter, payload)
         return response.model_dump(by_alias=True)
 
+    class SensitivityParameterArgs(BaseModel):
+        path: str = Field(..., description="Parameter path to perturb.")
+        deltas: List[float] = Field(..., description="Relative deltas (e.g. 0.1 = +10%).")
+        unit: Optional[str] = None
+        bounds: Optional[Tuple[float, float]] = None
+        baselineValue: Optional[float] = Field(
+            default=None,
+            description="Fallback baseline value when the adapter cannot provide one.",
+        )
+
+        class Config:
+            allow_population_by_field_name = True
+
+    class RunSensitivityArgs(BaseModel):
+        modelPath: str = Field(..., description="Absolute path to the baseline simulation .pkml file.")
+        simulationId: str = Field(..., description="Base simulation identifier used for the sweep.")
+        parameters: List[SensitivityParameterArgs] = Field(
+            ..., description="Parameters to perturb during the sweep."
+        )
+        includeBaseline: bool = Field(
+            default=True,
+            description="Include the baseline (unmodified) scenario in the report.",
+        )
+        pollIntervalSeconds: float = Field(
+            default=0.25,
+            description="Polling interval while waiting for async jobs to complete.",
+        )
+        jobTimeoutSeconds: Optional[float] = Field(
+            default=None,
+            description="Optional timeout applied to the overall sensitivity run.",
+        )
+
+        class Config:
+            allow_population_by_field_name = True
+
+        @validator("parameters", allow_reuse=True)
+        def _ensure_parameters_non_empty(
+            cls, value: List[SensitivityParameterArgs]
+        ) -> List[SensitivityParameterArgs]:
+            if not value:
+                raise ValueError("parameters must contain at least one entry")
+            return value
+
+    RunSensitivityArgs.update_forward_refs(SensitivityParameterArgs=SensitivityParameterArgs)
+
+    def _run_sensitivity_analysis(
+        *,
+        modelPath: str,
+        simulationId: str,
+        parameters: List[Dict[str, Any]],
+        includeBaseline: bool = True,
+        pollIntervalSeconds: float = 0.25,
+        jobTimeoutSeconds: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        from mcp.tools.run_sensitivity_analysis import (
+            RunSensitivityAnalysisRequest,
+            run_sensitivity_analysis_tool,
+        )
+
+        raw_payload: Dict[str, Any] = {
+            "modelPath": modelPath,
+            "simulationId": simulationId,
+            "parameters": parameters,
+            "includeBaseline": includeBaseline,
+            "pollIntervalSeconds": pollIntervalSeconds,
+            "jobTimeoutSeconds": jobTimeoutSeconds,
+        }
+        payload = RunSensitivityAnalysisRequest.model_validate(raw_payload)
+        response = run_sensitivity_analysis_tool(adapter, job_service, payload)
+        return response.model_dump(mode="json")
+
     class RunSimulationArgs(BaseModel):
         simulationId: str = Field(...)
         runId: Optional[str] = Field(
@@ -283,6 +358,12 @@ def create_tool_registry(
             name="get_parameter_value",
             args_schema=GetParameterArgs,
             description="Retrieve the value of a parameter for a simulation.",
+        ),
+        "run_sensitivity_analysis": _wrap_langchain_tool(
+            _run_sensitivity_analysis,
+            name="run_sensitivity_analysis",
+            args_schema=RunSensitivityArgs,
+            description="Execute a multi-parameter sensitivity sweep and return PK metric deltas.",
         ),
         "run_simulation": _wrap_langchain_tool(
             _run_simulation,

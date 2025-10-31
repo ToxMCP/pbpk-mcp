@@ -156,6 +156,18 @@ class StubAdapter(OspsuiteAdapter):
             chunk_handles=[chunk],
         )
 
+    def export_simulation_state(self, simulation_id: str) -> Dict[str, Any]:
+        if simulation_id not in self._simulations:
+            raise AdapterError(AdapterErrorCode.NOT_FOUND, "Simulation not found")
+        parameters = {
+            path: value.model_dump(mode="json")
+            for path, value in self._simulations[simulation_id]["parameters"].items()
+        }
+        return {
+            "simulationId": simulation_id,
+            "parameters": parameters,
+        }
+
 
 def _make_default_state() -> AgentState:
     return AgentState(

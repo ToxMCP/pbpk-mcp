@@ -1,6 +1,6 @@
 """Top-level package for MCP tool implementations."""
 
-from .session_registry import SessionRegistry, SessionRegistryError, registry
+from .session_registry import RedisSessionRegistry, SessionRegistry, SessionRegistryError, registry
 from .tools.calculate_pk_parameters import (
     CalculatePkParametersRequest,
     CalculatePkParametersResponse,
@@ -32,6 +32,7 @@ from .tools.set_parameter_value import (
 
 __all__ = [
     "SessionRegistry",
+    "RedisSessionRegistry",
     "SessionRegistryError",
     "registry",
     "CalculatePkParametersRequest",

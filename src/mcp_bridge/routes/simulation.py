@@ -3,10 +3,12 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 from datetime import datetime, timezone
-from typing import Any, List, Optional
+from typing import Any, AsyncGenerator, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -85,18 +87,41 @@ from mcp.tools.set_parameter_value import (
 )
 
 from ..adapter import AdapterError, AdapterErrorCode, OspsuiteAdapter
-from ..dependencies import get_adapter, get_job_service, get_population_store
+from ..adapter.schema import SimulationResult
+from ..audit import AuditTrail
+from ..dependencies import (
+    get_adapter,
+    get_audit_trail,
+    get_job_service,
+    get_population_store,
+    get_session_registry,
+    get_snapshot_store,
+)
+from ..errors import (
+    DetailedHTTPException,
+    ErrorCode,
+    adapter_error_to_http,
+    http_error,
+    validation_exception,
+)
 from ..logging import get_logger
-from ..services.job_service import JobService
+from ..services.job_service import BaseJobService, JobStatus
 from ..storage.population_store import (
     PopulationChunkNotFoundError,
     PopulationResultStore,
     PopulationStorageError,
 )
+from ..storage.snapshot_store import SimulationSnapshotStore
+from ..services.snapshot_service import capture_snapshot, restore_snapshot
 from ..security.auth import AuthContext, require_roles
+from ..util.concurrency import maybe_to_thread
 
 router = APIRouter()
 logger = get_logger(__name__)
+
+
+def _should_offload(request: Request) -> bool:
+    return bool(getattr(request.app.state, "adapter_offload", True))
 
 
 def _to_camel(string: str) -> str:
@@ -106,6 +131,16 @@ def _to_camel(string: str) -> str:
 
 class CamelModel(BaseModel):
     model_config = ConfigDict(alias_generator=_to_camel, populate_by_name=True)
+
+
+def _format_snapshot_metadata(record) -> SnapshotMetadataModel:
+    timestamp = record.created_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    return SnapshotMetadataModel(
+        snapshotId=record.snapshot_id,
+        simulationId=record.simulation_id,
+        createdAt=timestamp,
+        hash=record.hash,
+    )
 
 
 class LoadSimulationRequest(CamelModel):
@@ -196,6 +231,36 @@ class JobStatusResponse(CamelModel):
     result_handle: Optional[dict[str, Any]] = Field(default=None, alias="resultHandle")
     error: Optional[dict[str, Any]] = None
     cancel_requested: Optional[bool] = Field(default=None, alias="cancelRequested")
+    external_job_id: Optional[str] = Field(default=None, alias="externalJobId")
+
+
+class SnapshotSimulationRequest(CamelModel):
+    simulation_id: str = Field(alias="simulationId")
+
+
+class SnapshotMetadataModel(CamelModel):
+    snapshot_id: str = Field(alias="snapshotId")
+    simulation_id: str = Field(alias="simulationId")
+    created_at: str = Field(alias="createdAt")
+    hash: str
+
+
+class SnapshotSimulationResponse(CamelModel):
+    snapshot: SnapshotMetadataModel
+
+
+class RestoreSimulationRequest(CamelModel):
+    simulation_id: str = Field(alias="simulationId")
+    snapshot_id: Optional[str] = Field(default=None, alias="snapshotId")
+
+
+class RestoreSimulationResponse(CamelModel):
+    snapshot: SnapshotMetadataModel
+
+
+class SnapshotListResponse(CamelModel):
+    snapshots: List[SnapshotMetadataModel]
+    latest_snapshot: Optional[SnapshotMetadataModel] = Field(default=None, alias="latestSnapshot")
 
 
 class GetSimulationResultsRequest(CamelModel):
@@ -308,16 +373,41 @@ def _iso_timestamp(epoch: Optional[float]) -> Optional[str]:
     return datetime.fromtimestamp(epoch, tz=timezone.utc).isoformat()
 
 
-def _map_adapter_error(exc: AdapterError) -> HTTPException:
-    status_map = {
-        AdapterErrorCode.INVALID_INPUT: status.HTTP_400_BAD_REQUEST,
-        AdapterErrorCode.NOT_FOUND: status.HTTP_404_NOT_FOUND,
-        AdapterErrorCode.ENVIRONMENT_MISSING: status.HTTP_503_SERVICE_UNAVAILABLE,
-        AdapterErrorCode.INTEROP_ERROR: status.HTTP_502_BAD_GATEWAY,
-        AdapterErrorCode.TIMEOUT: status.HTTP_504_GATEWAY_TIMEOUT,
+async def _job_event_stream(
+    job_id: str,
+    job_service: BaseJobService,
+    poll_interval: float = 0.25,
+) -> AsyncGenerator[bytes, None]:
+    last_status: Optional[str] = None
+    terminal_statuses = {
+        JobStatus.SUCCEEDED.value,
+        JobStatus.FAILED.value,
+        JobStatus.CANCELLED.value,
+        JobStatus.TIMEOUT.value,
     }
-    status_code = status_map.get(exc.code, status.HTTP_500_INTERNAL_SERVER_ERROR)
-    return HTTPException(status_code=status_code, detail=str(exc))
+
+    while True:
+        record = job_service.get_job(job_id)
+        status_value = record.status.value if isinstance(record.status, JobStatus) else str(record.status)
+        payload = {
+            "jobId": record.job_id,
+            "status": status_value,
+            "attempts": record.attempts,
+            "maxRetries": record.max_retries,
+            "timeoutSeconds": record.timeout_seconds,
+            "submittedAt": _iso_timestamp(record.submitted_at),
+            "startedAt": _iso_timestamp(record.started_at),
+            "finishedAt": _iso_timestamp(record.finished_at),
+            "resultId": record.result_id,
+            "error": record.error,
+        }
+        if status_value != last_status:
+            yield f"data: {json.dumps(payload)}\n\n".encode("utf-8")
+            last_status = status_value
+
+        if status_value in terminal_statuses:
+            break
+        await asyncio.sleep(poll_interval)
 
 
 @router.post(
@@ -325,28 +415,56 @@ def _map_adapter_error(exc: AdapterError) -> HTTPException:
 )
 async def load_simulation(
     payload: LoadSimulationRequest,
+    request: Request,
     adapter: OspsuiteAdapter = Depends(get_adapter),
     _auth: AuthContext = Depends(require_roles("operator", "admin")),
 ) -> LoadSimulationResponse:
     try:
         tool_payload = ToolLoadSimulationRequest.model_validate(payload.model_dump(by_alias=True))
-        tool_response = execute_load_simulation(adapter, tool_payload)
+        session_store = request.app.state.session_registry
+        tool_response = await maybe_to_thread(
+            _should_offload(request),
+            execute_load_simulation,
+            adapter,
+            tool_payload,
+            session_store=session_store,
+        )
     except DuplicateSimulationError as exc:
         logger.warning(
             "simulation.duplicate",
             simulationId=payload.simulation_id or payload.file_path,
             detail=str(exc),
         )
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise http_error(
+            status_code=status.HTTP_409_CONFLICT,
+            message=str(exc),
+            code=ErrorCode.CONFLICT,
+            field="simulationId",
+            hint="Choose a unique simulationId or omit it to let the server generate one.",
+        ) from exc
     except LoadSimulationValidationError as exc:
+        message = str(exc)
+        key = "simulation" if "simulation" in message.lower() else "file"
+        field = "simulationId" if key == "simulation" else "filePath"
+        hint = (
+            "Ensure the simulation is not already loaded and the identifier is unique."
+            if field == "simulationId"
+            else "Provide an absolute .pkml path within MCP_MODEL_SEARCH_PATHS."
+        )
         logger.warning(
             "simulation.invalid",
             simulationId=payload.simulation_id or "<generated>",
-            detail=str(exc),
+            detail=message,
         )
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise http_error(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message=message,
+            code=ErrorCode.INVALID_INPUT,
+            field=field,
+            hint=hint,
+        ) from exc
     except AdapterError as exc:
-        raise _map_adapter_error(exc) from exc
+        raise adapter_error_to_http(exc) from exc
 
     metadata = SimulationMetadata(
         name=tool_response.metadata.name,
@@ -371,22 +489,30 @@ async def load_simulation(
 @router.post("/list_parameters", response_model=ListParametersResponse)
 async def list_parameters(
     payload: ListParametersRequest,
+    request: Request,
     adapter: OspsuiteAdapter = Depends(get_adapter),
     _auth: AuthContext = Depends(require_roles("viewer", "operator", "admin")),
 ) -> ListParametersResponse:
     try:
         tool_payload = ToolListParametersRequest.model_validate(payload.model_dump(by_alias=True))
     except ValidationError as exc:
-        detail = exc.errors()[0]["msg"] if exc.errors() else str(exc)
+        detail_exception = validation_exception(exc, status_code=status.HTTP_400_BAD_REQUEST)
+        detail = detail_exception.detail
         logger.warning(
             "simulation.parameters.invalid",
             simulationId=payload.simulation_id,
             pattern=payload.search_pattern,
             detail=detail,
         )
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail) from exc
+        raise detail_exception from exc
+    offload = _should_offload(request)
     try:
-        tool_response = execute_list_parameters(adapter, tool_payload)
+        tool_response = await maybe_to_thread(
+            offload,
+            execute_list_parameters,
+            adapter,
+            tool_payload,
+        )
     except ListParametersValidationError as exc:
         detail = str(exc)
         status_code = (
@@ -400,9 +526,22 @@ async def list_parameters(
             pattern=payload.search_pattern,
             detail=detail,
         )
-        raise HTTPException(status_code=status_code, detail=detail) from exc
+        field = "simulationId" if status_code == status.HTTP_404_NOT_FOUND else "searchPattern"
+        hint = (
+            "Load the simulation before listing parameters."
+            if status_code == status.HTTP_404_NOT_FOUND
+            else "Use a glob pattern like '*Weight*' without newline characters."
+        )
+        code = ErrorCode.NOT_FOUND if status_code == status.HTTP_404_NOT_FOUND else ErrorCode.INVALID_INPUT
+        raise http_error(
+            status_code=status_code,
+            message=detail,
+            code=code,
+            field=field,
+            hint=hint,
+        ) from exc
     except AdapterError as exc:
-        raise _map_adapter_error(exc) from exc
+        raise adapter_error_to_http(exc) from exc
 
     logger.info(
         "simulation.parameters.listed",
@@ -416,6 +555,7 @@ async def list_parameters(
 @router.post("/get_parameter_value", response_model=ParameterValueResponse)
 async def get_parameter_value(
     payload: GetParameterValueRequest,
+    request: Request,
     adapter: OspsuiteAdapter = Depends(get_adapter),
     _auth: AuthContext = Depends(require_roles("viewer", "operator", "admin")),
 ) -> ParameterValueResponse:
@@ -424,17 +564,23 @@ async def get_parameter_value(
             payload.model_dump(by_alias=True)
         )
     except ValidationError as exc:
-        detail = exc.errors()[0]["msg"] if exc.errors() else str(exc)
+        detail_exception = validation_exception(exc, status_code=status.HTTP_400_BAD_REQUEST)
+        detail = detail_exception.detail
         logger.warning(
             "simulation.parameter.invalid",
             simulationId=payload.simulation_id,
             parameterPath=payload.parameter_path,
             detail=detail,
         )
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail) from exc
+        raise detail_exception from exc
 
     try:
-        tool_response = execute_get_parameter_value(adapter, tool_payload)
+        tool_response = await maybe_to_thread(
+            _should_offload(request),
+            execute_get_parameter_value,
+            adapter,
+            tool_payload,
+        )
     except GetParameterValueValidationError as exc:
         detail = str(exc)
         status_code = (
@@ -448,9 +594,21 @@ async def get_parameter_value(
             parameterPath=payload.parameter_path,
             detail=detail,
         )
-        raise HTTPException(status_code=status_code, detail=detail) from exc
+        hint = (
+            "Confirm the parameter path exists in the loaded simulation."
+            if status_code == status.HTTP_404_NOT_FOUND
+            else "Verify the parameter path uses '|' separators and valid characters."
+        )
+        code = ErrorCode.NOT_FOUND if status_code == status.HTTP_404_NOT_FOUND else ErrorCode.INVALID_INPUT
+        raise http_error(
+            status_code=status_code,
+            message=detail,
+            code=code,
+            field="parameterPath",
+            hint=hint,
+        ) from exc
     except AdapterError as exc:
-        raise _map_adapter_error(exc) from exc
+        raise adapter_error_to_http(exc) from exc
 
     value = tool_response.parameter
     model = ParameterValueModel(
@@ -473,6 +631,7 @@ async def get_parameter_value(
 @router.post("/set_parameter_value", response_model=ParameterValueResponse)
 async def set_parameter_value(
     payload: SetParameterValueRequest,
+    request: Request,
     adapter: OspsuiteAdapter = Depends(get_adapter),
     _auth: AuthContext = Depends(require_roles("operator", "admin")),
 ) -> ParameterValueResponse:
@@ -481,17 +640,23 @@ async def set_parameter_value(
             payload.model_dump(by_alias=True)
         )
     except ValidationError as exc:
-        detail = exc.errors()[0]["msg"] if exc.errors() else str(exc)
+        detail_exception = validation_exception(exc, status_code=status.HTTP_400_BAD_REQUEST)
+        detail = detail_exception.detail
         logger.warning(
             "simulation.parameter.invalid",
             simulationId=payload.simulation_id,
             parameterPath=payload.parameter_path,
             detail=detail,
         )
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail) from exc
+        raise detail_exception from exc
 
     try:
-        tool_response = execute_set_parameter_value(adapter, tool_payload)
+        tool_response = await maybe_to_thread(
+            _should_offload(request),
+            execute_set_parameter_value,
+            adapter,
+            tool_payload,
+        )
     except SetParameterValueValidationError as exc:
         detail = str(exc)
         status_code = (
@@ -505,9 +670,21 @@ async def set_parameter_value(
             parameterPath=payload.parameter_path,
             detail=detail,
         )
-        raise HTTPException(status_code=status_code, detail=detail) from exc
+        hint = (
+            "Load the simulation and ensure the parameter exists before updating."
+            if status_code == status.HTTP_404_NOT_FOUND
+            else "Verify the value is numeric and within acceptable bounds."
+        )
+        code = ErrorCode.NOT_FOUND if status_code == status.HTTP_404_NOT_FOUND else ErrorCode.INVALID_INPUT
+        raise http_error(
+            status_code=status_code,
+            message=detail,
+            code=code,
+            field="parameterPath",
+            hint=hint,
+        ) from exc
     except AdapterError as exc:
-        raise _map_adapter_error(exc) from exc
+        raise adapter_error_to_http(exc) from exc
 
     value = tool_response.parameter
     model = ParameterValueModel(
@@ -532,22 +709,44 @@ async def set_parameter_value(
 )
 async def run_simulation(
     payload: RunSimulationRequest,
+    request: Request,
     adapter: OspsuiteAdapter = Depends(get_adapter),
-    job_service: JobService = Depends(get_job_service),
+    job_service: BaseJobService = Depends(get_job_service),
     _auth: AuthContext = Depends(require_roles("operator", "admin")),
 ) -> RunSimulationResponse:
     try:
         tool_payload = ToolRunSimulationRequest.model_validate(payload.model_dump(by_alias=True))
-        job_response = execute_run_simulation(adapter, job_service, tool_payload)
+        job_response = await maybe_to_thread(
+            _should_offload(request),
+            execute_run_simulation,
+            adapter,
+            job_service,
+            tool_payload,
+        )
     except RunSimulationValidationError as exc:
+        detail = str(exc)
+        is_not_found = "not found" in detail.lower()
+        status_code = status.HTTP_404_NOT_FOUND if is_not_found else status.HTTP_400_BAD_REQUEST
+        hint = (
+            "Load the simulation before running it."
+            if is_not_found
+            else "Check the simulationId and optional runId parameters."
+        )
         logger.warning(
             "simulation.run.invalid",
             simulationId=payload.simulation_id,
-            detail=str(exc),
+            detail=detail,
         )
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        code = ErrorCode.NOT_FOUND if is_not_found else ErrorCode.INVALID_INPUT
+        raise http_error(
+            status_code=status_code,
+            message=detail,
+            code=code,
+            field="simulationId",
+            hint=hint,
+        ) from exc
     except AdapterError as exc:
-        raise _map_adapter_error(exc) from exc
+        raise adapter_error_to_http(exc) from exc
 
     queued_at = _iso_timestamp(job_response.queued_at)
     assert queued_at is not None
@@ -566,19 +765,41 @@ async def run_simulation(
 )
 async def run_population_simulation(
     payload: RunPopulationSimulationRequest,
+    request: Request,
     adapter: OspsuiteAdapter = Depends(get_adapter),
-    job_service: JobService = Depends(get_job_service),
+    job_service: BaseJobService = Depends(get_job_service),
     _auth: AuthContext = Depends(require_roles("operator", "admin")),
 ) -> RunPopulationSimulationResponse:
     try:
         tool_payload = ToolRunPopulationSimulationRequest.model_validate(
             payload.model_dump(by_alias=True)
         )
-        tool_response = execute_run_population_simulation(adapter, job_service, tool_payload)
+        tool_response = await maybe_to_thread(
+            _should_offload(request),
+            execute_run_population_simulation,
+            adapter,
+            job_service,
+            tool_payload,
+        )
     except (RunPopulationSimulationValidationError, LoadSimulationValidationError) as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        detail = str(exc)
+        is_not_found = "not found" in detail.lower()
+        status_code = status.HTTP_404_NOT_FOUND if is_not_found else status.HTTP_400_BAD_REQUEST
+        code = ErrorCode.NOT_FOUND if is_not_found else ErrorCode.INVALID_INPUT
+        hint = (
+            "Load the simulation and ensure cohort definitions are valid."
+            if is_not_found
+            else "Validate population configuration and model path inputs."
+        )
+        raise http_error(
+            status_code=status_code,
+            message=detail,
+            code=code,
+            field="simulationId",
+            hint=hint,
+        ) from exc
     except AdapterError as exc:
-        raise _map_adapter_error(exc) from exc
+        raise adapter_error_to_http(exc) from exc
 
     queued_at = _iso_timestamp(tool_response.queued_at)
     assert queued_at is not None
@@ -595,14 +816,21 @@ async def run_population_simulation(
 @router.post("/get_job_status", response_model=JobStatusResponse)
 async def get_job_status(
     payload: GetJobStatusRequest,
-    job_service: JobService = Depends(get_job_service),
+    job_service: BaseJobService = Depends(get_job_service),
     _auth: AuthContext = Depends(require_roles("viewer", "operator", "admin")),
 ) -> JobStatusResponse:
     try:
         tool_payload = ToolGetJobStatusRequest.model_validate(payload.model_dump(by_alias=True))
         tool_response = execute_get_job_status(job_service, tool_payload)
     except GetJobStatusValidationError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        detail = str(exc)
+        raise http_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            message=detail,
+            code=ErrorCode.NOT_FOUND,
+            field="jobId",
+            hint="Verify the job identifier is correct and the job is still retained.",
+        ) from exc
 
     job = tool_response.job
     return JobStatusResponse(
@@ -617,41 +845,188 @@ async def get_job_status(
         resultHandle={"resultsId": job.result_id} if job.result_id else None,
         error=job.error,
         cancelRequested=job.cancel_requested,
+        externalJobId=job.external_job_id,
     )
+
+
+@router.post(
+    "/snapshot_simulation",
+    response_model=SnapshotSimulationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def snapshot_simulation(
+    payload: SnapshotSimulationRequest,
+    request: Request,
+    adapter: OspsuiteAdapter = Depends(get_adapter),
+    snapshot_store: SimulationSnapshotStore = Depends(get_snapshot_store),
+    session_store=Depends(get_session_registry),
+    audit: AuditTrail = Depends(get_audit_trail),
+    _auth: AuthContext = Depends(require_roles("operator", "admin")),
+) -> SnapshotSimulationResponse:
+    if not session_store.contains(payload.simulation_id):
+        raise http_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            message=f"Simulation '{payload.simulation_id}' is not loaded",
+            code=ErrorCode.NOT_FOUND,
+            field="simulationId",
+            hint="Load the simulation before capturing a baseline snapshot.",
+        )
+
+    offload = _should_offload(request)
+    try:
+        record = await maybe_to_thread(
+            offload,
+            capture_snapshot,
+            adapter,
+            snapshot_store,
+            payload.simulation_id,
+        )
+    except AdapterError as exc:
+        raise adapter_error_to_http(exc) from exc
+
+    metadata = _format_snapshot_metadata(record)
+    audit.record_event(
+        "simulation.snapshot.created",
+        {
+            "simulationId": metadata.simulation_id,
+            "snapshotId": metadata.snapshot_id,
+            "hash": metadata.hash,
+            "createdAt": metadata.created_at,
+        },
+    )
+    logger.info(
+        "simulation.snapshot.created",
+        simulationId=metadata.simulation_id,
+        snapshotId=metadata.snapshot_id,
+    )
+    return SnapshotSimulationResponse(snapshot=metadata)
+
+
+@router.post("/restore_simulation", response_model=RestoreSimulationResponse)
+async def restore_simulation(
+    payload: RestoreSimulationRequest,
+    request: Request,
+    adapter: OspsuiteAdapter = Depends(get_adapter),
+    snapshot_store: SimulationSnapshotStore = Depends(get_snapshot_store),
+    session_store=Depends(get_session_registry),
+    audit: AuditTrail = Depends(get_audit_trail),
+    _auth: AuthContext = Depends(require_roles("operator", "admin")),
+) -> RestoreSimulationResponse:
+    if not session_store.contains(payload.simulation_id):
+        raise http_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            message=f"Simulation '{payload.simulation_id}' is not loaded",
+            code=ErrorCode.NOT_FOUND,
+            field="simulationId",
+            hint="Load the simulation before restoring a baseline snapshot.",
+        )
+
+    offload = _should_offload(request)
+    try:
+        record = await maybe_to_thread(
+            offload,
+            restore_snapshot,
+            adapter,
+            snapshot_store,
+            payload.simulation_id,
+            payload.snapshot_id,
+        )
+    except FileNotFoundError as exc:
+        raise http_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            message=str(exc),
+            code=ErrorCode.NOT_FOUND,
+            field="snapshotId",
+            hint="Capture a snapshot before requesting a restore.",
+        ) from exc
+    except AdapterError as exc:
+        raise adapter_error_to_http(exc) from exc
+
+    metadata = _format_snapshot_metadata(record)
+    restored_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    audit.record_event(
+        "simulation.snapshot.restored",
+        {
+            "simulationId": metadata.simulation_id,
+            "snapshotId": metadata.snapshot_id,
+            "hash": metadata.hash,
+            "restoredAt": restored_at,
+        },
+    )
+    logger.info(
+        "simulation.snapshot.restored",
+        simulationId=metadata.simulation_id,
+        snapshotId=metadata.snapshot_id,
+    )
+    return RestoreSimulationResponse(snapshot=metadata)
+
+
+@router.get("/get_simulation_snapshot", response_model=SnapshotListResponse)
+async def get_simulation_snapshot(
+    simulation_id: str = Query(..., alias="simulationId", min_length=1, max_length=64),
+    snapshot_store: SimulationSnapshotStore = Depends(get_snapshot_store),
+    _auth: AuthContext = Depends(require_roles("viewer", "operator", "admin")),
+) -> SnapshotListResponse:
+    records = snapshot_store.list(simulation_id)
+    snapshots = [_format_snapshot_metadata(record) for record in records]
+    latest = snapshots[0] if snapshots else None
+    return SnapshotListResponse(snapshots=snapshots, latestSnapshot=latest)
+
+
+@router.get("/jobs/{job_id}/events")
+async def stream_job_events(
+    job_id: str,
+    job_service: BaseJobService = Depends(get_job_service),
+    _auth: AuthContext = Depends(require_roles("viewer", "operator", "admin")),
+) -> StreamingResponse:
+    stream = _job_event_stream(job_id, job_service)
+    return StreamingResponse(stream, media_type="text/event-stream")
 
 
 @router.post("/get_simulation_results", response_model=GetSimulationResultsResponse)
 async def get_simulation_results(
     payload: GetSimulationResultsRequest,
+    request: Request,
     adapter: OspsuiteAdapter = Depends(get_adapter),
+    job_service: BaseJobService = Depends(get_job_service),
     _auth: AuthContext = Depends(require_roles("viewer", "operator", "admin")),
 ) -> GetSimulationResultsResponse:
-    try:
-        results = adapter.get_results(payload.results_id)
-    except AdapterError as exc:
-        raise _map_adapter_error(exc) from exc
+    def _format_result(result: SimulationResult) -> GetSimulationResultsResponse:
+        series_models = [
+            ResultSeriesModel(parameter=s.parameter, unit=s.unit, values=s.values)
+            for s in result.series
+        ]
+        return GetSimulationResultsResponse(
+            resultsId=result.results_id,
+            generatedAt=result.generated_at,
+            series=series_models,
+        )
 
-    series_models = [
-        ResultSeriesModel(parameter=s.parameter, unit=s.unit, values=s.values)
-        for s in results.series
-    ]
-    return GetSimulationResultsResponse(
-        resultsId=results.results_id,
-        generatedAt=results.generated_at,
-        series=series_models,
-    )
+    try:
+        results = await maybe_to_thread(
+            _should_offload(request), adapter.get_results, payload.results_id
+        )
+        return _format_result(results)
+    except AdapterError as exc:
+        stored = job_service.get_stored_simulation_result(payload.results_id)
+        if stored:
+            return _format_result(SimulationResult.model_validate(stored))
+        raise adapter_error_to_http(exc) from exc
 
 
 @router.post("/get_population_results", response_model=PopulationResultsResponse)
 async def get_population_results(
     payload: GetPopulationResultsRequest,
+    request: Request,
     adapter: OspsuiteAdapter = Depends(get_adapter),
     _auth: AuthContext = Depends(require_roles("viewer", "operator", "admin")),
 ) -> PopulationResultsResponse:
     try:
-        results = adapter.get_population_results(payload.results_id)
+        results = await maybe_to_thread(
+            _should_offload(request), adapter.get_population_results, payload.results_id
+        )
     except AdapterError as exc:
-        raise _map_adapter_error(exc) from exc
+        raise adapter_error_to_http(exc) from exc
 
     return PopulationResultsResponse(
         resultsId=results.results_id,
@@ -677,9 +1052,21 @@ async def download_population_chunk(
     try:
         metadata = store.get_metadata(results_id, chunk_id)
     except PopulationChunkNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise http_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            message=str(exc),
+            code=ErrorCode.NOT_FOUND,
+            field="chunkId",
+            hint="Ensure the population results are still retained on disk.",
+        ) from exc
     except PopulationStorageError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise http_error(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message=str(exc),
+            code=ErrorCode.INVALID_INPUT,
+            field="chunkId",
+            hint="Check storage permissions and chunk metadata.",
+        ) from exc
 
     stream = store.open_chunk(metadata.results_id, metadata.chunk_id)
     response = StreamingResponse(stream, media_type=metadata.content_type)
@@ -693,6 +1080,7 @@ async def download_population_chunk(
 @router.post("/calculate_pk_parameters", response_model=CalculatePkParametersResponseBody)
 async def calculate_pk_parameters(
     payload: CalculatePkParametersRequestBody,
+    request: Request,
     adapter: OspsuiteAdapter = Depends(get_adapter),
     _auth: AuthContext = Depends(require_roles("viewer", "operator", "admin")),
 ) -> CalculatePkParametersResponseBody:
@@ -700,14 +1088,24 @@ async def calculate_pk_parameters(
         tool_payload = ToolCalculatePkParametersRequest.model_validate(
             payload.model_dump(by_alias=True)
         )
-        tool_response = execute_calculate_pk_parameters(adapter, tool_payload)
+        tool_response = await maybe_to_thread(
+            _should_offload(request),
+            execute_calculate_pk_parameters,
+            adapter,
+            tool_payload,
+        )
     except ValidationError as exc:
-        detail = exc.errors()[0]["msg"] if exc.errors() else str(exc)
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail) from exc
+        raise validation_exception(exc, status_code=status.HTTP_400_BAD_REQUEST) from exc
     except CalculatePkParametersValidationError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise http_error(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message=str(exc),
+            code=ErrorCode.INVALID_INPUT,
+            field="resultsId",
+            hint="Provide a resultsId generated by run_simulation before requesting PK metrics.",
+        ) from exc
     except AdapterError as exc:
-        raise _map_adapter_error(exc) from exc
+        raise adapter_error_to_http(exc) from exc
 
     metrics_models = [
         PkMetricModel(
@@ -729,11 +1127,17 @@ async def calculate_pk_parameters(
 @router.post("/cancel_job", response_model=CancelJobResponse)
 async def cancel_job(
     payload: CancelJobRequest,
-    job_service: JobService = Depends(get_job_service),
+    job_service: BaseJobService = Depends(get_job_service),
     _auth: AuthContext = Depends(require_roles("operator", "admin")),
 ) -> CancelJobResponse:
     try:
         record = job_service.cancel_job(payload.job_id)
     except KeyError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found") from exc
+        raise http_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Job not found",
+            code=ErrorCode.NOT_FOUND,
+            field="jobId",
+            hint="Ensure the job is still queued or running before cancelling.",
+        ) from exc
     return CancelJobResponse(jobId=record.job_id, status=record.status.value)

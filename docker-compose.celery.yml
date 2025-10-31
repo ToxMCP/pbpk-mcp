@@ -1,0 +1,48 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  api:
+    build: .
+    depends_on:
+      - redis
+    env_file:
+      - .env
+    environment:
+      JOB_BACKEND: celery
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      JOB_REGISTRY_PATH: /app/var/jobs/registry.json
+    volumes:
+      - ./var:/app/var
+    ports:
+      - "8000:8000"
+    command: ["uvicorn", "mcp_bridge.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+    restart: unless-stopped
+
+  worker:
+    build: .
+    depends_on:
+      - redis
+    env_file:
+      - .env
+    environment:
+      JOB_BACKEND: celery
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      JOB_REGISTRY_PATH: /app/var/jobs/registry.json
+      CELERY_TASK_ALWAYS_EAGER: "false"
+    command: ["celery", "-A", "mcp_bridge.services.celery_app.celery_app", "worker", "--loglevel=info"]
+    volumes:
+      - ./var:/app/var
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+

@@ -11,7 +11,7 @@ from mcp.tools.load_simulation import resolve_model_path
 from mcp_bridge.adapter import AdapterError
 from mcp_bridge.adapter.interface import OspsuiteAdapter
 from mcp_bridge.adapter.schema import PopulationCohortConfig, PopulationOutputsConfig, PopulationSimulationConfig
-from mcp_bridge.services.job_service import JobRecord, JobService
+from mcp_bridge.services.job_service import BaseJobService, JobRecord
 
 
 class RunPopulationSimulationValidationError(ValueError):
@@ -68,13 +68,17 @@ class RunPopulationSimulationResponse(BaseModel):
 
 def run_population_simulation(
     adapter: OspsuiteAdapter,
-    job_service: JobService,
+    job_service: BaseJobService,
     payload: RunPopulationSimulationRequest,
     *,
-    session_store: SessionRegistry = registry,
+    session_store: SessionRegistry | None = None,
     allowed_roots: Optional[list[str]] = None,
+    idempotency_key: Optional[str] = None,
+    idempotency_fingerprint: Optional[str] = None,
 ) -> RunPopulationSimulationResponse:
     """Submit a population simulation job and return queued metadata."""
+
+    store = session_store or registry
 
     try:
         resolved_path = resolve_model_path(payload.model_path, allowed_roots=allowed_roots)
@@ -82,7 +86,7 @@ def run_population_simulation(
         raise RunPopulationSimulationValidationError(str(exc)) from exc
 
     handle = None
-    if not session_store.contains(payload.simulation_id):
+    if not store.contains(payload.simulation_id):
         try:
             handle = adapter.load_simulation(str(resolved_path), simulation_id=payload.simulation_id)
         except AdapterError as exc:
@@ -95,7 +99,7 @@ def run_population_simulation(
 
     if handle is not None:
         try:
-            session_store.register(handle, metadata=handle.metadata, allow_replace=True)
+            store.register(handle, metadata=handle.metadata, allow_replace=True)
         except SessionRegistryError as exc:
             raise RunPopulationSimulationValidationError(str(exc)) from exc
 
@@ -112,6 +116,8 @@ def run_population_simulation(
         config,
         timeout_seconds=payload.timeout_seconds,
         max_retries=payload.max_retries,
+        idempotency_key=idempotency_key,
+        idempotency_fingerprint=idempotency_fingerprint,
     )
 
     return RunPopulationSimulationResponse.from_record(record, payload.simulation_id)

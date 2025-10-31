@@ -7,54 +7,29 @@ import sys
 import textwrap
 import time
 from typing import Any
-from pathlib import Path
 
 from langchain_core.messages import AIMessage, HumanMessage
 
-from mcp.session_registry import registry
+from mcp.session_registry import registry, set_registry
 from mcp_bridge.agent import create_agent_workflow, create_initial_agent_state
 from mcp_bridge.config import load_config
-from mcp_bridge.services.job_service import JobService
-from mcp_bridge.adapter import AdapterConfig
-from mcp_bridge.adapter.mock import InMemoryAdapter
-from mcp_bridge.adapter.ospsuite import SubprocessOspsuiteAdapter
-from mcp_bridge.storage.population_store import PopulationResultStore
+from mcp_bridge.runtime.factory import build_adapter, build_population_store, build_session_registry
+from mcp_bridge.services.job_service import BaseJobService, create_job_service
 
 
-def _build_adapter(
-    config: AdapterConfig,
-    backend: str,
-    population_store: PopulationResultStore | None,
-):
-    if backend == "inmemory":
-        return InMemoryAdapter(config, population_store=population_store)
-    if backend == "subprocess":
-        return SubprocessOspsuiteAdapter(config, population_store=population_store)
-    raise RuntimeError(f"Unsupported adapter backend '{backend}'")
-
-
-def _create_runtime() -> tuple[Any, dict, JobService, Any]:
+def _create_runtime() -> tuple[Any, dict, BaseJobService, Any]:
     app_config = load_config()
-    adapter_config = AdapterConfig(
-        ospsuite_libs=app_config.adapter_ospsuite_libs,
-        default_timeout_seconds=app_config.adapter_timeout_ms / 1000,
-        r_path=app_config.adapter_r_path,
-        r_home=app_config.adapter_r_home,
-        r_libs=app_config.adapter_r_libs,
-        require_r_environment=app_config.adapter_require_r,
-        model_search_paths=app_config.adapter_model_paths,
-    )
-    storage_path = Path(app_config.population_storage_path).expanduser()
-    if not storage_path.is_absolute():
-        storage_path = (Path.cwd() / storage_path).resolve()
-    population_store = PopulationResultStore(storage_path)
-    adapter = _build_adapter(adapter_config, app_config.adapter_backend, population_store)
+    population_store = build_population_store(app_config)
+    adapter = build_adapter(app_config, population_store=population_store)
     adapter.init()
 
-    job_service = JobService(
-        max_workers=app_config.job_worker_threads,
-        default_timeout=float(app_config.job_timeout_seconds),
-        max_retries=app_config.job_max_retries,
+    session_registry = build_session_registry(app_config)
+    set_registry(session_registry)
+
+    job_service = create_job_service(
+        config=app_config,
+        audit_trail=None,
+        population_store=population_store,
     )
 
     graph, tools, _ = create_agent_workflow(

@@ -1,0 +1,15 @@
+{
+  "scenario": "smoke",
+  "steps": {
+    "load_simulation": { "p95": 10.0 },
+    "set_parameter_value": { "p95": 6.0 },
+    "get_parameter_value": { "p95": 6.0 },
+    "run_simulation": { "p95": 15.0 },
+    "wait_for_job": { "p95": 8.0 },
+    "get_simulation_results": { "p95": 6.0 }
+  },
+  "summary": {
+    "p95": 50.0
+  },
+  "regressionTolerancePercent": 10.0
+}

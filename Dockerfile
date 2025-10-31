@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1.6
 
 ARG PYTHON_VERSION=3.11-slim
+ARG OSPSUITE_VERSION=12.0.0
 
 FROM python:${PYTHON_VERSION} AS builder
 
@@ -23,7 +24,8 @@ FROM python:${PYTHON_VERSION} AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    DEBIAN_FRONTEND=noninteractive
+    DEBIAN_FRONTEND=noninteractive \
+    OSPSUITE_VERSION=${OSPSUITE_VERSION}
 
 # Install system dependencies and R (ospsuite/.NET steps omitted on ARM builds)
 RUN apt-get update && apt-get install --yes --no-install-recommends \

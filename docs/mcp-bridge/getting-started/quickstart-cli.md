@@ -10,6 +10,7 @@ with simple command-line tools. You will:
 5. Calculate PK metrics, launch a population run, and trigger a small sensitivity study.
 
 The commands assume macOS/Linux shells; adapt for PowerShell when needed.
+**Time to complete:** roughly 8–10 minutes on a laptop once prerequisites are installed.
 
 ## Prerequisites
 
@@ -20,6 +21,26 @@ The commands assume macOS/Linux shells; adapt for PowerShell when needed.
   - `jq` for JSON parsing (optional but convenient).
 
 All examples use repository paths relative to the project root.
+
+### Reference dataset & parity check
+
+These instructions rely on the reference models shipped with the parity suite. Populate them once:
+
+```bash
+make fetch-bench-data
+```
+
+This creates `reference/models/standard/*.pkml` and the parity catalogue under `reference/parity/expected_metrics.json`.
+
+Expected PK metrics for the Midazolam reference model (used below):
+
+| Metric | Expected value |
+| ------ | -------------- |
+| `cmax` | 1.000 |
+| `tmax` | 1.000 |
+| `auc`  | 0.500 |
+
+Automation (CI + parity suite) considers runs valid when metrics stay within ±1 % of these values.
 
 ## 1. Install and bootstrap
 
@@ -177,10 +198,23 @@ curl -s -X POST "$BASE_URL/get_simulation_results" \
 ## 7. Calculate PK parameters
 
 ```bash
-curl -s -X POST "$BASE_URL/calculate_pk_parameters" \
+PK_RESPONSE=$(curl -s -X POST "$BASE_URL/calculate_pk_parameters" \
   -H "Content-Type: application/json" \
   -H "$AUTH_HEADER" \
-  -d "{\"resultsId\": \"$RESULTS_ID\"}" | jq '.metrics[] | {parameter, cmax, tmax, auc}'
+  -d "{\"resultsId\": \"$RESULTS_ID\"}")
+echo "$PK_RESPONSE" | jq '.metrics[] | {parameter, cmax, tmax, auc}'
+
+EXPECTED_CMAX=1.0
+ACTUAL_CMAX=$(echo "$PK_RESPONSE" | jq -r '.metrics[0].cmax')
+ACTUAL_CMAX="$ACTUAL_CMAX" EXPECTED_CMAX="$EXPECTED_CMAX" python - <<'PY'
+import math, os
+actual = float(os.environ["ACTUAL_CMAX"])
+expected = float(os.environ["EXPECTED_CMAX"])
+delta_percent = abs(actual - expected) / expected * 100
+print(f"Δcmax = {delta_percent:.4f}%")
+if delta_percent > 1.0:
+    raise SystemExit("cmax deviates by more than 1% — investigate before proceeding.")
+PY
 ```
 
 Override the output path to persist CSV summaries by adding `"outputPath": "var/benchmarks/pk-cli-demo.csv"` to the request payload.
@@ -257,6 +291,29 @@ PYTHONPATH=src python scripts/sensitivity_quickstart.py
 ```
 
 The JSON report summarises baseline metrics, scenario deltas, and any failures.
+
+When interacting through the MCP HTTP surface, call the
+`run_sensitivity_analysis` tool directly:
+
+```bash
+curl -s -X POST "$BASE_URL/mcp/call_tool" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "tool": "run_sensitivity_analysis",
+        "arguments": {
+          "modelPath": "reference/models/standard/midazolam_adult.pkml",
+          "simulationId": "cli-sens",
+          "parameters": [
+            {"path": "Organism|Weight", "deltas": [-0.1, 0.1], "baselineValue": 72, "unit": "kg"}
+          ]
+        }
+      }' | jq '.structuredContent.report.scenarios[0]'
+```
+
+The response embeds a JSON report and a Base64-encoded CSV attachment. Persist
+the CSV locally with `jq -r '.structuredContent.csv.data' | base64 --decode >
+sens.csv` if you need to share or archive the run.
 
 ## 10. Where to go next
 

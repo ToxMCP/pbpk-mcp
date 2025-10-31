@@ -8,9 +8,12 @@ through a confirm-before-execute workflow. You will:
 3. Run a full simulation workflow via natural language.
 4. Extend the session with sensitivity and population actions.
 
+**Time to complete:** approximately 10 minutes including approval walkthroughs.
+
 ## Prerequisites
 
 - Follow the [REST quickstart](quickstart-cli.md) to install dependencies.
+- Run `make fetch-bench-data` once so the parity reference models are available under `reference/models/standard/`.
 - Optional: configure R/ospsuite if you want to switch the adapter backend to `subprocess`.
 - Ensure environment variables mirror the ones used by the server (`AUTH_DEV_SECRET`, `ADAPTER_BACKEND`, etc.).
 - Configuration details are catalogued in `../reference/configuration.md`.
@@ -95,6 +98,8 @@ once the job finishes calculate pk parameters
 
 The planner decomposes the request into tool calls, pausing for approvals on critical mutations. If `calculate_pk_parameters` is requested, results are summarised in Markdown tables.
 
+After the agent returns PK metrics for the Midazolam reference model you should see values close to `cmax=1.000`, `tmax=1.000`, `auc=0.500`. Differences beyond ±1 % indicate the environment may not match the parity baseline—rerun the parity suite or investigate before continuing.
+
 ## 4. Sensitivity analysis from the agent
 
 Issue:
@@ -133,3 +138,13 @@ The final message includes chunk metadata when claim-check outputs exist. Use `g
 - Review prompt design and safety rails in [`../agent-prompts.md`](../agent-prompts.md).
 - Explore advanced workflows in [`../sensitivity-analysis.md`](../sensitivity-analysis.md) and [`../population-simulation.md`](../population-simulation.md).
 - If you plan to embed the agent inside LangServe or a bespoke application, start from `create_agent_workflow()` in `src/mcp_bridge/agent/__init__.py`.
+
+## Appendix: Analyst console baseline snapshots
+
+The analyst console now exposes baseline capture and rollback controls directly in the UI:
+
+1. Load or paste suggestions so the console knows which simulation ID to target.
+2. Click **Capture Baseline** to persist the current parameter state (the backend stores a hashed snapshot under `var/snapshots/`).
+3. After reviewing and applying suggestions, use **Restore Baseline** to revert the simulation to the captured state. Every restore call is audit logged with the snapshot hash for provenance.
+
+The status banner beneath the buttons shows the latest snapshot ID and timestamp so you can confirm the rollback point before approving additional changes.

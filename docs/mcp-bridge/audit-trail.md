@@ -74,7 +74,7 @@ Key points:
 | Environment | Storage | Notes |
 | --- | --- | --- |
 | Development | Local append-only JSONL files under `var/audit/` | Simplifies testing; still hash-chained. |
-| Production | Object store bucket with Object Lock/WORM (e.g., AWS S3 with Governance/Compliance mode). | Partition by date (`year/month/day`) and optionally by tenant/project. |
+| Production | S3 bucket with Object Lock/WORM (Governance or Compliance mode). | Events written as immutable objects (`prefix/YYYY/MM/DD/<timestamp>-<eventId>.jsonl`) with per-object retention. |
 | Long-term archive | Glacier / Offline storage | Retention policies derived from regulatory guidance (e.g., 7-10 years). |
 
 Retention strategy:
@@ -106,6 +106,32 @@ python -m mcp_bridge.audit.verify var/audit
 ```
 
 This replays events in the local audit directory and exits non-zero if tampering is detected. Supply `--start` and `--end` date keys (`YYYY/MM/DD`) to limit verification windows.
+
+For S3 deployments:
+
+```bash
+python -m mcp_bridge.audit.verify s3://my-audit-bucket/bridge/audit \
+  --object-lock-mode governance \
+  --object-lock-days 90
+```
+
+The verifier recomputes hash chains across all objects under the prefix and confirms Object Lock
+mode/retention match policy expectations.
+
+## 8. API access
+
+- `GET /audit/events?limit=100&eventType=tool.run_simulation` returns the most recent audit events (requires `admin` role).
+- Events recorded via `/mcp/call_tool` include:
+  - `identity` (subject, roles, token metadata)
+  - tool name, argument digest, and a summary of key fields
+  - execution status, duration, service version, and optional idempotency key
+  - result digest + summary to support tamper detection without leaking payload contents.
+
+For larger exports, prefer the CLI verification tools to stream directly from storage.
+
+Scheduled automation can reuse the helper at `python -m mcp_bridge.audit.jobs`, which loads
+`AppConfig` and verifies the last `AUDIT_VERIFY_LOOKBACK_DAYS` of events against the configured
+backend. This command is designed to run in CI or a cron-driven maintenance container.
 
 ## 8. Integration Points
 

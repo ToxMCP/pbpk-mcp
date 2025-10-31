@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from mcp_bridge.config import AppConfig, ConfigError
 
@@ -22,9 +23,15 @@ def test_app_config_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ADAPTER_R_LIBS", "/opt/R/libs")
     monkeypatch.setenv("OSPSUITE_LIBS", "/opt/ospsuite")
     monkeypatch.setenv("ADAPTER_MODEL_PATHS", "/data/models:/more/models")
+    monkeypatch.setenv("ADAPTER_TO_THREAD", "false")
     monkeypatch.setenv("JOB_WORKER_THREADS", "4")
     monkeypatch.setenv("JOB_TIMEOUT_SECONDS", "600")
     monkeypatch.setenv("JOB_MAX_RETRIES", "3")
+    monkeypatch.setenv("SESSION_BACKEND", "redis")
+    monkeypatch.setenv("SESSION_REDIS_URL", "redis://localhost:6390/2")
+    monkeypatch.setenv("SESSION_REDIS_PREFIX", "custom:sessions")
+    monkeypatch.setenv("SESSION_TTL_SECONDS", "900")
+    monkeypatch.setenv("JOB_REGISTRY_PATH", "/tmp/jobs.json")
 
     config = AppConfig.from_env()
 
@@ -42,9 +49,15 @@ def test_app_config_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.adapter_r_libs == "/opt/R/libs"
     assert config.adapter_ospsuite_libs == "/opt/ospsuite"
     assert config.adapter_model_paths == ("/data/models", "/more/models")
+    assert config.adapter_to_thread is False
     assert config.job_worker_threads == 4
     assert config.job_timeout_seconds == 600
     assert config.job_max_retries == 3
+    assert config.session_backend == "redis"
+    assert config.session_redis_url == "redis://localhost:6390/2"
+    assert config.session_redis_prefix == "custom:sessions"
+    assert config.session_ttl_seconds == 900
+    assert config.job_registry_path == "/tmp/jobs.json"
 
 
 def test_app_config_invalid_port(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -63,3 +76,13 @@ def test_env_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.host == "0.0.0.0"
     assert config.port == 8000
     assert config.log_level == "INFO"
+
+
+def test_auth_dev_secret_allowed_in_development() -> None:
+    config = AppConfig(environment="development", auth_dev_secret="secret")
+    assert config.auth_dev_secret == "secret"
+
+
+def test_auth_dev_secret_rejected_in_production() -> None:
+    with pytest.raises(ValidationError):
+        AppConfig(environment="production", auth_dev_secret="secret")

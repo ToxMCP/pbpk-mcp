@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbpk-mcp.local/schemas/extraction-record.json",
+  "title": "ExtractionRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["source_component", "fields", "errors"],
+  "properties": {
+    "source_component": {
+      "$ref": "#/$defs/documentComponent"
+    },
+    "fields": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/extractedField"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "$defs": {
+    "boundingBox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x0", "y0", "x1", "y1"],
+      "properties": {
+        "x0": {
+          "type": "number",
+          "minimum": 0
+        },
+        "y0": {
+          "type": "number",
+          "minimum": 0
+        },
+        "x1": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "y1": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "documentComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component_id", "page", "type", "bbox", "metadata"],
+      "properties": {
+        "component_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": ["text", "table", "figure"]
+        },
+        "bbox": {
+          "$ref": "#/$defs/boundingBox"
+        },
+        "text": {
+          "type": ["string", "null"]
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "extractedField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "value", "confidence", "provenance"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": ["string", "number", "integer", "boolean", "array", "object", "null"]
+        },
+        "unit": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "provenance": {
+          "type": "object",
+          "required": ["sourceId"],
+          "properties": {
+            "sourceId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

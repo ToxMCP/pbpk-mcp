@@ -205,6 +205,22 @@ class InMemoryAdapter(OspsuiteAdapter):
         self._population_results[results_id] = result
         return result
 
+    def export_simulation_state(self, simulation_id: str) -> dict[str, object]:
+        handle = self._get_simulation(simulation_id)
+        parameters = [
+            {
+                "path": value.path,
+                "value": value.value,
+                "unit": value.unit,
+            }
+            for value in self._parameters.get(handle.simulation_id, {}).values()
+        ]
+        return {
+            "simulationId": handle.simulation_id,
+            "filePath": handle.file_path,
+            "parameters": parameters,
+        }
+
     def get_population_results(self, results_id: str) -> PopulationSimulationResult:
         try:
             return self._population_results[results_id]

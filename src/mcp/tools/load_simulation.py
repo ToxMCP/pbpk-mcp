@@ -16,7 +16,10 @@ from ..session_registry import SessionRegistry, SessionRegistryError, registry
 
 DEFAULT_EXTENSION = ".pkml"
 MODEL_PATH_ENV = "MCP_MODEL_SEARCH_PATHS"
-DEFAULT_ALLOWED_ROOT = (Path.cwd() / "tests" / "fixtures").resolve()
+DEFAULT_ALLOWED_ROOTS = [
+    (Path.cwd() / "tests" / "fixtures").resolve(),
+    (Path.cwd() / "reference" / "models" / "standard").resolve(),
+]
 
 
 class LoadSimulationValidationError(ValueError):
@@ -85,7 +88,7 @@ class LoadSimulationResponse(BaseModel):
 def _resolve_allowed_roots() -> list[Path]:
     raw = os.getenv(MODEL_PATH_ENV)
     if not raw:
-        return [DEFAULT_ALLOWED_ROOT]
+        return [root for root in DEFAULT_ALLOWED_ROOTS if root.exists()]
 
     roots: list[Path] = []
     for chunk in raw.split(os.pathsep):
@@ -93,7 +96,8 @@ def _resolve_allowed_roots() -> list[Path]:
         if not candidate:
             continue
         roots.append(Path(candidate).expanduser().resolve())
-    return roots or [DEFAULT_ALLOWED_ROOT]
+    fallback = [root for root in DEFAULT_ALLOWED_ROOTS if root.exists()]
+    return roots or fallback
 
 
 def resolve_model_path(file_path: str, *, allowed_roots: Optional[Iterable[Path]] = None) -> Path:
@@ -155,10 +159,12 @@ def load_simulation(
     adapter: OspsuiteAdapter,
     payload: LoadSimulationRequest,
     *,
-    session_store: SessionRegistry = registry,
+    session_store: SessionRegistry | None = None,
     allowed_roots: Optional[Iterable[Path]] = None,
 ) -> LoadSimulationResponse:
     """Execute the load_simulation workflow against the adapter."""
+
+    store = session_store or registry
 
     simulation_id, resolved_path = validate_load_simulation_request(
         payload, allowed_roots=allowed_roots
@@ -170,7 +176,7 @@ def load_simulation(
         raise LoadSimulationValidationError(str(exc)) from exc
 
     try:
-        session_store.register(handle, metadata=handle.metadata)
+        store.register(handle, metadata=handle.metadata)
     except SessionRegistryError as exc:
         raise LoadSimulationValidationError(str(exc)) from exc
 

@@ -1,0 +1,17 @@
+{
+  "results": [
+    {
+      "backend": "paddleocr",
+      "mean_latency_ms": 8.196666666665982e-05,
+      "total_documents": 30,
+      "notes": "stub results \u2013 replace with real OCR pipeline"
+    },
+    {
+      "backend": "tesseract_doctr",
+      "mean_latency_ms": 6.80333333332589e-05,
+      "total_documents": 30,
+      "notes": "stub results \u2013 replace with real OCR pipeline"
+    }
+  ],
+  "generatedAt": 1761841090.8630831
+}

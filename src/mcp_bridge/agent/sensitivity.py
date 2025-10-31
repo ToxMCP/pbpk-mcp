@@ -24,7 +24,7 @@ from mcp import (
 from mcp.session_registry import registry
 from mcp.tools.load_simulation import LoadSimulationRequest, load_simulation
 from mcp.tools.get_parameter_value import GetParameterValueValidationError
-from mcp_bridge.services.job_service import JobService, JobStatus
+from mcp_bridge.services.job_service import BaseJobService, JobStatus
 
 
 class SensitivityAnalysisError(RuntimeError):
@@ -233,7 +233,7 @@ def generate_scenarios(
 
 def run_sensitivity_analysis(
     adapter,
-    job_service: JobService,
+    job_service: BaseJobService,
     config: SensitivityConfig,
 ) -> SensitivityAnalysisReport:
     """Execute the sensitivity analysis workflow and return a structured report."""

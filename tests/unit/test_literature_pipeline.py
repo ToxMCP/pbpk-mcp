@@ -15,6 +15,7 @@ from mcp_bridge.literature.models import (
     ExtractionRecord,
 )
 from mcp_bridge.literature.pipeline import LiteratureIngestionPipeline, PipelineDependencies
+from mcp_bridge.literature.validation import ExtractionSchemaError
 
 
 class DummyLayout(LayoutExtractor):
@@ -68,6 +69,13 @@ def test_pipeline_routes_components_to_correct_extractors() -> None:
     assert result.source_id == "paper-1"
     assert len(result.records) == 3
     assert [record.fields[0].value for record in result.records] == ["text", "table", "figure"]
+    for record in result.records:
+        field = record.fields[0]
+        assert field.provenance["sourceId"] == "paper-1"
+        assert field.provenance["componentId"] == record.source_component.component_id
+        assert field.provenance["page"] == record.source_component.page
+
+
 def test_pipeline_applies_post_processors() -> None:
     components = [_component("c1", ComponentType.TEXT)]
     layout = DummyLayout(components)
@@ -96,3 +104,21 @@ def test_pipeline_applies_post_processors() -> None:
     result = pipeline.run("dummy.pdf")
     assert post.called
     assert result.metadata["post"] is True
+
+
+def test_pipeline_raises_on_schema_violation() -> None:
+    components = [_component("", ComponentType.TEXT)]
+    layout = DummyLayout(components)
+    text = DummyExtractor("text")
+
+    pipeline = LiteratureIngestionPipeline(
+        PipelineDependencies(
+            layout_extractor=layout,
+            text_extractor=text,
+            table_extractor=DummyExtractor("table"),
+            figure_extractor=DummyExtractor("figure"),
+        )
+    )
+
+    with pytest.raises(ExtractionSchemaError):
+        pipeline.run("invalid.pdf", source_id="paper-2")

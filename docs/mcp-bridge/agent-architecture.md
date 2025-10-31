@@ -115,7 +115,9 @@ Approve? (yes/no)
    `{"__interrupt__": ...}` responses, present `confirmation_prompt` verbatim to
    the user, record their answer, and resume with the next invocation setting
    `state["user_feedback"]` (and optionally a transcript message) before calling
-   `graph.invoke` again.
+   `graph.invoke` again. Hosts consuming long-running jobs should subscribe to
+   `/jobs/{job_id}/events` (server‑sent events) to stream progress updates back to
+   the user while the graph awaits results.
 4. **Testing**: golden dialogues in
    `tests/integration/test_agent_dialogues.py` cover happy path (load -> run),
    ambiguous input resolution, and rejection flow, ensuring safety rails remain

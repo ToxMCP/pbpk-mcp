@@ -32,6 +32,11 @@ Redocly or Stoplight.
   - `admin`: superset of `operator`; needed for privileged automation flows.
 - Development tokens can be minted with `AUTH_DEV_SECRET` (see quickstart guides).
 
+### Idempotency
+
+- `run_simulation` and `run_population_simulation` support idempotent submissions via the `idempotencyKey` field when using `/mcp/call_tool`.
+- Replaying the same key and payload returns the original job metadata; reusing the key with a different payload returns HTTP `409` (`CONFLICT`).
+
 ## Endpoint catalogue
 
 | Method | Path | Summary | Required roles |

@@ -1,0 +1,83 @@
+{
+  "pages": [
+    {
+      "page": 1,
+      "blocks": [
+        {
+          "id": "text-1",
+          "type": "text",
+          "bbox": [
+            50,
+            720,
+            560,
+            760
+          ],
+          "text": "Clinical brief for paper-001: weight is 58.9 kg and dose is 40.0 mg.",
+          "metadata": {
+            "text": "Weight is 58.9 kg and dose is 40.0 mg."
+          }
+        },
+        {
+          "id": "table-1",
+          "type": "table",
+          "bbox": [
+            50,
+            520,
+            560,
+            660
+          ],
+          "table": {
+            "headers": [
+              "Subject",
+              "Weight (kg)",
+              "Dose (mg)"
+            ],
+            "rows": [
+              [
+                "A",
+                "58.9",
+                "40.0"
+              ],
+              [
+                "B",
+                "59.5",
+                "40.0"
+              ],
+              [
+                "C",
+                "60.1",
+                "40.0"
+              ]
+            ]
+          },
+          "metadata": {
+            "table": {
+              "headers": [
+                "Subject",
+                "Weight (kg)",
+                "Dose (mg)"
+              ],
+              "rows": [
+                [
+                  "A",
+                  "58.9",
+                  "40.0"
+                ],
+                [
+                  "B",
+                  "59.5",
+                  "40.0"
+                ],
+                [
+                  "C",
+                  "60.1",
+                  "40.0"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -128,3 +128,4 @@ Plan:
 
 - *2025-10-16*: Initial roadmap drafted; captures current smoke metrics and
   lays out Celery/HPC strategy.
+- *2025-10-25*: Added subprocess warm-pool benchmark outcomes (see performance-plan §8) and recorded rpy2 spike follow-up actions.

@@ -90,5 +90,6 @@ This design completes Task 17.1 and informs later implementation subtasks coveri
 ## 7. Testing & Local Development
 
 - **Dev tokens** – set `AUTH_DEV_SECRET` to enable HS256-signed tokens. The integration test suite uses this path (`tests/integration/test_auth_rbac.py`).
+- **Environment guardrails** – the configuration rejects `AUTH_DEV_SECRET` unless `ENVIRONMENT` is `development`/`local`, preventing accidental deployment of shared secrets to staging or production environments.
 - **Negative paths** – tests verify missing tokens (401), role denials (403), and signature tampering (401). Extend the suite with provider-specific failure cases as production integration progresses.
 - **Manual checks** – generate tokens via `python -c 'from mcp_bridge.security.simple_jwt import jwt; print(jwt.encode({"sub": "local-op", "roles": ["operator"]}, "dev-secret", "HS256"))'` and call the API using `curl` with the `Authorization` header.

@@ -242,6 +242,22 @@ class SubprocessOspsuiteAdapter(OspsuiteAdapter):
             "Population results are not available for the subprocess adapter",
         )
 
+    def export_simulation_state(self, simulation_id: str) -> dict[str, object]:
+        handle = self._get_handle(simulation_id)
+        parameters = [
+            {
+                "path": value.path,
+                "value": value.value,
+                "unit": value.unit,
+            }
+            for value in self._parameters.get(handle.simulation_id, {}).values()
+        ]
+        return {
+            "simulationId": handle.simulation_id,
+            "filePath": handle.file_path,
+            "parameters": parameters,
+        }
+
     # ------------------------------------------------------------------ #
     # Internal helpers
     # ------------------------------------------------------------------ #

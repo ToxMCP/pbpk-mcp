@@ -6,7 +6,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from mcp_bridge.services.job_service import JobRecord, JobService
+from mcp_bridge.services.job_service import BaseJobService, JobRecord
 
 
 class GetJobStatusValidationError(ValueError):
@@ -33,6 +33,7 @@ class JobStatusPayload(BaseModel):
     cancel_requested: bool = Field(default=False, alias="cancelRequested")
     result_id: Optional[str] = Field(default=None, alias="resultId")
     error: Optional[dict[str, object]] = None
+    external_job_id: Optional[str] = Field(default=None, alias="externalJobId")
 
     @classmethod
     def from_record(cls, record: JobRecord) -> JobStatusPayload:
@@ -48,6 +49,7 @@ class JobStatusPayload(BaseModel):
             cancelRequested=record.cancel_requested,
             resultId=record.result_id,
             error=record.error,
+            externalJobId=record.external_job_id,
         )
 
 
@@ -56,7 +58,7 @@ class GetJobStatusResponse(BaseModel):
 
 
 def get_job_status(
-    job_service: JobService,
+    job_service: BaseJobService,
     payload: GetJobStatusRequest,
 ) -> GetJobStatusResponse:
     try:

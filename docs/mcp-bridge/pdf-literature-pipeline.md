@@ -127,3 +127,7 @@
   - `table_row_recall`: proportion of expected table rows reproduced by extractors.
 - `src/mcp_bridge/literature/evaluation.py` exposes reusable evaluation utilities so new
   fixtures/benchmarks can be added without rewriting tests or scripts.
+- A synthetic 30-document gold set is available under `reference/goldset/` together with
+  regeneration and evaluation scripts. See `docs/mcp-bridge/literature/goldset.md` for
+  generation details and `make goldset-eval` to enforce scorecard thresholds (`fact_accuracy`
+  ≥ 0.95, `table_row_recall` ≥ 0.90) in CI.

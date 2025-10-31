@@ -1,0 +1,219 @@
+{
+  "version": 1,
+  "thresholds": {
+    "fact_accuracy": 0.95,
+    "table_row_recall": 0.9
+  },
+  "entries": [
+    {
+      "sourceId": "paper-001",
+      "pdf": "papers/paper-001.pdf",
+      "annotation": "annotations/paper-001.json",
+      "thumbnail": "thumbnails/paper-001.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-002",
+      "pdf": "papers/paper-002.pdf",
+      "annotation": "annotations/paper-002.json",
+      "thumbnail": "thumbnails/paper-002.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-003",
+      "pdf": "papers/paper-003.pdf",
+      "annotation": "annotations/paper-003.json",
+      "thumbnail": "thumbnails/paper-003.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-004",
+      "pdf": "papers/paper-004.pdf",
+      "annotation": "annotations/paper-004.json",
+      "thumbnail": "thumbnails/paper-004.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-005",
+      "pdf": "papers/paper-005.pdf",
+      "annotation": "annotations/paper-005.json",
+      "thumbnail": "thumbnails/paper-005.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-006",
+      "pdf": "papers/paper-006.pdf",
+      "annotation": "annotations/paper-006.json",
+      "thumbnail": "thumbnails/paper-006.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-007",
+      "pdf": "papers/paper-007.pdf",
+      "annotation": "annotations/paper-007.json",
+      "thumbnail": "thumbnails/paper-007.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-008",
+      "pdf": "papers/paper-008.pdf",
+      "annotation": "annotations/paper-008.json",
+      "thumbnail": "thumbnails/paper-008.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-009",
+      "pdf": "papers/paper-009.pdf",
+      "annotation": "annotations/paper-009.json",
+      "thumbnail": "thumbnails/paper-009.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-010",
+      "pdf": "papers/paper-010.pdf",
+      "annotation": "annotations/paper-010.json",
+      "thumbnail": "thumbnails/paper-010.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-011",
+      "pdf": "papers/paper-011.pdf",
+      "annotation": "annotations/paper-011.json",
+      "thumbnail": "thumbnails/paper-011.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-012",
+      "pdf": "papers/paper-012.pdf",
+      "annotation": "annotations/paper-012.json",
+      "thumbnail": "thumbnails/paper-012.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-013",
+      "pdf": "papers/paper-013.pdf",
+      "annotation": "annotations/paper-013.json",
+      "thumbnail": "thumbnails/paper-013.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-014",
+      "pdf": "papers/paper-014.pdf",
+      "annotation": "annotations/paper-014.json",
+      "thumbnail": "thumbnails/paper-014.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-015",
+      "pdf": "papers/paper-015.pdf",
+      "annotation": "annotations/paper-015.json",
+      "thumbnail": "thumbnails/paper-015.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-016",
+      "pdf": "papers/paper-016.pdf",
+      "annotation": "annotations/paper-016.json",
+      "thumbnail": "thumbnails/paper-016.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-017",
+      "pdf": "papers/paper-017.pdf",
+      "annotation": "annotations/paper-017.json",
+      "thumbnail": "thumbnails/paper-017.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-018",
+      "pdf": "papers/paper-018.pdf",
+      "annotation": "annotations/paper-018.json",
+      "thumbnail": "thumbnails/paper-018.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-019",
+      "pdf": "papers/paper-019.pdf",
+      "annotation": "annotations/paper-019.json",
+      "thumbnail": "thumbnails/paper-019.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-020",
+      "pdf": "papers/paper-020.pdf",
+      "annotation": "annotations/paper-020.json",
+      "thumbnail": "thumbnails/paper-020.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-021",
+      "pdf": "papers/paper-021.pdf",
+      "annotation": "annotations/paper-021.json",
+      "thumbnail": "thumbnails/paper-021.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-022",
+      "pdf": "papers/paper-022.pdf",
+      "annotation": "annotations/paper-022.json",
+      "thumbnail": "thumbnails/paper-022.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-023",
+      "pdf": "papers/paper-023.pdf",
+      "annotation": "annotations/paper-023.json",
+      "thumbnail": "thumbnails/paper-023.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-024",
+      "pdf": "papers/paper-024.pdf",
+      "annotation": "annotations/paper-024.json",
+      "thumbnail": "thumbnails/paper-024.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-025",
+      "pdf": "papers/paper-025.pdf",
+      "annotation": "annotations/paper-025.json",
+      "thumbnail": "thumbnails/paper-025.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-026",
+      "pdf": "papers/paper-026.pdf",
+      "annotation": "annotations/paper-026.json",
+      "thumbnail": "thumbnails/paper-026.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-027",
+      "pdf": "papers/paper-027.pdf",
+      "annotation": "annotations/paper-027.json",
+      "thumbnail": "thumbnails/paper-027.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-028",
+      "pdf": "papers/paper-028.pdf",
+      "annotation": "annotations/paper-028.json",
+      "thumbnail": "thumbnails/paper-028.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-029",
+      "pdf": "papers/paper-029.pdf",
+      "annotation": "annotations/paper-029.json",
+      "thumbnail": "thumbnails/paper-029.png",
+      "tableComponent": "table-1"
+    },
+    {
+      "sourceId": "paper-030",
+      "pdf": "papers/paper-030.pdf",
+      "annotation": "annotations/paper-030.json",
+      "thumbnail": "thumbnails/paper-030.png",
+      "tableComponent": "table-1"
+    }
+  ]
+}

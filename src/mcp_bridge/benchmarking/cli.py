@@ -195,6 +195,55 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         help="Directory to store benchmark result artefacts",
     )
     parser.add_argument(
+        "--job-backend",
+        choices=["thread", "celery"],
+        default=None,
+        help="Override job backend when launching an in-process (ASGI) benchmark. "
+        "Defaults to the JOB_BACKEND environment variable or 'thread'.",
+    )
+    parser.add_argument(
+        "--celery-broker-url",
+        default=None,
+        help="Celery broker URL used when job backend is celery (defaults to CELERY_BROKER_URL env).",
+    )
+    parser.add_argument(
+        "--celery-result-backend",
+        default=None,
+        help=(
+            "Celery result backend URL used when job backend is celery "
+            "(defaults to CELERY_RESULT_BACKEND env)."
+        ),
+    )
+    parser.add_argument(
+        "--celery-task-always-eager",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "Execute Celery tasks eagerly within the API process. "
+            "Defaults to True when running in ASGI mode, otherwise uses configuration."
+        ),
+    )
+    parser.add_argument(
+        "--celery-task-eager-propagates",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Propagate exceptions during eager Celery execution (defaults to existing configuration).",
+    )
+    parser.add_argument(
+        "--celery-inline-worker",
+        action="store_true",
+        help=(
+            "Launch an in-process Celery worker (memory transport) when benchmarking with ASGI. "
+            "Automatically disables eager execution."
+        ),
+    )
+    parser.add_argument(
+        "--celery-inline-worker-concurrency",
+        type=int,
+        default=None,
+        help="Concurrency for the inline Celery worker (defaults to the --concurrency value).",
+    )
+    parser.add_argument(
         "--label",
         default=None,
         help="Optional label stored in the benchmark JSON output",
@@ -618,17 +667,71 @@ async def _async_main(args: argparse.Namespace) -> int:
     transport: httpx.AsyncBaseTransport | None = None
     app = None
     base_url = args.base_url
+    resolved_job_backend = args.job_backend or os.getenv("JOB_BACKEND")
+    resolved_celery_metadata: dict[str, Any] = {}
+    inline_worker_ctx = None
+    inline_worker_requested = False
+    inline_worker_concurrency: Optional[int] = None
 
     if args.transport == "asgi":
         # Configure in-process app with dev auth secret so we can mint tokens locally.
-        config = AppConfig(
-            adapter_backend="inmemory",
-            environment="development",
-            auth_dev_secret=args.dev_secret,
-            audit_storage_path="var/audit",
-            audit_enabled=True,
-            population_storage_path="var/population-results",
-        )
+        base_config = AppConfig.from_env()
+        job_backend = resolved_job_backend or base_config.job_backend
+        overrides: dict[str, Any] = {
+            "adapter_backend": "inmemory",
+            "environment": "development",
+            "auth_dev_secret": args.dev_secret,
+            "audit_storage_path": "var/audit",
+            "audit_enabled": True,
+            "population_storage_path": "var/population-results",
+            "job_backend": job_backend,
+        }
+        if job_backend == "celery":
+            inline_worker_requested = bool(args.celery_inline_worker)
+            inline_worker_concurrency = (
+                args.celery_inline_worker_concurrency or max(1, args.concurrency)
+            )
+            broker_url = (
+                args.celery_broker_url
+                or os.getenv("CELERY_BROKER_URL")
+                or base_config.celery_broker_url
+            )
+            result_backend = (
+                args.celery_result_backend
+                or os.getenv("CELERY_RESULT_BACKEND")
+                or base_config.celery_result_backend
+            )
+            always_eager = args.celery_task_always_eager
+            if inline_worker_requested:
+                always_eager = False
+            elif always_eager is None:
+                # Default to eager execution for in-process benchmarks unless explicitly disabled.
+                always_eager = True
+            eager_propagates = (
+                args.celery_task_eager_propagates
+                if args.celery_task_eager_propagates is not None
+                else base_config.celery_task_eager_propagates
+            )
+            overrides.update(
+                {
+                    "celery_broker_url": broker_url,
+                    "celery_result_backend": result_backend,
+                    "celery_task_always_eager": always_eager,
+                    "celery_task_eager_propagates": eager_propagates,
+                }
+            )
+            resolved_celery_metadata = {
+                "brokerUrl": broker_url,
+                "resultBackend": result_backend,
+                "taskAlwaysEager": always_eager,
+                "taskEagerPropagates": eager_propagates,
+                "inlineWorker": {"enabled": inline_worker_requested},
+            }
+            if inline_worker_requested and inline_worker_concurrency is not None:
+                resolved_celery_metadata["inlineWorker"]["concurrency"] = inline_worker_concurrency
+        config = base_config.model_copy(update=overrides)
+        resolved_job_backend = config.job_backend
+
         app = create_app(config=config)
         await app.router.startup()
         transport = httpx.ASGITransport(app=app)
@@ -639,6 +742,34 @@ async def _async_main(args: argparse.Namespace) -> int:
                 args.dev_secret,
                 algorithm="HS256",
             )
+        if (
+            job_backend == "celery"
+            and inline_worker_requested
+            and not config.celery_task_always_eager
+        ):
+            try:
+                from celery.contrib.testing.worker import start_worker
+            except ImportError as exc:  # pragma: no cover - optional dependency
+                raise RuntimeError(
+                    "celery.contrib.testing is required for --celery-inline-worker. Install celery[test]."
+                ) from exc
+            from mcp_bridge.services.celery_app import (
+                configure_celery as _configure_celery,
+            )
+
+            celery_instance = _configure_celery(config)
+            celery_instance.loader.import_default_modules()
+            if "celery.ping" not in celery_instance.tasks:  # pragma: no cover - defensive
+                @celery_instance.task(name="celery.ping")
+                def _benchmark_ping():
+                    return "pong"
+
+            inline_worker_ctx = start_worker(
+                celery_instance,
+                pool="threads",
+                concurrency=inline_worker_concurrency or max(1, args.concurrency),
+            )
+            inline_worker_ctx.__enter__()
     else:
         if token is None:
             print(
@@ -675,6 +806,9 @@ async def _async_main(args: argparse.Namespace) -> int:
             profile_summary = _summarise_profile(profiler, max(1, args.profile_top))
         proc_metrics = collector.finish()
 
+    if inline_worker_ctx is not None:  # pragma: no branch - ensure cleanup
+        inline_worker_ctx.__exit__(None, None, None)
+
     if transport and hasattr(transport, "close"):
         maybe_close = transport.close
         if asyncio.iscoroutinefunction(maybe_close):  # type: ignore[arg-type]
@@ -708,6 +842,7 @@ async def _async_main(args: argparse.Namespace) -> int:
             "jobTimeout": max(1.0, args.job_timeout),
             "roles": args.roles,
             "subject": args.subject,
+            "jobBackend": resolved_job_backend,
         },
         "summary": summary,
         "steps": steps_summary,
@@ -716,6 +851,8 @@ async def _async_main(args: argparse.Namespace) -> int:
         "processMetrics": proc_metrics.to_dict(),
         "warnings": warnings,
     }
+    if resolved_celery_metadata:
+        result_payload["config"]["celery"] = resolved_celery_metadata
 
     if profiler is not None:
         if args.profile_output:

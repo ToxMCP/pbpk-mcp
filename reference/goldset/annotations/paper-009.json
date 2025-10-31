@@ -1,0 +1,39 @@
+{
+  "sourceId": "paper-009",
+  "facts": [
+    {
+      "name": "body_weight_kg",
+      "value": 66.1,
+      "unit": "kg",
+      "tolerance": 0.5
+    },
+    {
+      "name": "dose_mg",
+      "value": 45.0,
+      "unit": "mg",
+      "tolerance": 0.5
+    }
+  ],
+  "tables": [
+    {
+      "componentId": "table-1",
+      "rows": [
+        {
+          "Subject": "A",
+          "Weight (kg)": "66.1",
+          "Dose (mg)": "45.0"
+        },
+        {
+          "Subject": "B",
+          "Weight (kg)": "66.7",
+          "Dose (mg)": "45.0"
+        },
+        {
+          "Subject": "C",
+          "Weight (kg)": "67.3",
+          "Dose (mg)": "45.0"
+        }
+      ]
+    }
+  ]
+}

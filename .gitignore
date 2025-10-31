@@ -17,6 +17,8 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+reports/
+var/
 
 # Environment variables
 .env
