@@ -7,7 +7,7 @@
 - Handle large result artefacts using a claim-check pattern and chunked streaming.
 - Maintain backwards compatibility with existing single-subject simulation tools.
 
-Need a guided example? See `getting-started/quickstart-cli.md` and the agent walkthrough in `getting-started/quickstart-agent.md`.
+Need a guided example? See `getting-started/quickstart-cli.md`, the agent walkthrough in `getting-started/quickstart-agent.md`, and the executable notebook in `../notebooks/population_simulation_walkthrough.ipynb`.
 
 ## Use Cases
 

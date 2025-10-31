@@ -12,7 +12,7 @@
 | Aspect | Decision |
 | --- | --- |
 | Protocol | OAuth 2.0 client credentials and authorization code flows backed by an OpenID Connect (OIDC) identity provider (e.g., Azure AD, Auth0, Okta). |
-| Token format | JWT (RS256 signature) containing `sub`, `iss`, `aud`, `exp`, `iat`, and custom `roles`/`scopes` claims. |
+| Token format | JWT (RS256 signature) containing `sub`, `iss`, `aud`, `exp`, `iat`, and custom `roles`/`scopes` claims; include `jti` to enable replay protection. |
 | Verification | FastAPI dependency validates signature against JWKS endpoint, checks issuer/audience, expiry, and optional nonce to prevent replay. |
 | Rotation | JWKS cache with TTL ≤ 15 minutes; tokens short-lived (≤ 15 minutes). Refresh handled by client via standard OAuth flows. |
 | Local development | Optional HS256-signed tokens using `AUTH_DEV_SECRET`. When enabled, the server trusts tokens signed with the shared secret to ease local testing. |
@@ -22,21 +22,14 @@
 1. **Service accounts / agents** – use OAuth2 client credentials to obtain tokens scoped for automation (e.g., `mcp:operator`).
 2. **Human analysts** – use authorization code + PKCE via a CLI helper or a UI. Resulting access token carries the analyst’s identity and roles.
 
-Identity provider configuration (issuer URL, JWKS endpoint, expected audience) is supplied via environment variables:
-
-```
-AUTH_ISSUER_URL
-AUTH_AUDIENCE
-AUTH_JWKS_CACHE_SECONDS
-AUTH_DEV_SECRET (optional)
-```
+Identity provider configuration (issuer URL, JWKS endpoint, expected audience) is supplied via environment variables. Production deployments **must** provide `AUTH_ISSUER_URL`, `AUTH_AUDIENCE`, and `AUTH_JWKS_URL`; the developer shortcut `AUTH_DEV_SECRET` is rejected outside `development`/`local` environments. Replay protection and rate limiting are controlled through `AUTH_REPLAY_WINDOW_SECONDS`, `AUTH_RATE_LIMIT_PER_MINUTE`, and `AUTH_CLOCK_SKEW_SECONDS`. Set `AUTH_ALLOW_ANONYMOUS=true` only for local automation or test harnesses—validation now rejects this flag in staging/production profiles to prevent accidental anonymous exposure. Tokens without an `exp` claim or those reusing the same `jti` inside the replay window are rejected.
 
 ## 3. Role Model
 
 | Role | Capabilities | Description |
 | --- | --- | --- |
 | `viewer` | `list_parameters`, `get_parameter_value`, `get_job_status`, `get_simulation_results`, `get_population_results`, `calculate_pk_parameters` | Read-only access for analysts reviewing simulations. |
-| `operator` | All viewer endpoints + `load_simulation`, `set_parameter_value`, `run_simulation`, `run_population_simulation`, `cancel_job`, `run_population_simulation` | Trusted users who can modify models and launch jobs. |
+| `operator` | All viewer endpoints + `load_simulation`, `set_parameter_value`, `run_simulation`, `run_population_simulation`, `cancel_job` | Trusted users who can modify models and launch jobs. |
 | `admin` | Operator rights + management endpoints (future), configuration reloads, health, metrics. |
 | `system` | Non-interactive automation accounts (LangGraph agent, CI). Typically same permissions as `operator` but flagged as service accounts for auditing. |
 
@@ -77,6 +70,7 @@ Roles are conveyed via the `roles` claim (array of strings). Scopes (e.g., `mcp:
 - **Replay attacks** – short-lived tokens, optional `jti` claim with replay cache for high-assurance deployments.
 - **Privilege escalation** – fixed mapping of roles to endpoints; no implicit superuser role. Admin tasks separated.
 - **Token leakage** – encourage TLS-only deployments; redact tokens in logs; support token revocation via IdP (respect `exp` and optionally call introspection endpoint for long-running requests).
+- **Brute-force / abuse** – per-client rate limiting (`AUTH_RATE_LIMIT_PER_MINUTE`) throttles repeated authentication attempts and general API usage.
 - **Development mode safeguards** – dev secret path is opt-in, disabled by default; warnings logged when active to prevent accidental production use.
 
 ## 6. Operational Runbook

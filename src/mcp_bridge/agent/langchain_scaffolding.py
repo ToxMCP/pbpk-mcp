@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import operator
 import re
+import sqlite3
 import time
 from collections import defaultdict
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple, TypedDict
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
@@ -13,6 +15,7 @@ from langchain_core.pydantic_v1 import BaseModel, Field, validator
 from langchain_core.tools import StructuredTool
 from langchain_core.utils.function_calling import convert_to_openai_function
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.constants import INTERRUPT
 from langgraph.graph import END, StateGraph
 from langgraph.pregel import empty_checkpoint
@@ -38,10 +41,11 @@ from mcp.tools.load_simulation import (
     LoadSimulationRequest,
     load_simulation,
 )
-from mcp.tools.run_simulation import (
-    RunSimulationRequest,
-    run_simulation,
+from mcp.tools.run_population_simulation import (
+    RunPopulationSimulationRequest,
+    run_population_simulation,
 )
+from mcp.tools.run_simulation import RunSimulationRequest, run_simulation
 from mcp.tools.set_parameter_value import (
     SetParameterValueRequest,
     set_parameter_value,
@@ -78,9 +82,35 @@ class AgentState(TypedDict, total=False):
 CRITICAL_TOOLS = {
     "set_parameter_value",
     "run_simulation",
+    "run_population_simulation",
     "load_simulation",
     "run_sensitivity_analysis",
 }
+
+
+def _augment_config(config: Mapping[str, Any] | None) -> Dict[str, Any]:
+    base = dict(config or {})
+    configurable = dict(base.get("configurable", {}))
+    configurable.setdefault("checkpoint_ns", "")
+    base["configurable"] = configurable
+    return base
+
+
+def _seed_versions(checkpoint: Dict[str, Any], node_names: Iterable[str]) -> Dict[str, Any]:
+    versions_seen = checkpoint.get("versions_seen")
+    if versions_seen is None:
+        versions_seen = {}
+    if not isinstance(versions_seen, dict):
+        try:
+            versions_seen = dict(versions_seen)
+        except TypeError:
+            versions_seen = {}
+    for name in node_names:
+        versions_seen.setdefault(name, {})
+    if not isinstance(versions_seen, defaultdict):
+        versions_seen = defaultdict(dict, versions_seen)
+    checkpoint["versions_seen"] = versions_seen
+    return checkpoint
 
 _APPROVAL_WORDS = {"yes", "y", "approve", "approved", "proceed", "ok", "okay"}
 
@@ -276,6 +306,41 @@ def create_tool_registry(
         response = run_sensitivity_analysis_tool(adapter, job_service, payload)
         return response.model_dump(mode="json")
 
+    class RunPopulationArgs(BaseModel):
+        modelPath: str = Field(..., description="Absolute path to the population simulation .pkml file.")
+        simulationId: str = Field(..., description="Identifier assigned to the population run.")
+        cohort: Dict[str, Any] = Field(..., description="Cohort configuration (size, sampling, optional seed).")
+        outputs: Dict[str, Any] = Field(default_factory=dict, description="Requested output aggregates and time series.")
+        metadata: Dict[str, Any] = Field(default_factory=dict, description="Optional metadata to persist with the run.")
+        timeoutSeconds: Optional[float] = Field(default=None, description="Timeout override applied to the job (seconds).")
+        maxRetries: Optional[int] = Field(default=None, description="Override for maximum retry attempts.")
+
+        class Config:
+            allow_population_by_field_name = True
+
+    def _run_population_simulation(
+        *,
+        modelPath: str,
+        simulationId: str,
+        cohort: Dict[str, Any],
+        outputs: Dict[str, Any] | None = None,
+        metadata: Dict[str, Any] | None = None,
+        timeoutSeconds: Optional[float] = None,
+        maxRetries: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        raw_payload: Dict[str, Any] = {
+            "modelPath": modelPath,
+            "simulationId": simulationId,
+            "cohort": cohort,
+            "outputs": outputs or {},
+            "metadata": metadata or {},
+            "timeoutSeconds": timeoutSeconds,
+            "maxRetries": maxRetries,
+        }
+        payload = RunPopulationSimulationRequest.model_validate(raw_payload)
+        response = run_population_simulation(adapter, job_service, payload)
+        return response.model_dump(by_alias=True)
+
     class RunSimulationArgs(BaseModel):
         simulationId: str = Field(...)
         runId: Optional[str] = Field(
@@ -371,6 +436,12 @@ def create_tool_registry(
             args_schema=RunSimulationArgs,
             description="Submit a simulation job asynchronously and return job metadata.",
         ),
+        "run_population_simulation": _wrap_langchain_tool(
+            _run_population_simulation,
+            name="run_population_simulation",
+            args_schema=RunPopulationArgs,
+            description="Submit a population simulation job asynchronously and return job metadata.",
+        ),
         "get_job_status": _wrap_langchain_tool(
             _get_job_status,
             name="get_job_status",
@@ -426,6 +497,7 @@ def build_agent_graph(
     tool_execution_node: Callable[[AgentState], AgentState],
     response_synthesis_node: Callable[[AgentState], AgentState],
     checkpointer: Optional[Any] = None,
+    checkpointer_path: str | None = None,
 ) -> Any:
     """Create a LangGraph StateGraph with standard routing for confirmations."""
 
@@ -443,9 +515,6 @@ def build_agent_graph(
     builder.add_edge("Response_Synthesis_Node", END)
     builder.add_conditional_edges("Confirmation_Gate_Node", route_after_confirmation)
 
-    if checkpointer is not None:
-        return builder.compile(checkpointer=checkpointer)
-
     node_names = {
         "Planner_Node",
         "Tool_Selection_Node",
@@ -454,7 +523,13 @@ def build_agent_graph(
         "Response_Synthesis_Node",
     }
 
-    return builder.compile(checkpointer=_BackwardCompatibleMemorySaver(node_names))
+    if checkpointer is None:
+        if checkpointer_path:
+            checkpointer = _BackwardCompatibleSqliteSaver(checkpointer_path, node_names)
+        else:
+            checkpointer = _BackwardCompatibleMemorySaver(node_names)
+
+    return builder.compile(checkpointer=checkpointer)
 
 
 class _BackwardCompatibleMemorySaver(MemorySaver):
@@ -472,49 +547,87 @@ class _BackwardCompatibleMemorySaver(MemorySaver):
         if new_versions is None or not new_versions:
             channel_versions = checkpoint.get("channel_versions", {})
             new_versions = dict(channel_versions)
-        versions_seen = checkpoint.get("versions_seen")
-        if isinstance(versions_seen, dict):
-            for name in self._node_names:
-                versions_seen.setdefault(name, {})
-            if not isinstance(versions_seen, defaultdict):
-                checkpoint["versions_seen"] = defaultdict(dict, versions_seen)
-        configurable = dict(config.get("configurable", {}))
-        configurable.setdefault("checkpoint_ns", "")
-        safe_config = {**config, "configurable": configurable}
+        checkpoint = _seed_versions(dict(checkpoint), self._node_names)
+        safe_config = _augment_config(config)
         return super().put(safe_config, checkpoint, metadata, new_versions)
 
     def put_writes(self, config, writes, task_id):  # type: ignore[override]
-        configurable = dict(config.get("configurable", {}))
-        configurable.setdefault("checkpoint_ns", "")
-        safe_config = {**config, "configurable": configurable}
+        safe_config = _augment_config(config)
         return super().put_writes(safe_config, writes, task_id)
 
     def get_tuple(self, config):  # type: ignore[override]
-        saved = super().get_tuple(config)
+        safe_config = _augment_config(config)
+        saved = super().get_tuple(safe_config)
         if saved is None:
-            checkpoint = empty_checkpoint()
-            seed = {name: {} for name in self._node_names}
-            checkpoint["versions_seen"] = defaultdict(dict, seed)
+            checkpoint = _seed_versions(empty_checkpoint(), self._node_names)
             metadata = {"source": "bootstrap", "step": -1, "writes": {}}
             from langgraph.checkpoint.base import CheckpointTuple
 
             return CheckpointTuple(
-                config=config,
+                config=safe_config,
                 checkpoint=checkpoint,
                 metadata=metadata,
                 parent_config=None,
                 pending_writes=[],
             )
-        checkpoint = dict(saved.checkpoint)
-        versions_seen = checkpoint.get("versions_seen")
-        if isinstance(versions_seen, dict) and not isinstance(versions_seen, defaultdict):
-            for name in self._node_names:
-                versions_seen.setdefault(name, {})
-            checkpoint["versions_seen"] = defaultdict(dict, versions_seen)
+        checkpoint = _seed_versions(dict(saved.checkpoint), self._node_names)
         from langgraph.checkpoint.base import CheckpointTuple
 
         return CheckpointTuple(
-            config=saved.config,
+            config=_augment_config(saved.config),
+            checkpoint=checkpoint,
+            metadata=saved.metadata,
+            parent_config=saved.parent_config,
+            pending_writes=saved.pending_writes,
+        )
+
+
+class _BackwardCompatibleSqliteSaver(SqliteSaver):
+    """SqliteSaver variant that normalises LangGraph checkpoint metadata."""
+
+    def __init__(self, path: str, node_names: Iterable[str]) -> None:
+        sqlite_path = Path(path).expanduser()
+        sqlite_path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(sqlite_path), check_same_thread=False)
+        super().__init__(conn=conn)
+        names = set(node_names)
+        names.update({"__start__", "__end__", "__interrupt__"})
+        self._node_names = names
+        self.setup()
+
+    def put(self, config, checkpoint, metadata):  # type: ignore[override]
+        checkpoint = _seed_versions(dict(checkpoint), self._node_names)
+        safe_config = _augment_config(config)
+        return super().put(safe_config, checkpoint, metadata)
+
+    def put_writes(self, config, writes, task_id):  # type: ignore[override]
+        safe_config = _augment_config(config)
+        try:
+            return super().put_writes(safe_config, writes, task_id)
+        except NotImplementedError:  # pragma: no cover - sqlite saver ignores writes
+            return None
+
+    def get_tuple(self, config):  # type: ignore[override]
+        safe_config = _augment_config(config)
+        saved = super().get_tuple(safe_config)
+        if saved is None:
+            checkpoint = _seed_versions(empty_checkpoint(), self._node_names)
+            metadata = {"source": "bootstrap", "step": -1, "writes": {}}
+            from langgraph.checkpoint.base import CheckpointTuple
+
+            return CheckpointTuple(
+                config=safe_config,
+                checkpoint=checkpoint,
+                metadata=metadata,
+                parent_config=None,
+                pending_writes=[],
+            )
+
+        checkpoint = _seed_versions(dict(saved.checkpoint), self._node_names)
+        from langgraph.checkpoint.base import CheckpointTuple
+
+        return CheckpointTuple(
+            config=_augment_config(saved.config),
             checkpoint=checkpoint,
             metadata=saved.metadata,
             parent_config=saved.parent_config,
@@ -545,7 +658,8 @@ def create_agent_workflow(
     *,
     adapter: OspsuiteAdapter,
     job_service: JobService,
-    checkpointer: MemorySaver | None = None,
+    checkpointer: Any | None = None,
+    checkpointer_path: str | None = None,
     max_tool_retries: int = 1,
     retry_backoff_seconds: float = 0.25,
 ) -> tuple[Any, Dict[str, StructuredTool], AgentState]:
@@ -804,15 +918,8 @@ def create_agent_workflow(
         confirmation_node=confirmation_node,
         tool_execution_node=tool_execution_node,
         response_synthesis_node=response_synthesis_node,
-        checkpointer=checkpointer or _BackwardCompatibleMemorySaver(
-            {
-                "Planner_Node",
-                "Tool_Selection_Node",
-                "Confirmation_Gate_Node",
-                "Tool_Execution_Node",
-                "Response_Synthesis_Node",
-            }
-        ),
+        checkpointer=checkpointer,
+        checkpointer_path=checkpointer_path,
     )
 
     return graph, tool_registry, create_initial_agent_state()

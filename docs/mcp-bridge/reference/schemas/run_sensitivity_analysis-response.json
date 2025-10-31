@@ -1,0 +1,52 @@
+{
+  "$defs": {
+    "CsvAttachment": {
+      "description": "Metadata describing the generated CSV attachment.",
+      "properties": {
+        "contentType": {
+          "default": "text/csv",
+          "title": "Contenttype",
+          "type": "string"
+        },
+        "data": {
+          "description": "Base64-encoded CSV payload",
+          "title": "Data",
+          "type": "string"
+        },
+        "filename": {
+          "title": "Filename",
+          "type": "string"
+        },
+        "path": {
+          "description": "Filesystem location of the generated CSV artefact",
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "filename",
+        "data",
+        "path"
+      ],
+      "title": "CsvAttachment",
+      "type": "object"
+    }
+  },
+  "description": "Structured MCP response for the sensitivity analysis tool.",
+  "properties": {
+    "csv": {
+      "$ref": "#/$defs/CsvAttachment"
+    },
+    "report": {
+      "additionalProperties": true,
+      "title": "Report",
+      "type": "object"
+    }
+  },
+  "required": [
+    "report",
+    "csv"
+  ],
+  "title": "RunSensitivityAnalysisResponse",
+  "type": "object"
+}

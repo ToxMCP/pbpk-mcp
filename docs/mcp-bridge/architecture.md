@@ -50,9 +50,9 @@ The MCP Bridge Server will be deployed as a containerized application. The OSP S
 2. The MCP Bridge Server receives the request and creates a new job in a persistent job queue (e.g., Redis).
 3. The server immediately returns a `job_id` to the user.
 4. A separate worker process picks up the job from the queue and executes it.
-5. The user can poll the status of the job using the `get_job_status` tool.
-6. Once the job is complete, the worker process stores the results in a persistent storage (e.g., a file system or a database) and updates the job status.
-7. The user can retrieve the results using the `get_simulation_results` tool.
+5. The user can poll the status of the job using the `get_job_status` tool, or request termination with the `cancel_job` tool if the run is no longer required.
+6. Once the job is complete (or cancelled), the worker process stores the results in a persistent storage (e.g., a file system or a database) and updates the job status to a terminal state.
+7. The user can retrieve the results using the `get_simulation_results` tool for successful runs. Cancelled jobs expose their last-known metadata for audit purposes but omit result handles.
 
 ### 2.3.1. Simulation Session Registry
 

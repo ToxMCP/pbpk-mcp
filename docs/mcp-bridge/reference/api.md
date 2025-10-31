@@ -7,18 +7,8 @@ required roles, and canonical request/response examples.
 ## OpenAPI specification
 
 - Source file: `docs/mcp-bridge/contracts/openapi.json`
-- Regenerate after changing routes:
-
-```bash
-PYTHONPATH=src python - <<'PY'
-from mcp_bridge.app import create_app
-from mcp_bridge.config import AppConfig
-import json, pathlib
-app = create_app(AppConfig())
-path = pathlib.Path("docs/mcp-bridge/contracts/openapi.json")
-path.write_text(json.dumps(app.openapi(), indent=2))
-PY
-```
+- Regenerate after changing routes with `make docs-export` (runs `scripts/export_api_docs.py` and updates tool schemas under `docs/mcp-bridge/reference/schemas/`).
+- Pass `--skip-schemas` if you only need the OpenAPI document or `--config-source env` to honour deployment-specific configuration.
 
 The generated schema targets OpenAPI 3.1 and can be rendered by tools such as
 Redocly or Stoplight.
@@ -36,6 +26,18 @@ Redocly or Stoplight.
 
 - `run_simulation` and `run_population_simulation` support idempotent submissions via the `idempotencyKey` field when using `/mcp/call_tool`.
 - Replaying the same key and payload returns the original job metadata; reusing the key with a different payload returns HTTP `409` (`CONFLICT`).
+
+### Critical tool confirmation
+
+- Safety-critical tools (`load_simulation`, `set_parameter_value`, `run_simulation`,
+  `run_population_simulation`, and `run_sensitivity_analysis`) require explicit
+  confirmation.
+- REST calls to these endpoints must set the header `X-MCP-Confirm: true`; the
+  server rejects missing or falsey hints with HTTP `428` and the
+  `ConfirmationRequired` error code.
+- When invoking the same tools via `/mcp/call_tool`, include both
+  `"critical": true` in the JSON payload and the `X-MCP-Confirm: true` header to
+  indicate user approval.
 
 ## Endpoint catalogue
 
@@ -66,16 +68,19 @@ Redocly or Stoplight.
 curl -s -X POST "$BASE_URL/load_simulation" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
+  -H "X-MCP-Confirm: true" \
   -d '{"filePath":"tests/fixtures/demo.pkml","simulationId":"api-ref"}'
 
 curl -s -X POST "$BASE_URL/set_parameter_value" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
+  -H "X-MCP-Confirm: true" \
   -d '{"simulationId":"api-ref","parameterPath":"Organism|Weight","value":70,"unit":"kg"}'
 
 JOB_ID=$(curl -s -X POST "$BASE_URL/run_simulation" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
+  -H "X-MCP-Confirm: true" \
   -d '{"simulationId":"api-ref","runId":"api-ref-1"}' | jq -r '.jobId')
 ```
 
@@ -101,6 +106,7 @@ curl -s -X POST "$BASE_URL/get_simulation_results" \
 POP_JOB=$(curl -s -X POST "$BASE_URL/run_population_simulation" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
+  -H "X-MCP-Confirm: true" \
   -d '{
         "modelPath": "tests/fixtures/demo.pkml",
         "simulationId": "api-pop",
@@ -111,7 +117,7 @@ POP_JOB=$(curl -s -X POST "$BASE_URL/run_population_simulation" \
 RESULT=$(curl -s -X POST "$BASE_URL/get_population_results" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"resultsId\":\"$(curl -s -X POST \"$BASE_URL/get_job_status\" \
+-d "{\"resultsId\":\"$(curl -s -X POST \"$BASE_URL/get_job_status\" \
     -H \"Authorization: Bearer $TOKEN\" -H \"Content-Type: application/json\" \
     -d \"{\\\"jobId\\\":\\\"$POP_JOB\\\"}\" | jq -r '.job.resultHandle.resultsId')\"}")
 echo "$RESULT" | jq '.aggregates'

@@ -99,6 +99,16 @@ sequenceDiagram
         Bridge->>Queue: get_status(jobId)
         Queue-->>Bridge: status=running
         Bridge-->>Client: 200 {status:\"running\"}
+        alt cancellation requested
+            Client->>Bridge: POST /cancel_job {jobId}
+            Bridge->>Queue: cancel(jobId)
+            Queue-->>Bridge: status=cancelled
+            Bridge-->>Client: 200 {status:\"cancelled\", cancelledAt}
+            break
+        end
+    end
+    opt cancelled before execution
+        Note over Queue,Worker: Worker does not receive the job; queue records terminal state.
     end
     Queue->>Worker: dispatch(jobId)
     Worker->>Adapter: run_simulation(simulationId, config)

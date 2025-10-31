@@ -1,0 +1,16 @@
+{
+  "description": "Payload accepted by the ``get_job_status`` MCP tool.",
+  "properties": {
+    "jobId": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Jobid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "jobId"
+  ],
+  "title": "GetJobStatusRequest",
+  "type": "object"
+}

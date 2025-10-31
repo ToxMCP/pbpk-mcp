@@ -3,7 +3,7 @@
 PY ?= python3
 IMAGE_NAME ?= mcp-bridge
 
-.PHONY: help install lint format type test test-e2e test-hpc compliance benchmark benchmark-celery fetch-bench-data parity sbom check clean build-image run-image celery-worker
+.PHONY: help install lint format type test test-e2e test-hpc compliance benchmark benchmark-celery fetch-bench-data parity docs-export sbom check clean build-image run-image celery-worker
 
 help:
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*?##/ {printf "\033[36m%s\033[0m\t%s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -51,6 +51,9 @@ goldset-eval: ## Evaluate literature extraction quality on the gold set
 
 parity: ## Execute the baseline parity validation suite
 	PYTHONPATH=src $(PY) -m mcp_bridge.parity.suite --iterations 10
+
+docs-export: ## Regenerate OpenAPI specification and tool JSON schemas
+	PYTHONPATH=src $(PY) scripts/export_api_docs.py
 
 sbom: ## Generate CycloneDX-style SBOM for current environment
 	$(PY) scripts/generate_sbom.py compliance/sbom.json

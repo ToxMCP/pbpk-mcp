@@ -82,6 +82,7 @@ markers = [
   "compliance: MCP protocol compliance harness",
   "e2e: End-to-end regression suite covering reference PBPK models",
   "hpc_stub: HPC submission stub regression suite",
+  "perf: Performance regression guard executed when benchmark artefacts are available",
 ]
 
 [tool.mypy]

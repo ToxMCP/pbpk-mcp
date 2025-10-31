@@ -76,6 +76,8 @@ def test_celery_job_service_persists_registry_between_instances(
     registry_path = Path(celery_config.job_registry_path).expanduser()
     if not registry_path.is_absolute():
         registry_path = (Path.cwd() / registry_path).resolve()
+    if not registry_path.exists():
+        registry_path = registry_path.with_suffix(".db")
     assert registry_path.exists()
 
     population_store_restarted = build_population_store(celery_config)

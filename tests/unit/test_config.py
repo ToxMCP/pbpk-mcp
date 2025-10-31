@@ -32,6 +32,13 @@ def test_app_config_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SESSION_REDIS_PREFIX", "custom:sessions")
     monkeypatch.setenv("SESSION_TTL_SECONDS", "900")
     monkeypatch.setenv("JOB_REGISTRY_PATH", "/tmp/jobs.json")
+    monkeypatch.setenv("SNAPSHOT_STORAGE_PATH", "/tmp/snapshots")
+    monkeypatch.setenv("AGENT_CHECKPOINTER_PATH", "/tmp/checkpoints.sqlite")
+    monkeypatch.setenv("AUTH_RATE_LIMIT_PER_MINUTE", "42")
+    monkeypatch.setenv("AUTH_CLOCK_SKEW_SECONDS", "30")
+    monkeypatch.setenv("AUTH_REPLAY_WINDOW_SECONDS", "120")
+    monkeypatch.setenv("AUTH_ALLOW_ANONYMOUS", "false")
+    monkeypatch.delenv("AUTH_DEV_SECRET", raising=False)
 
     config = AppConfig.from_env()
 
@@ -58,6 +65,12 @@ def test_app_config_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.session_redis_prefix == "custom:sessions"
     assert config.session_ttl_seconds == 900
     assert config.job_registry_path == "/tmp/jobs.json"
+    assert config.snapshot_storage_path == "/tmp/snapshots"
+    assert config.agent_checkpointer_path == "/tmp/checkpoints.sqlite"
+    assert config.auth_rate_limit_per_minute == 42
+    assert config.auth_clock_skew_seconds == 30
+    assert config.auth_replay_window_seconds == 120
+    assert config.auth_allow_anonymous is False
 
 
 def test_app_config_invalid_port(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -86,3 +99,13 @@ def test_auth_dev_secret_allowed_in_development() -> None:
 def test_auth_dev_secret_rejected_in_production() -> None:
     with pytest.raises(ValidationError):
         AppConfig(environment="production", auth_dev_secret="secret")
+
+
+def test_auth_allow_anonymous_allowed_in_development() -> None:
+    config = AppConfig(environment="development", auth_allow_anonymous=True)
+    assert config.auth_allow_anonymous is True
+
+
+def test_auth_allow_anonymous_rejected_in_production() -> None:
+    with pytest.raises(ValidationError):
+        AppConfig(environment="production", auth_allow_anonymous=True)

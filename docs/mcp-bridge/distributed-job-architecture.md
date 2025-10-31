@@ -43,6 +43,13 @@ The job backend is selected via `JOB_BACKEND` in configuration (`thread` or `cel
    * Celery workers return result ID; job service stores it for `/get_simulation_results`.
    * Failures include structured `error` payloads (propagated to clients).
 
+### Retention & Cleanup
+
+- Completed job metadata is retained for `JOB_RETENTION_SECONDS` (default 7 days). On startup and after every terminal transition the registry purges expired rows and associated result payloads.
+- The population claim-check store applies the same retention window (configurable via `POPULATION_RETENTION_SECONDS`) and deletes stale result directories as part of the purge cycle.
+- Set either value to `0` to disable automatic cleanup—useful for local debugging when you want to inspect the raw artefacts.
+- Purge activity is logged at `DEBUG` level (`job_registry.purged`, `population_results.purged`) so long-running deployments can monitor cleanup cadence.
+
 Retries are tracked per job; Celery `RETRY` states map back to `running` while incrementing the attempt counter.
 
 ## Configuration

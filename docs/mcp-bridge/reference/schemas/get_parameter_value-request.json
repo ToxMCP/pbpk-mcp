@@ -1,0 +1,22 @@
+{
+  "description": "Payload for retrieving a parameter value from a simulation.",
+  "properties": {
+    "parameterPath": {
+      "minLength": 1,
+      "title": "Parameterpath",
+      "type": "string"
+    },
+    "simulationId": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Simulationid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "simulationId",
+    "parameterPath"
+  ],
+  "title": "GetParameterValueRequest",
+  "type": "object"
+}

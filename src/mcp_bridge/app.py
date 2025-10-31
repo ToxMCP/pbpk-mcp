@@ -162,6 +162,23 @@ def create_app(config: AppConfig | None = None, log_level: str | None = None) ->
     if config is None:
         config = load_config()
 
+    environment = config.environment.lower()
+    if environment not in {"development", "local"}:
+        missing = [
+            name
+            for name, value in [
+                ("AUTH_ISSUER_URL", config.auth_issuer_url),
+                ("AUTH_AUDIENCE", config.auth_audience),
+                ("AUTH_JWKS_URL", config.auth_jwks_url),
+            ]
+            if not value
+        ]
+        if missing:
+            raise ConfigError(
+                "Production deployments require OIDC configuration. "
+                f"Missing settings: {', '.join(missing)}"
+            )
+
     setup_logging(log_level or config.log_level or DEFAULT_LOG_LEVEL)
     logger = get_logger(__name__)
 

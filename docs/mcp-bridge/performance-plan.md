@@ -73,6 +73,16 @@ Action items:
 - Local runs can be plotted with a companion `make benchmark-report` target that renders Markdown charts via `matplotlib` and saves to `reports/perf/latest.md`.
 - For asynchronous workloads, JobService emits audit events already; extend analysis script to compute queue wait vs execution deltas from those logs.
 
+### 6.1 CI Gate
+
+- Set `MCP_BENCHMARK_RESULT=<path-to-json>` (and optionally `MCP_BENCHMARK_BASELINE=<baseline.json>`)
+  before invoking the test suite. `pytest tests/perf/test_benchmark_thresholds.py` calls
+  `scripts/check_benchmark_regression.py` and fails the build if thresholds are exceeded.
+- Typical pipeline order:
+  1. `make benchmark` (produces `var/benchmarks/<timestamp>.json`).
+  2. Export `MCP_BENCHMARK_RESULT` pointing at that artefact.
+  3. Run `pytest` (the perf test skips automatically when the variable is absent for local dev).
+
 ## 7. Acceptance Gates and Regression Policy
 
 - A change fails CI if any tracked metric regresses by more than 10% over the Baseline tier targets or exceeds absolute limits in Section 4.

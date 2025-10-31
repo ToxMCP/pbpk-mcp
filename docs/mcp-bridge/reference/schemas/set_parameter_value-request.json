@@ -1,0 +1,63 @@
+{
+  "description": "Payload for updating a parameter in a loaded simulation.",
+  "properties": {
+    "comment": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Comment"
+    },
+    "parameterPath": {
+      "minLength": 1,
+      "title": "Parameterpath",
+      "type": "string"
+    },
+    "simulationId": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Simulationid",
+      "type": "string"
+    },
+    "unit": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Unit"
+    },
+    "updateMode": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "absolute",
+      "title": "Updatemode"
+    },
+    "value": {
+      "title": "Value",
+      "type": "number"
+    }
+  },
+  "required": [
+    "simulationId",
+    "parameterPath",
+    "value"
+  ],
+  "title": "SetParameterValueRequest",
+  "type": "object"
+}

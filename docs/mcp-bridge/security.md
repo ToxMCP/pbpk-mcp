@@ -15,3 +15,10 @@
 - Duplicate tool calls using the same idempotency key reuse the first job; mismatched payloads are rejected with HTTP 409.
 
 Refer to `docs/mcp-bridge/audit-trail.md` for full event schemas and verification workflow.
+
+## Automated Security Tests
+
+- Negative-path authentication tests live in `tests/integration/test_auth_security.py`.
+  They cover expired tokens, replay attempts (duplicate `jti`), and per-client rate limits.
+- CI should run `pytest tests/integration/test_auth_security.py` (this suite runs by default with the
+  rest of `pytest`) to ensure auth hardening is not regressed.

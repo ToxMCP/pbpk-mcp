@@ -42,6 +42,7 @@ Detailed walkthroughs for REST and agent flows live under
 - Authentication/authorization behaviour and configuration is documented in `docs/mcp-bridge/authentication.md`.
 - Immutable audit trail design and verification plan is in `docs/mcp-bridge/audit-trail.md`.
 - Value-oriented scenarios live in the [use-case packs](use-cases/README.md) (notebooks covering sensitivity, population scale, and literature-assisted calibration).
+- Prometheus metrics and Grafana dashboards are provided under `docs/monitoring/`.
 
 ### Sensitivity Analysis
 
@@ -252,6 +253,15 @@ and update the drill log after mitigation exercises.
 
 For release governance, follow the [change management checklist](docs/mcp-bridge/operations/change-management.md)
 and ensure every PR includes smoke benchmark and alert verification evidence.
+
+## Testing & CI Gates
+
+- Run the full suite: `pytest`.
+- Security negatives (expired/replayed tokens, rate limits): `pytest tests/integration/test_auth_security.py`.
+- Performance thresholds: after generating a benchmark JSON (`make benchmark`), export
+  `MCP_BENCHMARK_RESULT` and execute `pytest tests/perf/test_benchmark_thresholds.py`.
+  The test skips automatically when the environment variables are absent, allowing fast local
+  iterations without the benchmark artefact.
 
 ## Container Workflow
 

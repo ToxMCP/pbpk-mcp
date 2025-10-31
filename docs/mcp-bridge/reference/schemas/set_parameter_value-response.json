@@ -1,0 +1,73 @@
+{
+  "$defs": {
+    "ParameterValuePayload": {
+      "properties": {
+        "displayName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Displayname"
+        },
+        "lastUpdatedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lastupdatedat"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        },
+        "unit": {
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "path",
+        "value",
+        "unit"
+      ],
+      "title": "ParameterValuePayload",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "parameter": {
+      "$ref": "#/$defs/ParameterValuePayload"
+    }
+  },
+  "required": [
+    "parameter"
+  ],
+  "title": "SetParameterValueResponse",
+  "type": "object"
+}

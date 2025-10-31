@@ -15,13 +15,17 @@ The server must implement the following tools:
 - **`get_parameter_value`**: Retrieves the value of a specific parameter.
 - **`set_parameter_value`**: Modifies the value of a specific parameter.
 - **`run_simulation`**: Asynchronously starts a simulation run.
+- **`run_population_simulation`**: Launches a cohort-sized simulation with chunked result delivery.
 - **`get_job_status`**: Checks the status of a running simulation job.
+- **`cancel_job`**: Requests termination of a queued or running job.
 - **`get_simulation_results`**: Retrieves time-course results for a completed simulation.
+- **`get_population_results`**: Streams or retrieves aggregates for a population run.
 - **`calculate_pk_parameters`**: Calculates standard PK parameters for a result set.
+- **`run_sensitivity_analysis`**: Orchestrates multi-run perturbation workflows.
 
 ### 1.2. Asynchronous Job Handling
 
-The system must support asynchronous execution of long-running tasks, particularly PBPK simulations. The `run_simulation` tool should return a `job_id` immediately, and the status of the job should be pollable via the `get_job_status` tool.
+The system must support asynchronous execution of long-running tasks, particularly PBPK simulations. The `run_simulation` and `run_population_simulation` tools must return a `job_id` immediately. Clients poll job state with `get_job_status` and retain the ability to terminate work via `cancel_job` when simulations are no longer needed or have exceeded SLAs. Completed job metadata and artefacts must expire after a configurable retention window (default 7 days) so the registry and population store do not grow unbounded.
 
 ## 2. R Interoperability
 

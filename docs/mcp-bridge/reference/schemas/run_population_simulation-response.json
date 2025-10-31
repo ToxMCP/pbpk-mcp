@@ -1,0 +1,38 @@
+{
+  "properties": {
+    "jobId": {
+      "title": "Jobid",
+      "type": "string"
+    },
+    "maxRetries": {
+      "title": "Maxretries",
+      "type": "integer"
+    },
+    "queuedAt": {
+      "title": "Queuedat",
+      "type": "number"
+    },
+    "simulationId": {
+      "title": "Simulationid",
+      "type": "string"
+    },
+    "status": {
+      "title": "Status",
+      "type": "string"
+    },
+    "timeoutSeconds": {
+      "title": "Timeoutseconds",
+      "type": "number"
+    }
+  },
+  "required": [
+    "jobId",
+    "simulationId",
+    "status",
+    "queuedAt",
+    "timeoutSeconds",
+    "maxRetries"
+  ],
+  "title": "RunPopulationSimulationResponse",
+  "type": "object"
+}

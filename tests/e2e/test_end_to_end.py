@@ -55,6 +55,7 @@ def test_end_to_end_reference_midazolam(tmp_path):
         job_registry_path=str(tmp_path / "jobs.db"),
         population_storage_path=str(tmp_path / "population"),
         audit_storage_path=str(tmp_path / "audit"),
+        auth_allow_anonymous=True,
     )
 
     app = create_app(config=config)
@@ -71,6 +72,7 @@ def test_end_to_end_reference_midazolam(tmp_path):
                 "filePath": str(REFERENCE_MODEL),
                 "simulationId": simulation_id,
             },
+            headers={"X-MCP-Confirm": "true"},
         )
         assert resp.status_code == 201, resp.text
 
@@ -84,6 +86,7 @@ def test_end_to_end_reference_midazolam(tmp_path):
                 "unit": "kg",
                 "comment": "E2E regression adjustment",
             },
+            headers={"X-MCP-Confirm": "true"},
         )
         assert resp.status_code == 200, resp.text
 
@@ -94,6 +97,7 @@ def test_end_to_end_reference_midazolam(tmp_path):
                 "simulationId": simulation_id,
                 "runId": "e2e-run",
             },
+            headers={"X-MCP-Confirm": "true"},
         )
         assert resp.status_code == 202, resp.text
         job_id = resp.json()["jobId"]

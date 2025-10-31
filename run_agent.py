@@ -35,6 +35,7 @@ def _create_runtime() -> tuple[Any, dict, BaseJobService, Any]:
     graph, tools, _ = create_agent_workflow(
         adapter=adapter,
         job_service=job_service,
+        checkpointer_path=app_config.agent_checkpointer_path,
         max_tool_retries=app_config.job_max_retries,
         retry_backoff_seconds=app_config.job_retry_backoff_seconds
         if hasattr(app_config, "job_retry_backoff_seconds")

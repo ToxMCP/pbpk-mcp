@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import tempfile
+import time
+import uuid
 
 from fastapi.testclient import TestClient
 
@@ -21,8 +23,17 @@ def _make_client() -> TestClient:
     return TestClient(app)
 
 
-def _encode_token(subject: str, roles: list[str]) -> str:
-    payload = {"sub": subject, "roles": roles}
+def _encode_token(subject: str, roles: list[str], *, jti: str | None = None, exp_offset: int = 300) -> str:
+    now = int(time.time())
+    payload = {
+        "sub": subject,
+        "roles": roles,
+        "iat": now,
+        "exp": now + exp_offset,
+    }
+    if jti is None:
+        jti = f"{subject}-{uuid.uuid4()}"
+    payload["jti"] = jti
     return jwt.encode(payload, DEV_SECRET, algorithm="HS256")
 
 
@@ -34,17 +45,17 @@ def test_missing_token_returns_401() -> None:
 
 def test_viewer_token_allows_read_but_blocks_mutation() -> None:
     client = _make_client()
-    viewer_token = _encode_token("viewer-user", ["viewer"])
-    headers = {"Authorization": f"Bearer {viewer_token}"}
+    read_headers = {"Authorization": f"Bearer {_encode_token('viewer-user', ['viewer'])}"}
 
     read_resp = client.post(
         "/list_parameters",
         json={"simulationId": "sim", "searchPattern": "*"},
-        headers=headers,
+        headers=read_headers,
     )
     # simulation not loaded -> 404, but authorization succeeded
     assert read_resp.status_code in {404, 400}
 
+    mutate_headers = {"Authorization": f"Bearer {_encode_token('viewer-user', ['viewer'])}"}
     mutate_resp = client.post(
         "/set_parameter_value",
         json={
@@ -52,15 +63,14 @@ def test_viewer_token_allows_read_but_blocks_mutation() -> None:
             "parameterPath": "Organism|Weight",
             "value": 70.0,
         },
-        headers=headers,
+        headers={**mutate_headers, "X-MCP-Confirm": "true"},
     )
     assert mutate_resp.status_code == 403
 
 
 def test_operator_token_allows_mutation_flow() -> None:
     client = _make_client()
-    operator_token = _encode_token("operator-user", ["operator"])
-    headers = {"Authorization": f"Bearer {operator_token}"}
+    headers = {"Authorization": f"Bearer {_encode_token('operator-user', ['operator'])}"}
 
     # Without loading a simulation this returns 404, validating we passed auth.
     mutate_resp = client.post(
@@ -70,7 +80,7 @@ def test_operator_token_allows_mutation_flow() -> None:
             "parameterPath": "Organism|Weight",
             "value": 70.0,
         },
-        headers=headers,
+        headers={**headers, "X-MCP-Confirm": "true"},
     )
     assert mutate_resp.status_code in {404, 400}
 
@@ -88,6 +98,6 @@ def test_tampered_token_returns_401() -> None:
             "parameterPath": "Organism|Weight",
             "value": 70.0,
         },
-        headers=headers,
+        headers={**headers, "X-MCP-Confirm": "true"},
     )
     assert resp.status_code == 401

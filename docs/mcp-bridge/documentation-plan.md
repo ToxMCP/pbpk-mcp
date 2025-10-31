@@ -58,12 +58,13 @@ docs/
 ## 4. Asset & Content Requirements
 
 - **Quickstarts**: pair CLI + agent flows; embed snippet outputs; add diagrams produced via `mermaid`.
-- **Notebooks**: staged under `docs/notebooks/` with Binder/nbviewer links; rely on fixtures in `tests/fixtures/` and benchmark datasets once `make fetch-bench-data` lands.
+- **Notebooks**: staged under `docs/notebooks/` (initial population + sensitivity walkthroughs now published); rely on fixtures in `tests/fixtures/` and benchmark datasets once `make fetch-bench-data` lands.
 - **Media**: capture PNG plots for population / sensitivity outputs; store in `docs/assets/`.
 - **Automation**:
   - `make docs-serve` / `make docs-build` targets using mkdocs-material.
   - GitHub Action to deploy docs on push to `main`.
   - Link checker via `mkdocs build --strict` or `lychee`.
+  - `make docs-export` to regenerate OpenAPI specs and tool JSON schemas.
 
 ## 5. Content Mapping for Task 20 Subtasks
 

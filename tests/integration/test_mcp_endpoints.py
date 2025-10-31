@@ -39,13 +39,14 @@ def test_list_tools_includes_core_tools(client: TestClient) -> None:
 def test_call_tool_load_and_list_parameters(client: TestClient) -> None:
     load_resp = client.post(
         "/mcp/call_tool",
-        json=
-        {
+        headers={"X-MCP-Confirm": "true"},
+        json={
             "tool": "load_simulation",
             "arguments": {
                 "filePath": "tests/fixtures/demo.pkml",
                 "simulationId": "mcp-demo",
             },
+            "critical": True,
         },
     )
     assert load_resp.status_code == 200, load_resp.text
@@ -73,7 +74,9 @@ def test_call_tool_handles_validation_errors(client: TestClient) -> None:
                 "parameterPath": "Organism|Weight",
                 "value": "invalid",
             },
+            "critical": True,
         },
+        headers={"X-MCP-Confirm": "true"},
     )
     assert response.status_code == 400
     payload = response.json()
@@ -163,7 +166,9 @@ def test_call_tool_returns_idempotency_annotation(client: TestClient) -> None:
                 "filePath": "tests/fixtures/demo.pkml",
                 "simulationId": "demo",
             },
+            "critical": True,
         },
+        headers={"X-MCP-Confirm": "true"},
     )
     assert load_resp.status_code == 200
 
@@ -178,3 +183,37 @@ def test_call_tool_returns_idempotency_annotation(client: TestClient) -> None:
     assert list_resp.status_code == 200
     annotations = list_resp.json()["annotations"]
     assert annotations["idempotencyKey"] == "abc123"
+
+
+def test_call_tool_requires_critical_hint(client: TestClient) -> None:
+    response = client.post(
+        "/mcp/call_tool",
+        json={
+            "tool": "load_simulation",
+            "arguments": {
+                "filePath": "tests/fixtures/demo.pkml",
+                "simulationId": "missing-critical-hint",
+            },
+        },
+        headers={"X-MCP-Confirm": "true"},
+    )
+    assert response.status_code == 428
+    payload = response.json()
+    assert payload["error"]["code"] == "ConfirmationRequired"
+
+
+def test_call_tool_requires_confirmation_header(client: TestClient) -> None:
+    response = client.post(
+        "/mcp/call_tool",
+        json={
+            "tool": "load_simulation",
+            "arguments": {
+                "filePath": "tests/fixtures/demo.pkml",
+                "simulationId": "missing-confirm-header",
+            },
+            "critical": True,
+        },
+    )
+    assert response.status_code == 428
+    payload = response.json()
+    assert payload["error"]["code"] == "ConfirmationRequired"

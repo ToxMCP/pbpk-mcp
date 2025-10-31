@@ -258,6 +258,40 @@ class DurableJobRegistry:
             )
             self._conn.commit()
 
+    def purge_expired(self, retention_seconds: float) -> int:
+        """Delete job records (and payloads) older than the retention window."""
+
+        if retention_seconds <= 0:
+            return 0
+        cutoff = time.time() - float(retention_seconds)
+        with self._lock, self._conn:
+            rows = self._conn.execute(
+                """
+                SELECT job_id, result_id
+                FROM job_records
+                WHERE (
+                    finished_at IS NOT NULL AND finished_at < ?
+                ) OR (
+                    finished_at IS NULL AND submitted_at < ?
+                )
+                """,
+                (cutoff, cutoff),
+            ).fetchall()
+            job_ids = [row["job_id"] for row in rows]
+            result_ids = [row["result_id"] for row in rows if row["result_id"]]
+            if result_ids:
+                self._conn.executemany(
+                    "DELETE FROM simulation_results WHERE result_id = ?",
+                    [(result_id,) for result_id in result_ids],
+                )
+            if job_ids:
+                self._conn.executemany(
+                    "DELETE FROM job_records WHERE job_id = ?",
+                    [(job_id,) for job_id in job_ids],
+                )
+            self._conn.commit()
+        return len(job_ids)
+
     def close(self) -> None:
         with self._lock:
             self._conn.close()
@@ -442,6 +476,9 @@ class JobService:
         audit_trail: "AuditTrail | None" = None,
         registry: DurableJobRegistry | None = None,
         scheduler: JobScheduler | None = None,
+        retention_seconds: float | None = None,
+        population_store: PopulationResultStore | None = None,
+        population_retention_seconds: float | None = None,
     ) -> None:
         self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="job")
         self._default_timeout = float(default_timeout)
@@ -456,7 +493,13 @@ class JobService:
             registry = DurableJobRegistry(str((Path(temp_dir.name) / "registry.db")))
         self._registry = registry
         self._scheduler = scheduler
+        self._retention_seconds = float(retention_seconds) if retention_seconds else 0.0
+        self._population_store = population_store
+        self._population_retention_seconds = (
+            float(population_retention_seconds) if population_retention_seconds else 0.0
+        )
         self._restore_from_registry()
+        self._apply_retention_policy()
         if self._scheduler is not None:
             self._scheduler.attach(self)
 
@@ -532,6 +575,35 @@ class JobService:
         except Exception as exc:  # pragma: no cover - persistence failures logged
             logger.warning("job_registry.persist_failed", jobId=record.job_id, reason=str(exc))
 
+    def _apply_retention_policy(self) -> None:
+        """Purge expired job metadata and population artefacts."""
+
+        cutoff = None
+        if self._retention_seconds > 0:
+            cutoff = time.time() - self._retention_seconds
+            with self._lock:
+                stale_ids = [
+                    job_id
+                    for job_id, record in list(self._jobs.items())
+                    if record.finished_at and record.finished_at < cutoff
+                ]
+                for job_id in stale_ids:
+                    self._jobs.pop(job_id, None)
+            try:
+                removed = self._registry.purge_expired(self._retention_seconds)
+                if removed:
+                    logger.debug("job_registry.purged", removed=removed)
+            except Exception as exc:  # pragma: no cover - defensive logging
+                logger.warning("job_registry.purge_failed", reason=str(exc))
+
+        if self._population_store and self._population_retention_seconds > 0:
+            try:
+                removed = self._population_store.purge_expired(self._population_retention_seconds)
+                if removed:
+                    logger.debug("population_results.purged", removed=removed)
+            except Exception as exc:  # pragma: no cover - defensive logging
+                logger.warning("population_results.purge_failed", reason=str(exc))
+
     def submit_population_job(
         self,
         adapter: Any,
@@ -594,6 +666,7 @@ class JobService:
                 record._future = None
             self._persist_record(record)
             _emit_job_event(self._audit, record, f"job.{record.job_type}.cancelled", reason="future_cancelled")
+            self._apply_retention_policy()
         return record
 
     def get_job(self, job_id: str) -> JobRecord:
@@ -829,6 +902,7 @@ class JobService:
             record._future = None
         self._persist_record(record)
         _emit_job_event(self._audit, record, f"job.{record.job_type}.succeeded")
+        self._apply_retention_policy()
 
     def _mark_failed(self, job_id: str, exc: Exception) -> None:
         with self._lock:
@@ -839,6 +913,7 @@ class JobService:
             record._future = None
         self._persist_record(record)
         _emit_job_event(self._audit, record, f"job.{record.job_type}.failed", reason=str(exc))
+        self._apply_retention_policy()
 
     def _mark_timeout(self, job_id: str) -> None:
         with self._lock:
@@ -849,6 +924,7 @@ class JobService:
             record._future = None
         self._persist_record(record)
         _emit_job_event(self._audit, record, f"job.{record.job_type}.timeout")
+        self._apply_retention_policy()
 
     def _mark_cancelled(self, record: JobRecord) -> None:
         record.status = JobStatus.CANCELLED
@@ -856,6 +932,7 @@ class JobService:
         record._future = None
         self._persist_record(record)
         _emit_job_event(self._audit, record, f"job.{record.job_type}.cancelled")
+        self._apply_retention_policy()
 
     def _check_cancel_requested(self, job_id: str) -> bool:
         with self._lock:
@@ -867,14 +944,15 @@ class JobService:
                 with self._lock:
                     self._jobs[job_id].status = JobStatus.CANCELLED
                     self._jobs[job_id].finished_at = time.time()
-                    self._jobs[job_id]._future = None
-                self._persist_record(self._jobs[job_id])
-                _emit_job_event(
-                    self._audit,
-                    self._jobs[job_id],
-                    f"job.{self._jobs[job_id].job_type}.cancelled",
-                    reason="checked",
-                )
+                self._jobs[job_id]._future = None
+            self._persist_record(self._jobs[job_id])
+            _emit_job_event(
+                self._audit,
+                self._jobs[job_id],
+                f"job.{self._jobs[job_id].job_type}.cancelled",
+                reason="checked",
+            )
+            self._apply_retention_policy()
             return True
         return False
 
@@ -901,6 +979,7 @@ class CeleryJobService:
         config: AppConfig,
         audit_trail: "AuditTrail | None" = None,
         registry: DurableJobRegistry,
+        population_store: PopulationResultStore | None = None,
     ) -> None:
         if not CELERY_AVAILABLE:
             raise ConfigError("Celery backend requested but celery is not installed")
@@ -912,7 +991,11 @@ class CeleryJobService:
         self._jobs: Dict[str, JobRecord] = {}
         self._lock = threading.Lock()
         self._registry = registry
+        self._retention_seconds = float(config.job_retention_seconds)
+        self._population_store = population_store
+        self._population_retention_seconds = float(config.population_retention_seconds)
         self._restore_from_registry()
+        self._apply_retention_policy()
         for job_id in list(self._jobs.keys()):
             try:
                 self._sync_record(job_id)
@@ -935,6 +1018,32 @@ class CeleryJobService:
             self._registry.upsert(record)
         except Exception as exc:  # pragma: no cover
             logger.warning("job_registry.persist_failed", jobId=record.job_id, reason=str(exc))
+
+    def _apply_retention_policy(self) -> None:
+        if self._retention_seconds > 0:
+            cutoff = time.time() - self._retention_seconds
+            with self._lock:
+                stale_ids = [
+                    job_id
+                    for job_id, record in list(self._jobs.items())
+                    if record.finished_at and record.finished_at < cutoff
+                ]
+                for job_id in stale_ids:
+                    self._jobs.pop(job_id, None)
+            try:
+                removed = self._registry.purge_expired(self._retention_seconds)
+                if removed:
+                    logger.debug("job_registry.purged", removed=removed)
+            except Exception as exc:  # pragma: no cover
+                logger.warning("job_registry.purge_failed", reason=str(exc))
+
+        if self._population_store and self._population_retention_seconds > 0:
+            try:
+                removed = self._population_store.purge_expired(self._population_retention_seconds)
+                if removed:
+                    logger.debug("population_results.purged", removed=removed)
+            except Exception as exc:  # pragma: no cover
+                logger.warning("population_results.purge_failed", reason=str(exc))
 
     def submit_simulation_job(
         self,
@@ -1127,6 +1236,7 @@ class CeleryJobService:
         with self._lock:
             self._jobs[job_id] = record
         self._persist_record(record)
+        self._apply_retention_policy()
 
         if new_status != previous_status:
             self._emit_transition(record, new_status)
@@ -1217,12 +1327,30 @@ def create_job_service(
     audit_trail: "AuditTrail | None",
     population_store: PopulationResultStore,
 ) -> BaseJobService:
-    _ = population_store  # population_store retained for API parity / future use
     registry = DurableJobRegistry(config.job_registry_path)
+    try:
+        removed = registry.purge_expired(config.job_retention_seconds)
+        if removed:
+            logger.debug("job_registry.startup_purge", removed=removed)
+    except Exception as exc:  # pragma: no cover - defensive logging
+        logger.warning("job_registry.startup_purge_failed", reason=str(exc))
+    if population_store is not None and config.population_retention_seconds > 0:
+        try:
+            removed = population_store.purge_expired(config.population_retention_seconds)
+            if removed:
+                logger.debug("population_results.startup_purge", removed=removed)
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.warning("population_results.startup_purge_failed", reason=str(exc))
+
     if config.job_backend == "celery":
         if not CELERY_AVAILABLE:
             raise ConfigError("Celery backend requested but celery is not installed")
-        return CeleryJobService(config=config, audit_trail=audit_trail, registry=registry)
+        return CeleryJobService(
+            config=config,
+            audit_trail=audit_trail,
+            registry=registry,
+            population_store=population_store,
+        )
 
     if config.job_backend == "hpc":
         scheduler = StubSlurmScheduler(queue_delay=config.hpc_stub_queue_delay_seconds)
@@ -1233,6 +1361,9 @@ def create_job_service(
             audit_trail=audit_trail,
             registry=registry,
             scheduler=scheduler,
+            retention_seconds=config.job_retention_seconds,
+            population_store=population_store,
+            population_retention_seconds=config.population_retention_seconds,
         )
 
     return JobService(
@@ -1241,6 +1372,9 @@ def create_job_service(
         max_retries=config.job_max_retries,
         audit_trail=audit_trail,
         registry=registry,
+        retention_seconds=config.job_retention_seconds,
+        population_store=population_store,
+        population_retention_seconds=config.population_retention_seconds,
     )
 
 

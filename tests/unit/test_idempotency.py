@@ -9,13 +9,14 @@ from mcp_bridge.config import AppConfig
 
 
 def _post_call_tool(client: TestClient, payload: dict) -> dict:
-    response = client.post("/mcp/call_tool", json=payload)
+    headers = {"X-MCP-Confirm": "true"} if payload.get("critical") else None
+    response = client.post("/mcp/call_tool", json=payload, headers=headers)
     assert response.status_code == 200, response.text
     return response.json()
 
 
 def test_run_simulation_idempotency_deduplicates_jobs(tmp_path):
-    config = AppConfig(job_registry_path=str(tmp_path / "jobs.db"))
+    config = AppConfig(job_registry_path=str(tmp_path / "jobs.db"), auth_allow_anonymous=True)
     app = create_app(config=config)
 
     with TestClient(app) as client:
@@ -25,6 +26,7 @@ def test_run_simulation_idempotency_deduplicates_jobs(tmp_path):
                 "filePath": "tests/fixtures/demo.pkml",
                 "simulationId": "idempo-sim",
             },
+            "critical": True,
         }
         _post_call_tool(client, load_payload)
 
@@ -35,6 +37,7 @@ def test_run_simulation_idempotency_deduplicates_jobs(tmp_path):
                 "simulationId": "idempo-sim",
                 "runId": "idem-run",
             },
+            "critical": True,
         }
 
         result1 = _post_call_tool(client, run_payload)
@@ -52,7 +55,7 @@ def test_run_simulation_idempotency_deduplicates_jobs(tmp_path):
 
 
 def test_run_simulation_idempotency_conflict(tmp_path):
-    config = AppConfig(job_registry_path=str(tmp_path / "jobs.db"))
+    config = AppConfig(job_registry_path=str(tmp_path / "jobs.db"), auth_allow_anonymous=True)
     app = create_app(config=config)
 
     with TestClient(app) as client:
@@ -62,6 +65,7 @@ def test_run_simulation_idempotency_conflict(tmp_path):
                 "filePath": "tests/fixtures/demo.pkml",
                 "simulationId": "idempo-conflict",
             },
+            "critical": True,
         }
         _post_call_tool(client, load_payload)
 
@@ -72,6 +76,7 @@ def test_run_simulation_idempotency_conflict(tmp_path):
                 "simulationId": "idempo-conflict",
                 "runId": "idem-run",
             },
+            "critical": True,
         }
         _post_call_tool(client, base_payload)
 
@@ -82,7 +87,12 @@ def test_run_simulation_idempotency_conflict(tmp_path):
                 "simulationId": "idempo-conflict",
                 "runId": "idem-run-different",
             },
+            "critical": True,
         }
-        response = client.post("/mcp/call_tool", json=conflict_payload)
+        response = client.post(
+            "/mcp/call_tool",
+            json=conflict_payload,
+            headers={"X-MCP-Confirm": "true"},
+        )
         assert response.status_code == 409
         assert "Idempotency" in response.json()["error"]["message"]

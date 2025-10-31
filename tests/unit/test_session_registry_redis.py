@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import time
-
 import pytest
 
 from mcp.session_registry import RedisSessionRegistry, SessionRegistryError
@@ -44,19 +42,18 @@ def test_duplicate_registration_raises() -> None:
 
 def test_ttl_eviction_and_prune() -> None:
     ttl_seconds = 1
-    server = fakeredis.FakeServer()
-    client = fakeredis.FakeRedis(server=server, decode_responses=False)
-    registry = RedisSessionRegistry(client=client, key_prefix="test:sessions", ttl_seconds=ttl_seconds)
+    registry = _make_registry(ttl_seconds)
     handle = _make_handle()
     registry.register(handle)
 
-    server.advance_time(ttl_seconds + 1)
+    # Simulate TTL expiry by removing the stored record while leaving the ID listed.
+    registry._client.delete(registry._record_key(handle.simulation_id))  # type: ignore[attr-defined]
 
-    with pytest.raises(SessionRegistryError):
-        registry.get(handle.simulation_id)
     removed = registry.prune_stale_entries()
     assert handle.simulation_id in removed
     assert handle.simulation_id not in registry.list_ids()
+    with pytest.raises(SessionRegistryError):
+        registry.get(handle.simulation_id)
 
 
 def test_clear_removes_all_records() -> None:

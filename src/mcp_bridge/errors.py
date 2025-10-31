@@ -23,6 +23,7 @@ class ErrorCode(str, Enum):
     NOT_FOUND = "NotFound"
     CONFLICT = "Conflict"
     FORBIDDEN = "Forbidden"
+    CONFIRMATION_REQUIRED = "ConfirmationRequired"
     ENVIRONMENT_MISSING = "EnvironmentMissing"
     INTEROP_ERROR = "InteropError"
     TIMEOUT = "Timeout"

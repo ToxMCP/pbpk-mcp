@@ -1,0 +1,157 @@
+{
+  "$defs": {
+    "PopulationChunkModel": {
+      "properties": {
+        "chunkId": {
+          "title": "Chunkid",
+          "type": "string"
+        },
+        "contentType": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contenttype"
+        },
+        "preview": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preview"
+        },
+        "sizeBytes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sizebytes"
+        },
+        "subjectRange": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subjectrange"
+        },
+        "timeRange": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timerange"
+        },
+        "uri": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uri"
+        }
+      },
+      "required": [
+        "chunkId"
+      ],
+      "title": "PopulationChunkModel",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "aggregates": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Aggregates",
+      "type": "object"
+    },
+    "chunks": {
+      "items": {
+        "$ref": "#/$defs/PopulationChunkModel"
+      },
+      "title": "Chunks",
+      "type": "array"
+    },
+    "cohort": {
+      "additionalProperties": true,
+      "title": "Cohort",
+      "type": "object"
+    },
+    "generatedAt": {
+      "title": "Generatedat",
+      "type": "string"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    },
+    "resultsId": {
+      "title": "Resultsid",
+      "type": "string"
+    },
+    "simulationId": {
+      "title": "Simulationid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "resultsId",
+    "simulationId",
+    "generatedAt",
+    "cohort",
+    "aggregates"
+  ],
+  "title": "GetPopulationResultsResponse",
+  "type": "object"
+}

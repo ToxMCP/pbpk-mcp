@@ -13,6 +13,7 @@ def test_metrics_endpoint_exposes_prometheus_series(tmp_path):
         audit_storage_path=str(tmp_path / "audit"),
         population_storage_path=str(tmp_path / "population"),
         job_registry_path=str(tmp_path / "jobs" / "registry.json"),
+        auth_allow_anonymous=True,
     )
 
     app = create_app(config=config)
@@ -27,8 +28,13 @@ def test_metrics_endpoint_exposes_prometheus_series(tmp_path):
                 "filePath": str(Path("tests/fixtures/demo.pkml").resolve()),
                 "simulationId": "metrics-test",
             },
+            "critical": True,
         }
-        tool_response = client.post("/mcp/call_tool", json=payload)
+        tool_response = client.post(
+            "/mcp/call_tool",
+            json=payload,
+            headers={"X-MCP-Confirm": "true"},
+        )
         assert tool_response.status_code == 200
 
         metrics = client.get("/metrics")

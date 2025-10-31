@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import time
 from dataclasses import dataclass
 from typing import Callable, Iterable, List, Optional
@@ -32,9 +33,17 @@ class AuthContext:
     is_service_account: bool = False
 
 
+_JWKS_CACHE: dict[str, tuple[float, dict]] = {}
+_TOKEN_REPLAY_CACHE: dict[str, float] = {}
+_TOKEN_CACHE_LOCK = threading.Lock()
+
+_RATE_LIMIT_CACHE: dict[str, tuple[float, int]] = {}
+_RATE_LIMIT_LOCK = threading.Lock()
+
 class JWTValidator:
     def __init__(self, config: AppConfig) -> None:
         self._config = config
+        self._clock_skew = float(getattr(config, "auth_clock_skew_seconds", 0.0))
 
     def validate(self, token: str) -> AuthContext:
         if (
@@ -43,7 +52,12 @@ class JWTValidator:
         ):
             secret = self._config.auth_dev_secret
             try:
-                payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
+                payload = jwt.decode(
+                    token,
+                    secret,
+                    algorithms=["HS256"],
+                    options={"verify_aud": False},
+                )
             except JWTError as exc:
                 raise AuthError(status.HTTP_401_UNAUTHORIZED, f"Invalid dev token: {exc}") from exc
             return self._build_context(payload)
@@ -63,6 +77,18 @@ class JWTValidator:
         return self._build_context(payload)
 
     def _build_context(self, payload: dict) -> AuthContext:
+        now = time.time()
+        exp = payload.get("exp")
+        if exp is None:
+            raise AuthError(status.HTTP_401_UNAUTHORIZED, "Token missing expiry")
+        if float(exp) + self._clock_skew < now:
+            raise AuthError(status.HTTP_401_UNAUTHORIZED, "Token expired")
+        nbf = payload.get("nbf")
+        if nbf is not None and float(nbf) - self._clock_skew > now:
+            raise AuthError(status.HTTP_401_UNAUTHORIZED, "Token not valid yet")
+        iat = payload.get("iat")
+        if iat is not None and float(iat) - self._clock_skew > now:
+            raise AuthError(status.HTTP_401_UNAUTHORIZED, "Token issued in the future")
         subject = payload.get("sub")
         if not subject:
             raise AuthError(status.HTTP_401_UNAUTHORIZED, "Token missing subject")
@@ -70,7 +96,7 @@ class JWTValidator:
         if isinstance(roles, str):
             roles = roles.split()
         roles = [str(role) for role in roles]
-        return AuthContext(
+        context = AuthContext(
             subject=str(subject),
             roles=roles,
             token_id=payload.get("jti"),
@@ -78,9 +104,8 @@ class JWTValidator:
             expires_at=payload.get("exp"),
             is_service_account=payload.get("client_id") is not None,
         )
-
-
-_JWKS_CACHE: dict[str, tuple[float, dict]] = {}
+        _register_token(payload, self._config)
+        return context
 
 
 def _get_jwks(jwks_url: Optional[str], ttl_seconds: int) -> dict:
@@ -99,19 +124,72 @@ def _get_jwks(jwks_url: Optional[str], ttl_seconds: int) -> dict:
     return data
 
 
+def _register_token(payload: dict, config: AppConfig) -> None:
+    jti = payload.get("jti")
+    if not jti:
+        return
+    now = time.time()
+    expiry = float(payload.get("exp", now)) + float(getattr(config, "auth_replay_window_seconds", 0.0))
+    with _TOKEN_CACHE_LOCK:
+        _purge_token_cache(now)
+        if jti in _TOKEN_REPLAY_CACHE and _TOKEN_REPLAY_CACHE[jti] > now:
+            raise AuthError(status.HTTP_401_UNAUTHORIZED, "Token replay detected")
+        _TOKEN_REPLAY_CACHE[jti] = expiry
+
+
+def _purge_token_cache(now: float) -> None:
+    expired = [identifier for identifier, expiry in _TOKEN_REPLAY_CACHE.items() if expiry <= now]
+    for identifier in expired:
+        _TOKEN_REPLAY_CACHE.pop(identifier, None)
+
+
+def _enforce_rate_limit(identifier: str, config: AppConfig) -> None:
+    limit = getattr(config, "auth_rate_limit_per_minute", 0)
+    if limit <= 0:
+        return
+    window = 60.0
+    now = time.time()
+    with _RATE_LIMIT_LOCK:
+        count, reset = _RATE_LIMIT_CACHE.get(identifier, (0, now + window))
+        if now > reset:
+            _RATE_LIMIT_CACHE[identifier] = (1, now + window)
+            return
+        if count >= limit:
+            raise AuthError(status.HTTP_429_TOO_MANY_REQUESTS, "Rate limit exceeded")
+        _RATE_LIMIT_CACHE[identifier] = (count + 1, reset)
+
+
+def _rate_limit_identity(request: Request) -> str:
+    client = request.client
+    if client and client.host:
+        return client.host
+    return "unknown"
+
+
 async def auth_dependency(request: Request) -> AuthContext:
     config: AppConfig = request.app.state.config
+    _enforce_rate_limit(_rate_limit_identity(request), config)
     if not config.auth_dev_secret and not config.auth_jwks_url:
-        context = AuthContext(
-            subject="anonymous",
-            roles=["admin", "operator", "viewer"],
-            is_service_account=True,
-        )
-        request.state.auth = context
-        return context
+        if config.auth_allow_anonymous:
+            context = AuthContext(
+                subject="anonymous",
+                roles=["admin", "operator", "viewer"],
+                is_service_account=True,
+            )
+            request.state.auth = context
+            return context
+        raise AuthError(status.HTTP_401_UNAUTHORIZED, "Authentication configuration is missing")
 
     authorization = request.headers.get("Authorization")
     if not authorization or not authorization.startswith("Bearer "):
+        if config.auth_allow_anonymous:
+            context = AuthContext(
+                subject="anonymous",
+                roles=["admin", "operator", "viewer"],
+                is_service_account=True,
+            )
+            request.state.auth = context
+            return context
         raise AuthError(status.HTTP_401_UNAUTHORIZED, "Missing bearer token")
     token = authorization.split(" ", 1)[1].strip()
     validator = JWTValidator(config)

@@ -1,0 +1,28 @@
+{
+  "description": "Payload for listing parameters in a loaded simulation.",
+  "properties": {
+    "searchPattern": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "*",
+      "title": "Searchpattern"
+    },
+    "simulationId": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Simulationid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "simulationId"
+  ],
+  "title": "ListParametersRequest",
+  "type": "object"
+}

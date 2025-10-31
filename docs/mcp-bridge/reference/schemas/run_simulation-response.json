@@ -1,0 +1,38 @@
+{
+  "properties": {
+    "attempts": {
+      "default": 0,
+      "title": "Attempts",
+      "type": "integer"
+    },
+    "jobId": {
+      "title": "Jobid",
+      "type": "string"
+    },
+    "maxRetries": {
+      "default": 0,
+      "title": "Maxretries",
+      "type": "integer"
+    },
+    "queuedAt": {
+      "title": "Queuedat",
+      "type": "number"
+    },
+    "status": {
+      "title": "Status",
+      "type": "string"
+    },
+    "timeoutSeconds": {
+      "title": "Timeoutseconds",
+      "type": "number"
+    }
+  },
+  "required": [
+    "jobId",
+    "status",
+    "queuedAt",
+    "timeoutSeconds"
+  ],
+  "title": "RunSimulationResponse",
+  "type": "object"
+}

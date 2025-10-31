@@ -39,14 +39,17 @@ environment variables, defaults, and notes.
 | `JOB_WORKER_THREADS` | `2` | Thread count for the in-process worker pool. |
 | `JOB_TIMEOUT_SECONDS` | `300` | Default job timeout (seconds). |
 | `JOB_MAX_RETRIES` | `0` | Automatic retry attempts for failed jobs. |
+| `JOB_RETENTION_SECONDS` | `604800` | Retention window (seconds) for completed job metadata and stored results; `0` disables purging. |
 
 ## Storage, population workloads, and audit
 
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `POPULATION_STORAGE_PATH` | `var/population-results` | Root directory for claim-check population artefacts. Relative paths resolve against the working directory. |
+| `POPULATION_RETENTION_SECONDS` | `604800` | Retention window (seconds) for population artefacts before automatic cleanup. |
 | `AUDIT_ENABLED` | `true` | Toggle immutable audit logging for tool invocations. |
 | `AUDIT_STORAGE_PATH` | `var/audit` | Directory for JSONL audit chain files (supports hash chaining). |
+| `AGENT_CHECKPOINTER_PATH` | `var/agent/checkpoints.sqlite` | SQLite database used by the LangGraph agent checkpointer to persist conversation state. |
 
 ## Authentication & authorisation
 
@@ -57,6 +60,10 @@ environment variables, defaults, and notes.
 | `AUTH_JWKS_URL` | unset | JWKS endpoint for public keys. |
 | `AUTH_JWKS_CACHE_SECONDS` | `900` | Cache TTL for JWKS responses. |
 | `AUTH_DEV_SECRET` | unset | HS256 secret for development tokens (see quickstart guides). |
+| `AUTH_RATE_LIMIT_PER_MINUTE` | `120` | Per-client request ceiling; exceeding the limit returns `429 Too Many Requests`. |
+| `AUTH_CLOCK_SKEW_SECONDS` | `60` | Allowed clock skew when validating `exp`, `iat`, and `nbf` claims. |
+| `AUTH_REPLAY_WINDOW_SECONDS` | `300` | Time window used to flag reused `jti` values (token replay protection). |
+| `AUTH_ALLOW_ANONYMOUS` | `false` | Permit anonymous access (development/testing only). |
 
 ## Testing & CI helpers
 

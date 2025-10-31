@@ -61,6 +61,11 @@ class AppConfig(BaseModel):
     job_max_retries: int = Field(
         default=0, ge=0, description="Automatic retry attempts for failed jobs"
     )
+    job_retention_seconds: int = Field(
+        default=7 * 24 * 60 * 60,
+        ge=0,
+        description="Retention window (seconds) for completed job metadata and stored results",
+    )
     adapter_to_thread: bool = Field(
         default=True,
         description="Offload blocking adapter calls to background threads in API routes",
@@ -104,13 +109,26 @@ class AppConfig(BaseModel):
     celery_task_eager_propagates: bool = Field(
         default=True, description="Propagate exceptions when tasks run eagerly"
     )
+    celery_task_store_eager_result: bool = Field(
+        default=False,
+        description="Persist results when Celery runs tasks eagerly (required for tests)",
+    )
     population_storage_path: str = Field(
         default="var/population-results",
         description="Filesystem path for persisted population simulation chunks",
     )
+    population_retention_seconds: int = Field(
+        default=7 * 24 * 60 * 60,
+        ge=0,
+        description="Retention window (seconds) for population simulation artefacts",
+    )
     snapshot_storage_path: str = Field(
         default="var/snapshots",
         description="Filesystem path for persisted simulation baseline snapshots",
+    )
+    agent_checkpointer_path: str = Field(
+        default="var/agent/checkpoints.sqlite",
+        description="Filesystem path for the persistent LangGraph agent checkpointer",
     )
     audit_enabled: bool = Field(default=True, description="Enable immutable audit trail")
     audit_storage_path: str = Field(
@@ -148,6 +166,25 @@ class AppConfig(BaseModel):
     auth_jwks_url: Optional[str] = Field(default=None, description="JWKS endpoint for token validation")
     auth_jwks_cache_seconds: int = Field(default=900, ge=60, description="JWKS cache TTL in seconds")
     auth_dev_secret: Optional[str] = Field(default=None, description="Shared secret for HS256 dev tokens")
+    auth_rate_limit_per_minute: int = Field(
+        default=120,
+        ge=0,
+        description="Maximum authenticated requests per minute per client IP (0 disables limiting)",
+    )
+    auth_clock_skew_seconds: int = Field(
+        default=60,
+        ge=0,
+        description="Allowed clock skew (seconds) when validating token timestamps",
+    )
+    auth_replay_window_seconds: int = Field(
+        default=300,
+        ge=0,
+        description="Replay protection window applied to tokens with jti claims",
+    )
+    auth_allow_anonymous: bool = Field(
+        default=False,
+        description="Permit anonymous access (development/testing only)",
+    )
 
     @field_validator("log_level")
     @classmethod
@@ -176,6 +213,16 @@ class AppConfig(BaseModel):
             if env not in {"development", "local"}:
                 raise ValueError("AUTH_DEV_SECRET may only be set in development environments")
         return value
+
+    @field_validator("auth_allow_anonymous")
+    @classmethod
+    def _validate_allow_anonymous(cls, value: bool, info) -> bool:
+        enabled = bool(value)
+        if enabled:
+            env = (info.data or {}).get("environment", "development")
+            if str(env).lower() not in {"development", "local"}:
+                raise ValueError("AUTH_ALLOW_ANONYMOUS may only be enabled in development environments")
+        return enabled
 
     @field_validator("job_backend")
     @classmethod
@@ -299,9 +346,21 @@ class AppConfig(BaseModel):
                     "CELERY_TASK_EAGER_PROPAGATES",
                     cls.model_fields["celery_task_eager_propagates"].default,
                 ),
+                "celery_task_store_eager_result": cls._env_to_bool(
+                    "CELERY_TASK_STORE_EAGER_RESULT",
+                    cls.model_fields["celery_task_store_eager_result"].default,
+                ),
                 "population_storage_path": os.getenv(
                     "POPULATION_STORAGE_PATH",
                     cls.model_fields["population_storage_path"].default,
+                ),
+                "snapshot_storage_path": os.getenv(
+                    "SNAPSHOT_STORAGE_PATH",
+                    cls.model_fields["snapshot_storage_path"].default,
+                ),
+                "agent_checkpointer_path": os.getenv(
+                    "AGENT_CHECKPOINTER_PATH",
+                    cls.model_fields["agent_checkpointer_path"].default,
                 ),
                 "audit_enabled": cls._env_to_bool(
                     "AUDIT_ENABLED",
@@ -339,6 +398,22 @@ class AppConfig(BaseModel):
                     cls.model_fields["auth_jwks_cache_seconds"].default,
                 ),
                 "auth_dev_secret": os.getenv("AUTH_DEV_SECRET"),
+                "auth_rate_limit_per_minute": cls._env_to_int(
+                    "AUTH_RATE_LIMIT_PER_MINUTE",
+                    cls.model_fields["auth_rate_limit_per_minute"].default,
+                ),
+                "auth_clock_skew_seconds": cls._env_to_int(
+                    "AUTH_CLOCK_SKEW_SECONDS",
+                    cls.model_fields["auth_clock_skew_seconds"].default,
+                ),
+                "auth_replay_window_seconds": cls._env_to_int(
+                    "AUTH_REPLAY_WINDOW_SECONDS",
+                    cls.model_fields["auth_replay_window_seconds"].default,
+                ),
+                "auth_allow_anonymous": cls._env_to_bool(
+                    "AUTH_ALLOW_ANONYMOUS",
+                    cls.model_fields["auth_allow_anonymous"].default,
+                ),
             }
         except ValueError as exc:
             raise ConfigError(str(exc)) from exc

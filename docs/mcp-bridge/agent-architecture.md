@@ -44,9 +44,11 @@ as a `TypedDict` or Pydantic model) contains:
 | `confirmation_prompt` | `Optional[str]` | Render-ready summary describing the pending critical action. |
 | `retry_counts` | `Dict[str, int]` | Per-tool retry counters used by the execution node to enforce backoff. |
 
-Persistence requirement: the compiled graph must enable a checkpointer (initially
-`InMemorySaver`, with a path to upgrade). Without a checkpointer the
-human-in-the-loop interrupt mechanism cannot resume execution.
+Persistence requirement: the compiled graph must enable a checkpointer. The
+runtime now defaults to a SQLite-backed saver located at
+`AGENT_CHECKPOINTER_PATH` so confirmation interrupts survive API restarts. Tests
+may override the path with `:memory:` or omit it entirely to use the in-process
+memory saver.
 
 ## 4. Node Inventory and Responsibilities
 
@@ -64,7 +66,7 @@ human-in-the-loop interrupt mechanism cannot resume execution.
 1. Planner selects a critical action and sets `pending_tool_call` with tool name,
    arguments, and justification.
 2. Selection node routes to confirmation if the tool is in
-   `CRITICAL_TOOLS = {"set_parameter_value", "run_simulation", "load_simulation"}`.
+   `CRITICAL_TOOLS = {"load_simulation", "set_parameter_value", "run_simulation", "run_population_simulation"}`.
 3. Confirmation node pauses via `interrupt()` and the host renders a structured
    message, e.g.:
 
@@ -106,7 +108,8 @@ Approve? (yes/no)
 ## 8. Implementation Guidance
 
 1. **Scaffolding**: instantiate `StateGraph(AgentState)`, register nodes, and
-   compile with `InMemorySaver()` to enable interrupts.
+   compile with the configured checkpointer (`AGENT_CHECKPOINTER_PATH` by
+   default) so that interrupts survive process restarts.
 2. **Conditional edges**: implement `route_after_selection` and
    `route_after_confirmation` helpers to dictate transitions and honour the
    safety protocol.
@@ -125,7 +128,8 @@ Approve? (yes/no)
 
 ## 9. Open Questions & Future Work
 
-- Persist the checkpointer to Redis/Postgres for durability across restarts.
+- Evaluate Redis/Postgres-backed checkpoint stores if higher fan-out or active
+  / active deployments require it.
 - Extend `AgentState` with richer plan metadata to support multi-step batch
   operations (sensitivity analysis, population runs).
 - Integrate LangSmith tracing for production monitoring of the agent graph.

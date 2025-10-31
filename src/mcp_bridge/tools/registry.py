@@ -12,6 +12,11 @@ from mcp.tools.calculate_pk_parameters import (
     CalculatePkParametersResponse,
     calculate_pk_parameters,
 )
+from mcp.tools.cancel_job import (
+    CancelJobRequest,
+    CancelJobResponse,
+    cancel_job,
+)
 from mcp.tools.get_job_status import (
     GetJobStatusRequest,
     GetJobStatusResponse,
@@ -181,6 +186,15 @@ def get_tool_registry() -> Dict[str, ToolDescriptor]:
             handler=get_population_results,
             dependencies=("adapter",),
             roles=_standard_roles("viewer", "operator", "admin"),
+        ),
+        "cancel_job": ToolDescriptor(
+            name="cancel_job",
+            description="Request cancellation of a queued or running asynchronous job.",
+            request_model=CancelJobRequest,
+            response_model=CancelJobResponse,
+            handler=cancel_job,
+            dependencies=("job_service",),
+            roles=_standard_roles("operator", "admin"),
         ),
         "run_sensitivity_analysis": ToolDescriptor(
             name="run_sensitivity_analysis",

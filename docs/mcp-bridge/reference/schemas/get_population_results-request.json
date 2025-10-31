@@ -1,0 +1,14 @@
+{
+  "properties": {
+    "resultsId": {
+      "minLength": 1,
+      "title": "Resultsid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "resultsId"
+  ],
+  "title": "GetPopulationResultsRequest",
+  "type": "object"
+}

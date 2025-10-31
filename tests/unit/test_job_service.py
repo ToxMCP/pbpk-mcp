@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import threading
 import time
 
@@ -10,6 +11,7 @@ import pytest
 from mcp_bridge.adapter.errors import AdapterError, AdapterErrorCode
 from mcp_bridge.adapter.schema import SimulationResult
 from mcp_bridge.services.job_service import JobService, JobStatus
+from mcp_bridge.storage.population_store import PopulationResultStore
 
 
 def make_result(simulation_id: str, results_id: str) -> SimulationResult:
@@ -129,5 +131,42 @@ def test_job_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
         record = service.wait_for_completion(job.job_id, timeout=1.0)
         assert record.status is JobStatus.TIMEOUT
         assert record.error is not None
+    finally:
+        service.shutdown()
+
+
+def test_retention_policy_prunes_jobs_and_population(tmp_path) -> None:
+    population_store = PopulationResultStore(tmp_path / "population")
+    service = JobService(
+        max_workers=1,
+        default_timeout=5.0,
+        max_retries=0,
+        population_store=population_store,
+        population_retention_seconds=0.1,
+        retention_seconds=0.1,
+    )
+    try:
+        adapter = SuccessfulAdapter()
+        job = service.submit_simulation_job(adapter, "retention-sim")
+        record = service.wait_for_completion(job.job_id, timeout=2.0)
+        assert record.status is JobStatus.SUCCEEDED
+
+        registry_record = service._registry.get(job.job_id)
+        assert registry_record is not None
+        stale_timestamp = time.time() - 3600
+        registry_record.finished_at = stale_timestamp
+        service._registry.upsert(registry_record)
+        with service._lock:
+            service._jobs[job.job_id].finished_at = stale_timestamp
+
+        stored_chunk = population_store.store_json_chunk("pop-old", "chunk-1", {"values": [1]})
+        os.utime(stored_chunk.path.parent, (stale_timestamp, stale_timestamp))
+        os.utime(stored_chunk.path, (stale_timestamp, stale_timestamp))
+
+        service._apply_retention_policy()
+
+        with pytest.raises(KeyError):
+            service.get_job(job.job_id)
+        assert not (stored_chunk.path.parent.exists())
     finally:
         service.shutdown()

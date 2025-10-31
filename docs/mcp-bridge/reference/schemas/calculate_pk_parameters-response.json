@@ -1,0 +1,89 @@
+{
+  "$defs": {
+    "PkMetricGroup": {
+      "properties": {
+        "auc": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Auc"
+        },
+        "cmax": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cmax"
+        },
+        "parameter": {
+          "title": "Parameter",
+          "type": "string"
+        },
+        "tmax": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tmax"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        }
+      },
+      "required": [
+        "parameter"
+      ],
+      "title": "PkMetricGroup",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "metrics": {
+      "items": {
+        "$ref": "#/$defs/PkMetricGroup"
+      },
+      "title": "Metrics",
+      "type": "array"
+    },
+    "resultsId": {
+      "title": "Resultsid",
+      "type": "string"
+    },
+    "simulationId": {
+      "title": "Simulationid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "resultsId",
+    "simulationId",
+    "metrics"
+  ],
+  "title": "CalculatePkParametersResponse",
+  "type": "object"
+}

@@ -16,11 +16,16 @@ celery_app = Celery("mcp_bridge")
 def configure_celery(config: AppConfig) -> Celery:
     """Configure the Celery application using runtime configuration."""
 
+    store_eager = bool(getattr(config, "celery_task_store_eager_result", False))
+    if config.celery_task_always_eager:
+        store_eager = True
+
     celery_app.conf.update(
         broker_url=config.celery_broker_url,
         result_backend=config.celery_result_backend,
         task_always_eager=config.celery_task_always_eager,
         task_eager_propagates=config.celery_task_eager_propagates,
+        task_store_eager_result=store_eager,
         timezone="UTC",
         task_serializer="json",
         accept_content=["json"],

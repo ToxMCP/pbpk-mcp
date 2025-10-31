@@ -6,7 +6,7 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import datetime, timezone
-from typing import Any, AsyncGenerator, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
@@ -20,6 +20,18 @@ from mcp.tools.calculate_pk_parameters import (
 )
 from mcp.tools.calculate_pk_parameters import (
     calculate_pk_parameters as execute_calculate_pk_parameters,
+)
+from mcp.tools.cancel_job import (
+    CancelJobRequest as ToolCancelJobRequest,
+)
+from mcp.tools.cancel_job import (
+    CancelJobResponse as ToolCancelJobResponse,
+)
+from mcp.tools.cancel_job import (
+    CancelJobValidationError,
+)
+from mcp.tools.cancel_job import (
+    cancel_job as execute_cancel_job,
 )
 from mcp.tools.get_job_status import (
     GetJobStatusRequest as ToolGetJobStatusRequest,
@@ -113,6 +125,7 @@ from ..storage.population_store import (
 )
 from ..storage.snapshot_store import SimulationSnapshotStore
 from ..services.snapshot_service import capture_snapshot, restore_snapshot
+from ..security import require_confirmation
 from ..security.auth import AuthContext, require_roles
 from ..util.concurrency import maybe_to_thread
 
@@ -419,6 +432,7 @@ async def load_simulation(
     adapter: OspsuiteAdapter = Depends(get_adapter),
     _auth: AuthContext = Depends(require_roles("operator", "admin")),
 ) -> LoadSimulationResponse:
+    require_confirmation(request)
     try:
         tool_payload = ToolLoadSimulationRequest.model_validate(payload.model_dump(by_alias=True))
         session_store = request.app.state.session_registry
@@ -631,10 +645,11 @@ async def get_parameter_value(
 @router.post("/set_parameter_value", response_model=ParameterValueResponse)
 async def set_parameter_value(
     payload: SetParameterValueRequest,
-    request: Request,
+   request: Request,
     adapter: OspsuiteAdapter = Depends(get_adapter),
     _auth: AuthContext = Depends(require_roles("operator", "admin")),
 ) -> ParameterValueResponse:
+    require_confirmation(request)
     try:
         tool_payload = ToolSetParameterValueRequest.model_validate(
             payload.model_dump(by_alias=True)
@@ -714,6 +729,7 @@ async def run_simulation(
     job_service: BaseJobService = Depends(get_job_service),
     _auth: AuthContext = Depends(require_roles("operator", "admin")),
 ) -> RunSimulationResponse:
+    require_confirmation(request)
     try:
         tool_payload = ToolRunSimulationRequest.model_validate(payload.model_dump(by_alias=True))
         job_response = await maybe_to_thread(
@@ -770,6 +786,7 @@ async def run_population_simulation(
     job_service: BaseJobService = Depends(get_job_service),
     _auth: AuthContext = Depends(require_roles("operator", "admin")),
 ) -> RunPopulationSimulationResponse:
+    require_confirmation(request)
     try:
         tool_payload = ToolRunPopulationSimulationRequest.model_validate(
             payload.model_dump(by_alias=True)
@@ -1131,13 +1148,14 @@ async def cancel_job(
     _auth: AuthContext = Depends(require_roles("operator", "admin")),
 ) -> CancelJobResponse:
     try:
-        record = job_service.cancel_job(payload.job_id)
-    except KeyError as exc:
+        tool_payload = ToolCancelJobRequest.model_validate(payload.model_dump(by_alias=True))
+        tool_response: ToolCancelJobResponse = execute_cancel_job(job_service, tool_payload)
+    except CancelJobValidationError as exc:
         raise http_error(
             status_code=status.HTTP_404_NOT_FOUND,
-            message="Job not found",
+            message=str(exc),
             code=ErrorCode.NOT_FOUND,
             field="jobId",
             hint="Ensure the job is still queued or running before cancelling.",
         ) from exc
-    return CancelJobResponse(jobId=record.job_id, status=record.status.value)
+    return CancelJobResponse.model_validate(tool_response.model_dump(by_alias=True))

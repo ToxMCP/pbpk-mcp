@@ -7,7 +7,8 @@
 - Leverage existing asynchronous job service and PK metric tooling to produce summary tables.
 - Provide an extensible core that the LangGraph agent can call as a single step.
 
-For a hands-on walkthrough, start with `getting-started/quickstart-cli.md`.
+For a hands-on walkthrough, start with `getting-started/quickstart-cli.md` and
+the executable notebook at `../notebooks/sensitivity_analysis_walkthrough.ipynb`.
 
 ## Inputs
 

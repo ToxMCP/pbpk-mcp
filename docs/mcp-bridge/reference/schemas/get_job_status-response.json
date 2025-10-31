@@ -1,0 +1,132 @@
+{
+  "$defs": {
+    "JobStatusPayload": {
+      "properties": {
+        "attempts": {
+          "default": 0,
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "cancelRequested": {
+          "default": false,
+          "title": "Cancelrequested",
+          "type": "boolean"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        },
+        "externalJobId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Externaljobid"
+        },
+        "finishedAt": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finishedat"
+        },
+        "jobId": {
+          "title": "Jobid",
+          "type": "string"
+        },
+        "maxRetries": {
+          "default": 0,
+          "title": "Maxretries",
+          "type": "integer"
+        },
+        "resultId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resultid"
+        },
+        "startedAt": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Startedat"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "submittedAt": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Submittedat"
+        },
+        "timeoutSeconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeoutseconds"
+        }
+      },
+      "required": [
+        "jobId",
+        "status"
+      ],
+      "title": "JobStatusPayload",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "job": {
+      "$ref": "#/$defs/JobStatusPayload"
+    }
+  },
+  "required": [
+    "job"
+  ],
+  "title": "GetJobStatusResponse",
+  "type": "object"
+}

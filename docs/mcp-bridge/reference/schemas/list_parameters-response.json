@@ -1,0 +1,16 @@
+{
+  "properties": {
+    "parameters": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Parameters",
+      "type": "array"
+    }
+  },
+  "required": [
+    "parameters"
+  ],
+  "title": "ListParametersResponse",
+  "type": "object"
+}

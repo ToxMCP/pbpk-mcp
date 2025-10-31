@@ -1,0 +1,29 @@
+{
+  "description": "Payload accepted by the ``calculate_pk_parameters`` tool.",
+  "properties": {
+    "outputPath": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Outputpath"
+    },
+    "resultsId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Resultsid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "resultsId"
+  ],
+  "title": "CalculatePkParametersRequest",
+  "type": "object"
+}

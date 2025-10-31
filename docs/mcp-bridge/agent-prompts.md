@@ -35,7 +35,8 @@ Used by the planner node to create or update the plan.
 Given the conversation so far and the available tools, produce the next action.
 - Provide a short justification.
 - Specify `tool_name` and `arguments` if a tool is needed.
-- Set `critical = true` if the tool is load_simulation, set_parameter_value, or run_simulation.
+- Set `critical = true` if the tool is `load_simulation`, `set_parameter_value`,
+  `run_simulation`, or `run_population_simulation`.
 - If no tool call is needed, respond with `tool_name = null` and summarise the response.
 
 Conversation history:
@@ -97,4 +98,17 @@ Snapshots stored in `tests/data/agent_dialogues/` covering:
 1. **Happy Path** – Load model, adjust weight to 2.5 kg with approval, run simulation, report job.
 2. **Ambiguous Request** – User says "make it heavier"; agent requests units; user confirms; agent proceeds only after explicit approval.
 3. **Denied Confirmation** – User rejects parameter change; agent acknowledges and offers alternatives without executing.
+
+## 6. Confirmation Contract
+
+- Mark any call to `load_simulation`, `set_parameter_value`, `run_simulation`,
+  `run_population_simulation`, or `run_sensitivity_analysis` with
+  `critical = true` in the MCP plan payload.
+- When invoking `/mcp/call_tool`, hosts **must** include that `critical: true`
+  flag and send the HTTP header `X-MCP-Confirm: true` to attest the user has
+  explicitly approved the action.
+- Direct REST calls to the same tools (e.g. `/load_simulation`) require the
+  `X-MCP-Confirm: true` header as well. Requests without the confirmation hint
+  fail with `428 Precondition Required` and the `ConfirmationRequired` error
+  code.
 ```

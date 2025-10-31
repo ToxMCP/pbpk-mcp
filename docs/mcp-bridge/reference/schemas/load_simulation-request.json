@@ -1,0 +1,28 @@
+{
+  "description": "Payload accepted by the ``load_simulation`` MCP tool.",
+  "properties": {
+    "filePath": {
+      "title": "Filepath",
+      "type": "string"
+    },
+    "simulationId": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Simulationid"
+    }
+  },
+  "required": [
+    "filePath"
+  ],
+  "title": "LoadSimulationRequest",
+  "type": "object"
+}

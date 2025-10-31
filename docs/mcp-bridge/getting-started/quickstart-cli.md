@@ -91,6 +91,7 @@ BASE_URL="http://127.0.0.1:8000"
 curl -s -X POST "$BASE_URL/load_simulation" \
   -H "Content-Type: application/json" \
   -H "$AUTH_HEADER" \
+  -H "X-MCP-Confirm: true" \
   -d '{
         "filePath": "tests/fixtures/demo.pkml",
         "simulationId": "cli-demo"
@@ -130,6 +131,7 @@ Update the weight to `72 kg`:
 curl -s -X POST "$BASE_URL/set_parameter_value" \
   -H "Content-Type: application/json" \
   -H "$AUTH_HEADER" \
+  -H "X-MCP-Confirm: true" \
   -d '{
         "simulationId": "cli-demo",
         "parameterPath": "Organism|Weight",
@@ -159,6 +161,7 @@ Submit the job:
 RUN_RESPONSE=$(curl -s -X POST "$BASE_URL/run_simulation" \
   -H "Content-Type: application/json" \
   -H "$AUTH_HEADER" \
+  -H "X-MCP-Confirm: true" \
   -d '{
         "simulationId": "cli-demo",
         "runId": "cli-demo-run-1"

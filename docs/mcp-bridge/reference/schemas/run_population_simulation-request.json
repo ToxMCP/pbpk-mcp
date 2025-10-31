@@ -1,0 +1,127 @@
+{
+  "$defs": {
+    "CohortSpec": {
+      "properties": {
+        "covariates": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Covariates",
+          "type": "array"
+        },
+        "sampling": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sampling"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        },
+        "size": {
+          "minimum": 1,
+          "title": "Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "size"
+      ],
+      "title": "CohortSpec",
+      "type": "object"
+    },
+    "OutputsSpec": {
+      "properties": {
+        "aggregates": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Aggregates",
+          "type": "array"
+        },
+        "timeSeries": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Timeseries",
+          "type": "array"
+        }
+      },
+      "title": "OutputsSpec",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "cohort": {
+      "$ref": "#/$defs/CohortSpec"
+    },
+    "maxRetries": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Maxretries"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    },
+    "modelPath": {
+      "title": "Modelpath",
+      "type": "string"
+    },
+    "outputs": {
+      "$ref": "#/$defs/OutputsSpec"
+    },
+    "simulationId": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Simulationid",
+      "type": "string"
+    },
+    "timeoutSeconds": {
+      "anyOf": [
+        {
+          "minimum": 1.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timeoutseconds"
+    }
+  },
+  "required": [
+    "modelPath",
+    "simulationId",
+    "cohort"
+  ],
+  "title": "RunPopulationSimulationRequest",
+  "type": "object"
+}

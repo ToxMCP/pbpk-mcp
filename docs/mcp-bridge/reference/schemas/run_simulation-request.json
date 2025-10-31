@@ -1,0 +1,56 @@
+{
+  "description": "Payload accepted by the ``run_simulation`` MCP tool.",
+  "properties": {
+    "maxRetries": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Maxretries"
+    },
+    "runId": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Runid"
+    },
+    "simulationId": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Simulationid",
+      "type": "string"
+    },
+    "timeoutSeconds": {
+      "anyOf": [
+        {
+          "minimum": 1.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timeoutseconds"
+    }
+  },
+  "required": [
+    "simulationId"
+  ],
+  "title": "RunSimulationRequest",
+  "type": "object"
+}

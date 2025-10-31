@@ -1,0 +1,141 @@
+{
+  "$defs": {
+    "SensitivityParameterModel": {
+      "description": "Input schema describing a single sensitivity parameter.",
+      "properties": {
+        "baselineValue": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baselinevalue"
+        },
+        "bounds": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bounds"
+        },
+        "deltas": {
+          "items": {
+            "type": "number"
+          },
+          "minItems": 1,
+          "title": "Deltas",
+          "type": "array"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        }
+      },
+      "required": [
+        "path",
+        "deltas"
+      ],
+      "title": "SensitivityParameterModel",
+      "type": "object"
+    }
+  },
+  "description": "Payload accepted by the ``run_sensitivity_analysis`` MCP tool.",
+  "properties": {
+    "includeBaseline": {
+      "default": true,
+      "title": "Includebaseline",
+      "type": "boolean"
+    },
+    "jobTimeoutSeconds": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Jobtimeoutseconds"
+    },
+    "metrics": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Metrics"
+    },
+    "modelPath": {
+      "title": "Modelpath",
+      "type": "string"
+    },
+    "parameters": {
+      "items": {
+        "$ref": "#/$defs/SensitivityParameterModel"
+      },
+      "minItems": 1,
+      "title": "Parameters",
+      "type": "array"
+    },
+    "pollIntervalSeconds": {
+      "default": 0.25,
+      "maximum": 5.0,
+      "minimum": 0.05,
+      "title": "Pollintervalseconds",
+      "type": "number"
+    },
+    "simulationId": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Simulationid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "modelPath",
+    "simulationId",
+    "parameters"
+  ],
+  "title": "RunSensitivityAnalysisRequest",
+  "type": "object"
+}

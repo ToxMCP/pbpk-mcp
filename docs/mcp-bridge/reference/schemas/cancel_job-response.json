@@ -1,0 +1,19 @@
+{
+  "description": "Response returned after issuing a cancellation request.",
+  "properties": {
+    "jobId": {
+      "title": "Jobid",
+      "type": "string"
+    },
+    "status": {
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "jobId",
+    "status"
+  ],
+  "title": "CancelJobResponse",
+  "type": "object"
+}

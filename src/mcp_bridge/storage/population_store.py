@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, BinaryIO
@@ -98,6 +100,25 @@ class PopulationResultStore:
             if path.is_file():
                 path.unlink(missing_ok=True)
         directory.rmdir()
+
+    def purge_expired(self, retention_seconds: float) -> int:
+        """Delete result directories older than the retention window."""
+
+        if retention_seconds <= 0:
+            return 0
+        cutoff = time.time() - float(retention_seconds)
+        removed = 0
+        for child in self._base_path.iterdir():
+            if not child.is_dir():
+                continue
+            try:
+                mtime = child.stat().st_mtime
+            except FileNotFoundError:  # pragma: no cover - race with concurrent cleanup
+                continue
+            if mtime < cutoff:
+                shutil.rmtree(child, ignore_errors=True)
+                removed += 1
+        return removed
 
     def _chunk_path(self, results_id: str, chunk_id: str) -> Path:
         return self._base_path / results_id / f"{chunk_id}.json"

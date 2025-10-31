@@ -18,6 +18,7 @@ def _client(tmp_path: Path) -> TestClient:
         job_registry_path=str(tmp_path / "jobs.db"),
         population_storage_path=str(tmp_path / "population"),
         audit_storage_path=str(tmp_path / "audit"),
+        auth_allow_anonymous=True,
     )
     app = create_app(config=config)
     return TestClient(app)
@@ -43,6 +44,7 @@ def test_sample_suggestions_and_apply(tmp_path: Path) -> None:
             "filePath": str(model_path),
             "simulationId": "console-test-sim",
         },
+        headers={"X-MCP-Confirm": "true"},
     )
     assert load_resp.status_code == 201
 

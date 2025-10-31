@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, ValidationError
 from prometheus_client import Counter, Gauge, Histogram
 
 from mcp.tools.calculate_pk_parameters import CalculatePkParametersValidationError
+from mcp.tools.cancel_job import CancelJobValidationError
 from mcp.tools.get_job_status import GetJobStatusValidationError
 from mcp.tools.get_parameter_value import GetParameterValueValidationError
 from mcp.tools.list_parameters import ListParametersValidationError
@@ -32,6 +33,7 @@ from ..errors import (
     http_error,
     validation_exception,
 )
+from ..security import require_confirmation
 from ..security.auth import AuthContext, auth_dependency
 from ..services.job_service import BaseJobService, IdempotencyConflictError
 from ..storage.population_store import PopulationResultStore
@@ -89,6 +91,7 @@ class CallToolRequest(BaseModel):
     tool: str
     arguments: Dict[str, Any] = Field(default_factory=dict)
     idempotency_key: Optional[str] = Field(default=None, alias="idempotencyKey")
+    critical: Optional[bool] = None
 
 
 class CallToolResponse(BaseModel):
@@ -379,6 +382,15 @@ def _handle_tool_specific_errors(tool: str, exc: Exception) -> DetailedHTTPExcep
             hint=hint,
         )
 
+    if tool == "cancel_job" and isinstance(exc, CancelJobValidationError):
+        return http_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            message=message,
+            code=ErrorCode.NOT_FOUND,
+            field="jobId",
+            hint="Verify the job is still queued or running before cancelling.",
+        )
+
     if isinstance(exc, AdapterError):
         return adapter_error_to_http(exc)
 
@@ -386,7 +398,7 @@ def _handle_tool_specific_errors(tool: str, exc: Exception) -> DetailedHTTPExcep
 
 
 @router.get("/list_tools", response_model=ListToolsResponse)
-def list_tools() -> ListToolsResponse:
+def list_tools(_auth: AuthContext = Depends(auth_dependency)) -> ListToolsResponse:
     registry = get_tool_registry()
     items = []
     for descriptor in registry.values():
@@ -423,6 +435,16 @@ async def call_tool(
         )
 
     _ensure_tool_roles(descriptor, auth)
+
+    if descriptor.requires_confirmation:
+        if request.critical is not True:
+            raise http_error(
+                status_code=status.HTTP_428_PRECONDITION_REQUIRED,
+                message="Critical tools must be invoked with critical=true.",
+                code=ErrorCode.CONFIRMATION_REQUIRED,
+                hint="Set 'critical': true in the request payload before calling this tool.",
+            )
+        require_confirmation(http_request)
 
     try:
         tool_request = descriptor.request_model.model_validate(request.arguments)

@@ -1,0 +1,16 @@
+{
+  "description": "Payload for the ``cancel_job`` MCP tool.",
+  "properties": {
+    "jobId": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Jobid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "jobId"
+  ],
+  "title": "CancelJobRequest",
+  "type": "object"
+}

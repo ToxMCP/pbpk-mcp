@@ -14,6 +14,8 @@ MCP tool calls through an explicit confirm-before-execute workflow.
    | `JOB_WORKER_THREADS` | Number of in-process worker threads available to the async job service. |
    | `JOB_TIMEOUT_SECONDS` / `JOB_MAX_RETRIES` | Default timeout and retry budget for submitted jobs. |
    | `POPULATION_STORAGE_PATH` | Filesystem root for chunked population-simulation artefacts. |
+   | `JOB_RETENTION_SECONDS` | How long (seconds) job metadata/result handles are retained before purge. |
+   | `AGENT_CHECKPOINTER_PATH` | Location of the persistent LangGraph checkpoint SQLite file (`var/agent/checkpoints.sqlite` by default). |
 
 2. **Instantiate components** – both the FastAPI app and the CLI demo
    (`run_agent.py`) follow the same pattern:
@@ -30,8 +32,13 @@ MCP tool calls through an explicit confirm-before-execute workflow.
        adapter=adapter,
        job_service=job_service,
        max_tool_retries=app_config.job_max_retries,
-   )
+       checkpointer_path=app_config.agent_checkpointer_path,
+    )
    ```
+
+   The workflow automatically seeds a persistent SQLite checkpointer. Rotating
+   or backing up `var/agent/checkpoints.sqlite` preserves thread history and
+   pending confirmations if the process restarts.
 
 3. **Threading model** – every independent conversation must supply a stable
    `thread_id` via `config = {"configurable": {"thread_id": <id>}}`. Reuse the

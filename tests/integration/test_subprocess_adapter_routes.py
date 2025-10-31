@@ -181,6 +181,7 @@ def test_missing_file_logs_redacted_message(
         response = client.post(
             "/load_simulation",
             json={"filePath": request_path, "simulationId": "missing"},
+            headers={"X-MCP-Confirm": "true"},
         )
 
     assert response.status_code == 400
@@ -202,7 +203,9 @@ def test_invalid_parameter_logs_context(
     simulation_id = "demo-param"
     assert (
         client.post(
-            "/load_simulation", json={"filePath": str(pkml), "simulationId": simulation_id}
+            "/load_simulation",
+            json={"filePath": str(pkml), "simulationId": simulation_id},
+            headers={"X-MCP-Confirm": "true"},
         ).status_code
         == 201
     )
@@ -227,7 +230,9 @@ def test_unit_mismatch_returns_bad_request(
     simulation_id = "demo-unit"
     assert (
         client.post(
-            "/load_simulation", json={"filePath": str(pkml), "simulationId": simulation_id}
+            "/load_simulation",
+            json={"filePath": str(pkml), "simulationId": simulation_id},
+            headers={"X-MCP-Confirm": "true"},
         ).status_code
         == 201
     )
@@ -241,6 +246,7 @@ def test_unit_mismatch_returns_bad_request(
                 "value": 2.0,
                 "unit": "mg",
             },
+            headers={"X-MCP-Confirm": "true"},
         )
 
     assert response.status_code == 400
@@ -255,12 +261,18 @@ def test_large_result_payload(
     simulation_id = "demo-results"
     assert (
         client.post(
-            "/load_simulation", json={"filePath": str(pkml), "simulationId": simulation_id}
+            "/load_simulation",
+            json={"filePath": str(pkml), "simulationId": simulation_id},
+            headers={"X-MCP-Confirm": "true"},
         ).status_code
         == 201
     )
 
-    run_resp = client.post("/run_simulation", json={"simulationId": simulation_id})
+    run_resp = client.post(
+        "/run_simulation",
+        json={"simulationId": simulation_id},
+        headers={"X-MCP-Confirm": "true"},
+    )
     assert run_resp.status_code == 202
     job_id = run_resp.json()["jobId"]
 
