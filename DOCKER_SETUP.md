@@ -8,17 +8,21 @@
 
 ## Step 1: Build the Docker Image
 
-Run this command in your terminal (it will take 5-10 minutes):
+Run this command in your terminal (it will take 5-10 minutes). On Apple Silicon
+hosts, add `--platform=linux/amd64` so the image can install the x86_64-only
+ospsuite runtime:
 
 ```bash
 docker build --pull --tag mcp-bridge .
+# Apple Silicon (M-series):
+# docker build --pull --platform=linux/amd64 --tag mcp-bridge .
 ```
 
 **What this does:**
 - Pulls Python 3.11 slim base image
-- Installs R and all required dependencies
-- Installs .NET 8 SDK (required by ospsuite's rSharp dependency)
-- Installs ospsuite R package from GitHub
+- Installs R and system dependencies required by ospsuite
+- Installs the .NET 8 runtime (required by the ospsuite `rClr` bridge)
+- Installs the ospsuite R package from GitHub when running on x86_64
 - Installs Python MCP bridge application
 - Sets up environment variables for R and ospsuite
 
@@ -109,15 +113,18 @@ If you see errors about .NET not being found during the build:
 
 ### Build Fails with ospsuite Error
 If ospsuite installation fails:
+- Confirm you are building for the `linux/amd64` platform (required by ospsuite)
 - Check the GitHub repository is accessible
-- Verify .NET is properly installed in the container
-- Look for specific error messages about missing dependencies
+- Ensure the .NET runtime package installed successfully during the build
+- Look for specific error messages about missing dependencies in the build logs
 
 ### Container Starts but Health Check Fails
 If the container runs but `/health` shows `available: false`:
-- Check the R_PATH and R_HOME environment variables
-- Verify ospsuite was installed in the correct location
+- Check the `R_PATH`, `R_HOME`, and `OSPSUITE_LIBS` environment variables
+- Verify ospsuite was installed in `/usr/local/lib/R/site-library`
 - Look at container logs: `docker logs <container-id>`
+- On Apple Silicon without `--platform=linux/amd64`, the image falls back to the
+  in-memory adapter. Rebuild for amd64 to enable the real ospsuite backend.
 
 ### Can't Connect to Container
 If you can't reach http://localhost:8000:

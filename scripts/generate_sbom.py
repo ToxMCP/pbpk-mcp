@@ -13,7 +13,13 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from importlib import metadata
+from pathlib import Path
 from typing import Iterable, List, Optional
+
+try:  # Python 3.11+
+    import tomllib  # type: ignore[attr-defined]
+except ModuleNotFoundError:  # pragma: no cover - fallback for 3.10
+    import tomli as tomllib  # type: ignore[no-redef]
 
 
 def _extract_license(dist: metadata.Distribution) -> Optional[str]:
@@ -58,11 +64,29 @@ def _discover_components() -> Iterable[Component]:
         yield Component(name=name, version=version, license=license_name)
 
 
+def _project_component() -> Optional[Component]:
+    pyproject = Path("pyproject.toml")
+    if not pyproject.exists():
+        return None
+    data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    project = data.get("project") or {}
+    name = project.get("name")
+    version = project.get("version")
+    license_info = project.get("license") or {}
+    license_text = None
+    if isinstance(license_info, dict):
+        license_text = license_info.get("text") or license_info.get("file")
+    if not name or not version:
+        return None
+    return Component(name=name, version=version, license=license_text)
+
+
 def generate_sbom() -> dict[str, object]:
-    components = sorted(
-        (component.to_dict() for component in _discover_components()),
-        key=lambda item: item["name"],
-    )
+    components = [component.to_dict() for component in _discover_components()]
+    components.sort(key=lambda item: item["name"])
+    project_component = _project_component()
+    if project_component is not None:
+        components.insert(0, project_component.to_dict())
     timestamp = datetime.now(timezone.utc).isoformat()
     return {
         "bomFormat": "CycloneDX",

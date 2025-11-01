@@ -11,13 +11,13 @@ requires-python = ">=3.9"
 authors = [
   { name = "PBPK MCP Team" }
 ]
-license = { text = "Proprietary" }
+license = { text = "Apache-2.0" }
 keywords = ["mcp", "ospsuite", "fastapi"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
   "Framework :: FastAPI",
-  "License :: Other/Proprietary License"
+  "License :: OSI Approved :: Apache Software License"
 ]
 dependencies = [
   "fastapi>=0.110,<1.0",

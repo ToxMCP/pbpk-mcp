@@ -272,3 +272,8 @@ curl http://localhost:8000/health
 ```
 
 The image runs as a non-root user and includes an embedded health check that polls `/health` every 30 seconds.
+
+## License
+
+This project is distributed under the [Apache License 2.0](LICENSE). Contributions are accepted under
+the same terms.
