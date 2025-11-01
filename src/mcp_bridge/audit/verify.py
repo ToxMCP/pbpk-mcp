@@ -26,7 +26,9 @@ class VerificationResult:
     message: str = ""
 
 
-def iter_event_files(base_dir: Path, *, start: Optional[str] = None, end: Optional[str] = None) -> Iterable[Path]:
+def iter_event_files(
+    base_dir: Path, *, start: Optional[str] = None, end: Optional[str] = None
+) -> Iterable[Path]:
     base = Path(base_dir)
     for path in sorted(base.rglob("*.jsonl")):
         rel = path.relative_to(base)
@@ -38,7 +40,9 @@ def iter_event_files(base_dir: Path, *, start: Optional[str] = None, end: Option
         yield path
 
 
-def verify_audit_trail(base_dir: Path | str, *, start: str | None = None, end: str | None = None) -> VerificationResult:
+def verify_audit_trail(
+    base_dir: Path | str, *, start: str | None = None, end: str | None = None
+) -> VerificationResult:
     base = Path(base_dir)
     if not base.exists():
         return VerificationResult(ok=False, checked_events=0, message="Audit directory not found")
@@ -198,7 +202,8 @@ def verify_s3_audit_trail(
                     ok=False,
                     checked_events=checked,
                     message=(
-                        "Hash chain mismatch in s3://%s/%s line %d: expected previousHash %s, found %s"
+                        "Hash chain mismatch in s3://%s/%s line %d: "
+                        "expected previousHash %s, found %s"
                         % (bucket, key, line_number, previous_hash, expected_prev)
                     ),
                 )
@@ -245,8 +250,12 @@ def _main() -> None:  # pragma: no cover - CLI helper
     parser.add_argument("path", help="Audit storage location (directory or s3://bucket/prefix)")
     parser.add_argument("--start", help="Optional start date key (YYYY/MM/DD)")
     parser.add_argument("--end", help="Optional end date key (YYYY/MM/DD)")
-    parser.add_argument("--object-lock-mode", help="Expected S3 Object Lock mode (governance/compliance)")
-    parser.add_argument("--object-lock-days", type=int, help="Expected retention days for S3 Object Lock")
+    parser.add_argument(
+        "--object-lock-mode", help="Expected S3 Object Lock mode (governance/compliance)"
+    )
+    parser.add_argument(
+        "--object-lock-days", type=int, help="Expected retention days for S3 Object Lock"
+    )
     parser.add_argument("--region", help="S3 region override")
     args = parser.parse_args()
 

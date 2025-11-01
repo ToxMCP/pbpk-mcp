@@ -221,8 +221,7 @@ def _run_case(
 
         actual_by_parameter = {metric.parameter: metric for metric in response.metrics}
         sample_metrics = {
-            parameter: _metric_payload(metric)
-            for parameter, metric in actual_by_parameter.items()
+            parameter: _metric_payload(metric) for parameter, metric in actual_by_parameter.items()
         }
 
         for parameter, expected_metric in expected_by_parameter.items():
@@ -319,7 +318,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--output",
         type=Path,
         default=None,
-        help="Optional path to write the parity results JSON (default: reports/parity/<timestamp>.json)",
+        help=(
+            "Optional path to write the parity results JSON "
+            "(default: reports/parity/<timestamp>.json)"
+        ),
     )
     parser.add_argument(
         "--no-write",

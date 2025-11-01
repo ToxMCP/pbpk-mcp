@@ -40,7 +40,7 @@ class GetPopulationResultsResponse(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @classmethod
-    def from_result(cls, result: PopulationSimulationResult) -> "GetPopulationResultsResponse":
+    def from_result(cls, result: PopulationSimulationResult) -> GetPopulationResultsResponse:
         return cls(
             resultsId=result.results_id,
             simulationId=result.simulation_id,

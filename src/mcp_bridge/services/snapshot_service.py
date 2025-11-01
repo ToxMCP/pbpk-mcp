@@ -8,7 +8,9 @@ from ..adapter.interface import OspsuiteAdapter
 from ..storage.snapshot_store import SimulationSnapshotStore, SnapshotRecord
 
 
-def apply_snapshot_state(adapter: OspsuiteAdapter, state: Dict[str, Any], fallback_simulation_id: str) -> None:
+def apply_snapshot_state(
+    adapter: OspsuiteAdapter, state: Dict[str, Any], fallback_simulation_id: str
+) -> None:
     simulation_id = str(state.get("simulationId") or fallback_simulation_id)
     file_path = state.get("filePath")
     if file_path:

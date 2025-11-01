@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-import pytest
-
 from mcp_bridge.audit.jobs import run_scheduled_verification
 from mcp_bridge.audit.trail import AuditTrail
 from mcp_bridge.config import AppConfig

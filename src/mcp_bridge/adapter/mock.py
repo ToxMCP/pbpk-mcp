@@ -7,20 +7,20 @@ import uuid
 from collections import defaultdict
 from typing import Optional
 
+from ..storage.population_store import PopulationResultStore, StoredChunk
 from .environment import REnvironmentStatus, detect_environment
 from .errors import AdapterError, AdapterErrorCode
 from .interface import AdapterConfig, OspsuiteAdapter
 from .schema import (
     ParameterSummary,
     ParameterValue,
+    PopulationChunkHandle,
     PopulationSimulationConfig,
     PopulationSimulationResult,
-    PopulationChunkHandle,
     SimulationHandle,
     SimulationResult,
     SimulationResultSeries,
 )
-from ..storage.population_store import PopulationResultStore, StoredChunk
 
 
 class InMemoryAdapter(OspsuiteAdapter):
@@ -178,7 +178,9 @@ class InMemoryAdapter(OspsuiteAdapter):
         }
         stored_chunk: StoredChunk | None = None
         if self.population_store is not None:
-            stored_chunk = self.population_store.store_json_chunk(results_id, chunk_id, chunk_payload)
+            stored_chunk = self.population_store.store_json_chunk(
+                results_id, chunk_id, chunk_payload
+            )
         self._population_chunks[chunk_id] = chunk_payload
 
         chunk_handles = [

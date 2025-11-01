@@ -13,33 +13,34 @@ from concurrent.futures import TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Protocol
 
 if TYPE_CHECKING:  # pragma: no cover
     from mcp_bridge.audit import AuditTrail
 
 try:
     from celery.result import AsyncResult
+
     from .celery_app import (
         configure_celery,
         run_population_simulation_task,
         run_simulation_task,
     )
+
     CELERY_AVAILABLE = True
 except ModuleNotFoundError:  # pragma: no cover - optional dependency
     AsyncResult = None  # type: ignore[assignment]
     configure_celery = run_population_simulation_task = run_simulation_task = None  # type: ignore
     CELERY_AVAILABLE = False
 
-from ..config import AppConfig, ConfigError
 from mcp_bridge.adapter.errors import AdapterError
 from mcp_bridge.adapter.schema import (
     PopulationSimulationConfig,
-    PopulationSimulationResult,
-    SimulationResult,
 )
-from ..storage.population_store import PopulationResultStore
+
+from ..config import AppConfig, ConfigError
 from ..logging import get_logger
+from ..storage.population_store import PopulationResultStore
 
 logger = get_logger(__name__)
 
@@ -122,9 +123,7 @@ class DurableJobRegistry:
             """
         )
         try:
-            self._conn.execute(
-                "ALTER TABLE job_records ADD COLUMN external_job_id TEXT"
-            )
+            self._conn.execute("ALTER TABLE job_records ADD COLUMN external_job_id TEXT")
         except sqlite3.OperationalError:
             pass
         self._conn.commit()
@@ -370,9 +369,12 @@ class DurableJobRegistry:
             timeout_seconds=float(timeout_seconds),
             cancel_requested=bool(cancel_requested),
             idempotency_key=str(idempotency_key) if idempotency_key else None,
-            idempotency_fingerprint=str(idempotency_fingerprint) if idempotency_fingerprint else None,
+            idempotency_fingerprint=(
+                str(idempotency_fingerprint) if idempotency_fingerprint else None
+            ),
             external_job_id=str(external_job_id) if external_job_id else None,
         )
+
 
 def _to_iso(timestamp: Optional[float]) -> Optional[str]:
     if timestamp is None:
@@ -412,14 +414,11 @@ class IdempotencyConflictError(RuntimeError):
 class JobScheduler(Protocol):
     """Coordinator that controls when jobs are dispatched to the local executor."""
 
-    def attach(self, job_service: "JobService") -> None:
-        ...
+    def attach(self, job_service: JobService) -> None: ...
 
-    def submit(self, record: JobRecord, start_execution: Callable[[], None]) -> None:
-        ...
+    def submit(self, record: JobRecord, start_execution: Callable[[], None]) -> None: ...
 
-    def shutdown(self) -> None:
-        ...
+    def shutdown(self) -> None: ...
 
 
 class BaseJobService(Protocol):
@@ -433,8 +432,7 @@ class BaseJobService(Protocol):
         max_retries: Optional[int] = None,
         idempotency_key: Optional[str] = None,
         idempotency_fingerprint: Optional[str] = None,
-    ) -> JobRecord:
-        ...
+    ) -> JobRecord: ...
 
     def submit_population_job(
         self,
@@ -445,23 +443,17 @@ class BaseJobService(Protocol):
         max_retries: Optional[int] = None,
         idempotency_key: Optional[str] = None,
         idempotency_fingerprint: Optional[str] = None,
-    ) -> JobRecord:
-        ...
+    ) -> JobRecord: ...
 
-    def cancel_job(self, job_id: str) -> JobRecord:
-        ...
+    def cancel_job(self, job_id: str) -> JobRecord: ...
 
-    def get_job(self, job_id: str) -> JobRecord:
-        ...
+    def get_job(self, job_id: str) -> JobRecord: ...
 
-    def wait_for_completion(self, job_id: str, timeout: Optional[float] = None) -> JobRecord:
-        ...
+    def wait_for_completion(self, job_id: str, timeout: Optional[float] = None) -> JobRecord: ...
 
-    def shutdown(self) -> None:
-        ...
+    def shutdown(self) -> None: ...
 
-    def get_stored_simulation_result(self, result_id: str) -> Optional[dict[str, Any]]:
-        ...
+    def get_stored_simulation_result(self, result_id: str) -> Optional[dict[str, Any]]: ...
 
 
 class JobService:
@@ -473,7 +465,7 @@ class JobService:
         max_workers: int = 2,
         default_timeout: float = 300.0,
         max_retries: int = 0,
-        audit_trail: "AuditTrail | None" = None,
+        audit_trail: AuditTrail | None = None,
         registry: DurableJobRegistry | None = None,
         scheduler: JobScheduler | None = None,
         retention_seconds: float | None = None,
@@ -490,7 +482,7 @@ class JobService:
         if registry is None:
             temp_dir = tempfile.TemporaryDirectory(prefix="mcp-jobs-")
             self._registry_owner = temp_dir
-            registry = DurableJobRegistry(str((Path(temp_dir.name) / "registry.db")))
+            registry = DurableJobRegistry(str(Path(temp_dir.name) / "registry.db"))
         self._registry = registry
         self._scheduler = scheduler
         self._retention_seconds = float(retention_seconds) if retention_seconds else 0.0
@@ -621,7 +613,8 @@ class JobService:
             if existing:
                 if existing.idempotency_fingerprint != idempotency_fingerprint:
                     raise IdempotencyConflictError(
-                        "Idempotency key reused with different payload for run_population_simulation"
+                        "Idempotency key reused with different payload for "
+                        "run_population_simulation"
                     )
                 with self._lock:
                     self._jobs.setdefault(existing.job_id, existing)
@@ -665,7 +658,9 @@ class JobService:
                 record.finished_at = time.time()
                 record._future = None
             self._persist_record(record)
-            _emit_job_event(self._audit, record, f"job.{record.job_type}.cancelled", reason="future_cancelled")
+            _emit_job_event(
+                self._audit, record, f"job.{record.job_type}.cancelled", reason="future_cancelled"
+            )
             self._apply_retention_policy()
         return record
 
@@ -977,7 +972,7 @@ class CeleryJobService:
         self,
         *,
         config: AppConfig,
-        audit_trail: "AuditTrail | None" = None,
+        audit_trail: AuditTrail | None = None,
         registry: DurableJobRegistry,
         population_store: PopulationResultStore | None = None,
     ) -> None:
@@ -1124,7 +1119,8 @@ class CeleryJobService:
             if existing:
                 if existing.idempotency_fingerprint != idempotency_fingerprint:
                     raise IdempotencyConflictError(
-                        "Idempotency key reused with different payload for run_population_simulation"
+                        "Idempotency key reused with different payload for "
+                        "run_population_simulation"
                     )
                 with self._lock:
                     self._jobs.setdefault(existing.job_id, existing)
@@ -1208,7 +1204,12 @@ class CeleryJobService:
 
         if new_status == JobStatus.RUNNING and record.started_at is None:
             record.started_at = now
-        if new_status in {JobStatus.SUCCEEDED, JobStatus.FAILED, JobStatus.CANCELLED, JobStatus.TIMEOUT}:
+        if new_status in {
+            JobStatus.SUCCEEDED,
+            JobStatus.FAILED,
+            JobStatus.CANCELLED,
+            JobStatus.TIMEOUT,
+        }:
             if record.finished_at is None:
                 record.finished_at = now
 
@@ -1324,7 +1325,7 @@ class StubSlurmScheduler(JobScheduler):
 def create_job_service(
     *,
     config: AppConfig,
-    audit_trail: "AuditTrail | None",
+    audit_trail: AuditTrail | None,
     population_store: PopulationResultStore,
 ) -> BaseJobService:
     registry = DurableJobRegistry(config.job_registry_path)

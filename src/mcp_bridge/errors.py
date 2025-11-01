@@ -12,8 +12,8 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 from starlette.responses import JSONResponse
 
-from .constants import CORRELATION_HEADER
 from .adapter.errors import AdapterError, AdapterErrorCode
+from .constants import CORRELATION_HEADER
 
 _SENSITIVE_PATTERN = re.compile(r"(?i)(token|secret|password|key)=([^\s]+)")
 

@@ -51,7 +51,7 @@ class SimpleJWT:
         except ValueError as exc:
             raise JWTError("Invalid token format") from exc
 
-        signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+        signing_input = f"{header_b64}.{payload_b64}".encode()
         expected_signature = hmac.new(key.encode("utf-8"), signing_input, hashlib.sha256).digest()
         actual_signature = _b64decode(signature_b64)
         if not hmac.compare_digest(expected_signature, actual_signature):

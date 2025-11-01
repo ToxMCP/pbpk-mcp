@@ -8,7 +8,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -70,15 +70,6 @@ from mcp.tools.load_simulation import (
 from mcp.tools.load_simulation import (
     load_simulation as execute_load_simulation,
 )
-from mcp.tools.run_simulation import (
-    RunSimulationRequest as ToolRunSimulationRequest,
-)
-from mcp.tools.run_simulation import (
-    RunSimulationValidationError,
-)
-from mcp.tools.run_simulation import (
-    run_simulation as execute_run_simulation,
-)
 from mcp.tools.run_population_simulation import (
     RunPopulationSimulationRequest as ToolRunPopulationSimulationRequest,
 )
@@ -87,6 +78,15 @@ from mcp.tools.run_population_simulation import (
 )
 from mcp.tools.run_population_simulation import (
     run_population_simulation as execute_run_population_simulation,
+)
+from mcp.tools.run_simulation import (
+    RunSimulationRequest as ToolRunSimulationRequest,
+)
+from mcp.tools.run_simulation import (
+    RunSimulationValidationError,
+)
+from mcp.tools.run_simulation import (
+    run_simulation as execute_run_simulation,
 )
 from mcp.tools.set_parameter_value import (
     SetParameterValueRequest as ToolSetParameterValueRequest,
@@ -98,7 +98,7 @@ from mcp.tools.set_parameter_value import (
     set_parameter_value as execute_set_parameter_value,
 )
 
-from ..adapter import AdapterError, AdapterErrorCode, OspsuiteAdapter
+from ..adapter import AdapterError, OspsuiteAdapter
 from ..adapter.schema import SimulationResult
 from ..audit import AuditTrail
 from ..dependencies import (
@@ -110,23 +110,22 @@ from ..dependencies import (
     get_snapshot_store,
 )
 from ..errors import (
-    DetailedHTTPException,
     ErrorCode,
     adapter_error_to_http,
     http_error,
     validation_exception,
 )
 from ..logging import get_logger
+from ..security import require_confirmation
+from ..security.auth import AuthContext, require_roles
 from ..services.job_service import BaseJobService, JobStatus
+from ..services.snapshot_service import capture_snapshot, restore_snapshot
 from ..storage.population_store import (
     PopulationChunkNotFoundError,
     PopulationResultStore,
     PopulationStorageError,
 )
 from ..storage.snapshot_store import SimulationSnapshotStore
-from ..services.snapshot_service import capture_snapshot, restore_snapshot
-from ..security import require_confirmation
-from ..security.auth import AuthContext, require_roles
 from ..util.concurrency import maybe_to_thread
 
 router = APIRouter()
@@ -401,7 +400,9 @@ async def _job_event_stream(
 
     while True:
         record = job_service.get_job(job_id)
-        status_value = record.status.value if isinstance(record.status, JobStatus) else str(record.status)
+        status_value = (
+            record.status.value if isinstance(record.status, JobStatus) else str(record.status)
+        )
         payload = {
             "jobId": record.job_id,
             "status": status_value,
@@ -415,7 +416,7 @@ async def _job_event_stream(
             "error": record.error,
         }
         if status_value != last_status:
-            yield f"data: {json.dumps(payload)}\n\n".encode("utf-8")
+            yield f"data: {json.dumps(payload)}\n\n".encode()
             last_status = status_value
 
         if status_value in terminal_statuses:
@@ -546,7 +547,11 @@ async def list_parameters(
             if status_code == status.HTTP_404_NOT_FOUND
             else "Use a glob pattern like '*Weight*' without newline characters."
         )
-        code = ErrorCode.NOT_FOUND if status_code == status.HTTP_404_NOT_FOUND else ErrorCode.INVALID_INPUT
+        code = (
+            ErrorCode.NOT_FOUND
+            if status_code == status.HTTP_404_NOT_FOUND
+            else ErrorCode.INVALID_INPUT
+        )
         raise http_error(
             status_code=status_code,
             message=detail,
@@ -613,7 +618,11 @@ async def get_parameter_value(
             if status_code == status.HTTP_404_NOT_FOUND
             else "Verify the parameter path uses '|' separators and valid characters."
         )
-        code = ErrorCode.NOT_FOUND if status_code == status.HTTP_404_NOT_FOUND else ErrorCode.INVALID_INPUT
+        code = (
+            ErrorCode.NOT_FOUND
+            if status_code == status.HTTP_404_NOT_FOUND
+            else ErrorCode.INVALID_INPUT
+        )
         raise http_error(
             status_code=status_code,
             message=detail,
@@ -645,7 +654,7 @@ async def get_parameter_value(
 @router.post("/set_parameter_value", response_model=ParameterValueResponse)
 async def set_parameter_value(
     payload: SetParameterValueRequest,
-   request: Request,
+    request: Request,
     adapter: OspsuiteAdapter = Depends(get_adapter),
     _auth: AuthContext = Depends(require_roles("operator", "admin")),
 ) -> ParameterValueResponse:
@@ -690,7 +699,11 @@ async def set_parameter_value(
             if status_code == status.HTTP_404_NOT_FOUND
             else "Verify the value is numeric and within acceptable bounds."
         )
-        code = ErrorCode.NOT_FOUND if status_code == status.HTTP_404_NOT_FOUND else ErrorCode.INVALID_INPUT
+        code = (
+            ErrorCode.NOT_FOUND
+            if status_code == status.HTTP_404_NOT_FOUND
+            else ErrorCode.INVALID_INPUT
+        )
         raise http_error(
             status_code=status_code,
             message=detail,
@@ -1051,7 +1064,10 @@ async def get_population_results(
         generatedAt=results.generated_at,
         cohort=results.cohort.model_dump(),
         aggregates=results.aggregates,
-        chunks=[PopulationChunkModel.model_validate(chunk.model_dump()) for chunk in results.chunk_handles],
+        chunks=[
+            PopulationChunkModel.model_validate(chunk.model_dump())
+            for chunk in results.chunk_handles
+        ],
         metadata=results.metadata,
     )
 
@@ -1088,9 +1104,7 @@ async def download_population_chunk(
     stream = store.open_chunk(metadata.results_id, metadata.chunk_id)
     response = StreamingResponse(stream, media_type=metadata.content_type)
     response.headers["Content-Length"] = str(metadata.size_bytes)
-    response.headers["Content-Disposition"] = (
-        f"attachment; filename=\"{metadata.chunk_id}.json\""
-    )
+    response.headers["Content-Disposition"] = f'attachment; filename="{metadata.chunk_id}.json"'
     return response
 
 

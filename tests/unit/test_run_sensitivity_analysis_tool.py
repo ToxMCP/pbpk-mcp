@@ -10,7 +10,6 @@ from mcp.tools.run_sensitivity_analysis import (
 from mcp_bridge.adapter.mock import InMemoryAdapter
 from mcp_bridge.services.job_service import JobService
 
-
 FIXTURE_MODEL = Path("tests/fixtures/demo.pkml").resolve()
 
 

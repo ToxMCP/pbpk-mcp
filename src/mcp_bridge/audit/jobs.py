@@ -71,7 +71,8 @@ def _main() -> None:  # pragma: no cover - CLI helper
     config = load_config()
     outcome = run_scheduled_verification(config)
     message = (
-        f"Audit verification window {outcome.start_key}..{outcome.end_key}: {outcome.result.message}"
+        "Audit verification window "
+        f"{outcome.start_key}..{outcome.end_key}: {outcome.result.message}"
     )
     if outcome.result.ok:
         print(message)

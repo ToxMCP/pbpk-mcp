@@ -7,7 +7,6 @@ from fastapi.testclient import TestClient
 from mcp_bridge.app import create_app
 from mcp_bridge.config import AppConfig
 
-
 REFERENCE_MODELS = Path("reference/models/standard")
 
 

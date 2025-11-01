@@ -11,7 +11,6 @@ from fastapi.testclient import TestClient
 from mcp_bridge.app import create_app
 from mcp_bridge.config import AppConfig
 
-
 REFERENCE_MODEL = Path("reference/models/standard/midazolam_adult.pkml")
 EXPECTED_METRICS = {
     "cmax": 1.0,
@@ -122,11 +121,13 @@ def test_end_to_end_reference_midazolam(tmp_path):
             for key in EXPECTED_METRICS
         }
         for metric, delta in deltas.items():
-            assert delta <= TOLERANCE_PERCENT, (
-                f"{metric} deviates {delta:.4f}% (allowed {TOLERANCE_PERCENT}%)"
-            )
+            assert (
+                delta <= TOLERANCE_PERCENT
+            ), f"{metric} deviates {delta:.4f}% (allowed {TOLERANCE_PERCENT}%)"
 
-        artefact_path = artefact_dir / f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-midazolam.json"
+        artefact_path = (
+            artefact_dir / f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-midazolam.json"
+        )
         artefact = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "simulationId": simulation_id,

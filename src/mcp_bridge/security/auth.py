@@ -5,7 +5,7 @@ from __future__ import annotations
 import threading
 import time
 from dataclasses import dataclass
-from typing import Callable, Iterable, List, Optional
+from typing import Callable, List, Optional
 
 import httpx
 from fastapi import Depends, HTTPException, Request, status
@@ -39,6 +39,7 @@ _TOKEN_CACHE_LOCK = threading.Lock()
 
 _RATE_LIMIT_CACHE: dict[str, tuple[float, int]] = {}
 _RATE_LIMIT_LOCK = threading.Lock()
+
 
 class JWTValidator:
     def __init__(self, config: AppConfig) -> None:
@@ -129,7 +130,9 @@ def _register_token(payload: dict, config: AppConfig) -> None:
     if not jti:
         return
     now = time.time()
-    expiry = float(payload.get("exp", now)) + float(getattr(config, "auth_replay_window_seconds", 0.0))
+    expiry = float(payload.get("exp", now)) + float(
+        getattr(config, "auth_replay_window_seconds", 0.0)
+    )
     with _TOKEN_CACHE_LOCK:
         _purge_token_cache(now)
         if jti in _TOKEN_REPLAY_CACHE and _TOKEN_REPLAY_CACHE[jti] > now:

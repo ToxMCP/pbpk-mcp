@@ -20,28 +20,26 @@ from mcp.tools.set_parameter_value import (
     set_parameter_value as execute_set_parameter_value,
 )
 
-from ..adapter import AdapterError
-from ..literature.actions import LiteratureActionMapper
-from ..literature.models import ActionSuggestion, LiteratureExtractionResult
-from ..literature.pipeline import LiteratureIngestionPipeline, PipelineDependencies
-from ..literature.extractors import (
-    HeuristicTextExtractor,
-    PdfExtractKitLayoutExtractor,
-    SimpleFigureExtractor,
-    SimpleTableExtractor,
-)
+from ..adapter import AdapterError, OspsuiteAdapter
+from ..audit import AuditTrail
 from ..dependencies import (
     get_adapter,
     get_audit_trail,
     get_job_service,
     should_offload_adapter,
 )
-from ..audit import AuditTrail
 from ..errors import adapter_error_to_http
+from ..literature.actions import LiteratureActionMapper
+from ..literature.extractors import (
+    HeuristicTextExtractor,
+    PdfExtractKitLayoutExtractor,
+    SimpleFigureExtractor,
+    SimpleTableExtractor,
+)
+from ..literature.models import ActionSuggestion, LiteratureExtractionResult
+from ..literature.pipeline import LiteratureIngestionPipeline, PipelineDependencies
 from ..services.job_service import BaseJobService
-from ..adapter import OspsuiteAdapter
 from ..util.concurrency import maybe_to_thread
-
 
 router = APIRouter(prefix="/console/api", tags=["console"])
 
@@ -66,10 +64,14 @@ class DecisionRequest(BaseModel):
     simulationId: Optional[str] = None
 
 
-def _run_action_mapper(simulation_id: str, extraction: LiteratureExtractionResult) -> SuggestionResponse:
+def _run_action_mapper(
+    simulation_id: str, extraction: LiteratureExtractionResult
+) -> SuggestionResponse:
     mapper = LiteratureActionMapper(simulation_id=simulation_id)
     suggestions = mapper.map_actions(extraction)
-    return SuggestionResponse(simulationId=simulation_id, suggestions=suggestions, extraction=extraction)
+    return SuggestionResponse(
+        simulationId=simulation_id, suggestions=suggestions, extraction=extraction
+    )
 
 
 @router.post("/suggestions", response_model=SuggestionResponse)
@@ -81,7 +83,10 @@ def _load_manifest() -> dict[str, Any]:
     if not GOLDSET_MANIFEST.is_file():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Gold-set manifest not found. Run scripts/build_goldset.py to generate sample data.",
+            detail=(
+                "Gold-set manifest not found. Run scripts/build_goldset.py "
+                "to generate sample data."
+            ),
         )
     try:
         return json.loads(GOLDSET_MANIFEST.read_text(encoding="utf-8"))
@@ -122,9 +127,13 @@ async def sample_suggestions(
     simulation_id: str = Query("sample-sim", alias="simulationId"),
 ) -> SuggestionResponse:
     manifest = _load_manifest()
-    entry = next((item for item in manifest.get("entries", []) if item.get("sourceId") == source_id), None)
+    entry = next(
+        (item for item in manifest.get("entries", []) if item.get("sourceId") == source_id), None
+    )
     if entry is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Sample {source_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Sample {source_id} not found"
+        )
 
     pdf_path = GOLDSET_ROOT / entry["pdf"]
     if not pdf_path.is_file():

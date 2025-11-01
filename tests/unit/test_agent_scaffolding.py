@@ -12,9 +12,9 @@ from mcp_bridge.adapter.interface import AdapterConfig, OspsuiteAdapter
 from mcp_bridge.adapter.schema import (
     ParameterSummary,
     ParameterValue,
+    PopulationChunkHandle,
     PopulationSimulationConfig,
     PopulationSimulationResult,
-    PopulationChunkHandle,
     SimulationHandle,
     SimulationResult,
 )

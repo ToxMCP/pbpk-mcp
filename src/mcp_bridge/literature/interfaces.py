@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Iterable, Protocol
 
-from .models import ExtractionRecord, LiteratureExtractionResult, DocumentComponent
+from .models import DocumentComponent, ExtractionRecord, LiteratureExtractionResult
 
 
 class LayoutExtractor(Protocol):
@@ -17,27 +17,22 @@ class LayoutExtractor(Protocol):
 class TextExtractor(Protocol):
     """Processes text components and yields structured records."""
 
-    def extract(self, component: DocumentComponent) -> ExtractionRecord:
-        ...
+    def extract(self, component: DocumentComponent) -> ExtractionRecord: ...
 
 
 class TableExtractor(Protocol):
     """Processes table components and yields structured records."""
 
-    def extract(self, component: DocumentComponent) -> ExtractionRecord:
-        ...
+    def extract(self, component: DocumentComponent) -> ExtractionRecord: ...
 
 
 class FigureExtractor(Protocol):
     """Processes figure/plot components and yields structured records."""
 
-    def extract(self, component: DocumentComponent) -> ExtractionRecord:
-        ...
+    def extract(self, component: DocumentComponent) -> ExtractionRecord: ...
 
 
 class PostProcessor(Protocol):
     """Optional hook to post-process the aggregated extraction result."""
 
-    def refine(self, result: LiteratureExtractionResult) -> LiteratureExtractionResult:
-        ...
-
+    def refine(self, result: LiteratureExtractionResult) -> LiteratureExtractionResult: ...

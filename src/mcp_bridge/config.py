@@ -95,11 +95,11 @@ class AppConfig(BaseModel):
     hpc_stub_queue_delay_seconds: float = Field(
         default=0.5,
         ge=0.0,
-        description="Artificial queue delay applied by the HPC stub scheduler before dispatching jobs",
+        description=(
+            "Artificial queue delay applied by the HPC stub scheduler before dispatching jobs"
+        ),
     )
-    celery_broker_url: Optional[str] = Field(
-        default="memory://", description="Celery broker URL"
-    )
+    celery_broker_url: Optional[str] = Field(default="memory://", description="Celery broker URL")
     celery_result_backend: Optional[str] = Field(
         default="cache+memory://", description="Celery result backend URL"
     )
@@ -141,9 +141,7 @@ class AppConfig(BaseModel):
     audit_s3_bucket: Optional[str] = Field(
         default=None, description="S3 bucket for audit trail when AUDIT_STORAGE_BACKEND=s3"
     )
-    audit_s3_prefix: str = Field(
-        default="audit-trail", description="S3 prefix for audit objects"
-    )
+    audit_s3_prefix: str = Field(default="audit-trail", description="S3 prefix for audit objects")
     audit_s3_region: Optional[str] = Field(
         default=None, description="AWS region where the audit bucket resides"
     )
@@ -163,9 +161,15 @@ class AppConfig(BaseModel):
     )
     auth_issuer_url: Optional[str] = Field(default=None, description="OIDC issuer URL")
     auth_audience: Optional[str] = Field(default=None, description="Expected audience claim")
-    auth_jwks_url: Optional[str] = Field(default=None, description="JWKS endpoint for token validation")
-    auth_jwks_cache_seconds: int = Field(default=900, ge=60, description="JWKS cache TTL in seconds")
-    auth_dev_secret: Optional[str] = Field(default=None, description="Shared secret for HS256 dev tokens")
+    auth_jwks_url: Optional[str] = Field(
+        default=None, description="JWKS endpoint for token validation"
+    )
+    auth_jwks_cache_seconds: int = Field(
+        default=900, ge=60, description="JWKS cache TTL in seconds"
+    )
+    auth_dev_secret: Optional[str] = Field(
+        default=None, description="Shared secret for HS256 dev tokens"
+    )
     auth_rate_limit_per_minute: int = Field(
         default=120,
         ge=0,
@@ -221,7 +225,9 @@ class AppConfig(BaseModel):
         if enabled:
             env = (info.data or {}).get("environment", "development")
             if str(env).lower() not in {"development", "local"}:
-                raise ValueError("AUTH_ALLOW_ANONYMOUS may only be enabled in development environments")
+                raise ValueError(
+                    "AUTH_ALLOW_ANONYMOUS may only be enabled in development environments"
+                )
         return enabled
 
     @field_validator("job_backend")

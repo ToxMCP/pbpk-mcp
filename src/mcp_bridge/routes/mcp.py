@@ -9,8 +9,8 @@ import time
 from typing import Any, Dict, Iterable, Optional
 
 from fastapi import APIRouter, Depends, Request, status
-from pydantic import BaseModel, Field, ValidationError
 from prometheus_client import Counter, Gauge, Histogram
+from pydantic import BaseModel, Field, ValidationError
 
 from mcp.tools.calculate_pk_parameters import CalculatePkParametersValidationError
 from mcp.tools.cancel_job import CancelJobValidationError
@@ -19,8 +19,8 @@ from mcp.tools.get_parameter_value import GetParameterValueValidationError
 from mcp.tools.list_parameters import ListParametersValidationError
 from mcp.tools.load_simulation import DuplicateSimulationError, LoadSimulationValidationError
 from mcp.tools.run_population_simulation import RunPopulationSimulationValidationError
-from mcp.tools.run_simulation import RunSimulationValidationError
 from mcp.tools.run_sensitivity_analysis import RunSensitivityAnalysisValidationError
+from mcp.tools.run_simulation import RunSimulationValidationError
 from mcp.tools.set_parameter_value import SetParameterValueValidationError
 
 from ..adapter import AdapterError
@@ -254,7 +254,9 @@ def _handle_tool_specific_errors(tool: str, exc: Exception) -> DetailedHTTPExcep
 
     if tool == "list_parameters" and isinstance(exc, ListParametersValidationError):
         status_code = (
-            status.HTTP_404_NOT_FOUND if "not found" in message.lower() else status.HTTP_400_BAD_REQUEST
+            status.HTTP_404_NOT_FOUND
+            if "not found" in message.lower()
+            else status.HTTP_400_BAD_REQUEST
         )
         field = "simulationId" if status_code == status.HTTP_404_NOT_FOUND else "searchPattern"
         hint = (
@@ -262,7 +264,11 @@ def _handle_tool_specific_errors(tool: str, exc: Exception) -> DetailedHTTPExcep
             if status_code == status.HTTP_404_NOT_FOUND
             else "Use a glob pattern like '*Weight*' without newline characters."
         )
-        code = ErrorCode.NOT_FOUND if status_code == status.HTTP_404_NOT_FOUND else ErrorCode.INVALID_INPUT
+        code = (
+            ErrorCode.NOT_FOUND
+            if status_code == status.HTTP_404_NOT_FOUND
+            else ErrorCode.INVALID_INPUT
+        )
         return http_error(
             status_code=status_code,
             message=message,
@@ -273,14 +279,20 @@ def _handle_tool_specific_errors(tool: str, exc: Exception) -> DetailedHTTPExcep
 
     if tool == "get_parameter_value" and isinstance(exc, GetParameterValueValidationError):
         status_code = (
-            status.HTTP_404_NOT_FOUND if "not found" in message.lower() else status.HTTP_400_BAD_REQUEST
+            status.HTTP_404_NOT_FOUND
+            if "not found" in message.lower()
+            else status.HTTP_400_BAD_REQUEST
         )
         hint = (
             "Confirm the parameter path exists in the loaded simulation."
             if status_code == status.HTTP_404_NOT_FOUND
             else "Verify the parameter path uses '|' separators and valid characters."
         )
-        code = ErrorCode.NOT_FOUND if status_code == status.HTTP_404_NOT_FOUND else ErrorCode.INVALID_INPUT
+        code = (
+            ErrorCode.NOT_FOUND
+            if status_code == status.HTTP_404_NOT_FOUND
+            else ErrorCode.INVALID_INPUT
+        )
         return http_error(
             status_code=status_code,
             message=message,
@@ -291,14 +303,20 @@ def _handle_tool_specific_errors(tool: str, exc: Exception) -> DetailedHTTPExcep
 
     if tool == "set_parameter_value" and isinstance(exc, SetParameterValueValidationError):
         status_code = (
-            status.HTTP_404_NOT_FOUND if "not found" in message.lower() else status.HTTP_400_BAD_REQUEST
+            status.HTTP_404_NOT_FOUND
+            if "not found" in message.lower()
+            else status.HTTP_400_BAD_REQUEST
         )
         hint = (
             "Load the simulation and ensure the parameter exists before updating."
             if status_code == status.HTTP_404_NOT_FOUND
             else "Verify the value is numeric and within acceptable bounds."
         )
-        code = ErrorCode.NOT_FOUND if status_code == status.HTTP_404_NOT_FOUND else ErrorCode.INVALID_INPUT
+        code = (
+            ErrorCode.NOT_FOUND
+            if status_code == status.HTTP_404_NOT_FOUND
+            else ErrorCode.INVALID_INPUT
+        )
         return http_error(
             status_code=status_code,
             message=message,
@@ -307,14 +325,21 @@ def _handle_tool_specific_errors(tool: str, exc: Exception) -> DetailedHTTPExcep
             hint=hint,
         )
 
-    if tool == "run_sensitivity_analysis" and isinstance(exc, RunSensitivityAnalysisValidationError):
-        field = "modelPath" if "path" in message.lower() or "file" in message.lower() else "parameters"
+    if tool == "run_sensitivity_analysis" and isinstance(
+        exc, RunSensitivityAnalysisValidationError
+    ):
+        field = (
+            "modelPath" if "path" in message.lower() or "file" in message.lower() else "parameters"
+        )
         return http_error(
             status_code=status.HTTP_400_BAD_REQUEST,
             message=message,
             code=ErrorCode.INVALID_INPUT,
             field=field,
-            hint="Confirm the model path is within MCP_MODEL_SEARCH_PATHS and each parameter includes at least one delta.",
+            hint=(
+                "Confirm the model path is within MCP_MODEL_SEARCH_PATHS and "
+                "each parameter includes at least one delta."
+            ),
         )
 
     if isinstance(exc, IdempotencyConflictError):
@@ -328,14 +353,20 @@ def _handle_tool_specific_errors(tool: str, exc: Exception) -> DetailedHTTPExcep
 
     if tool == "run_simulation" and isinstance(exc, RunSimulationValidationError):
         status_code = (
-            status.HTTP_404_NOT_FOUND if "not found" in message.lower() else status.HTTP_400_BAD_REQUEST
+            status.HTTP_404_NOT_FOUND
+            if "not found" in message.lower()
+            else status.HTTP_400_BAD_REQUEST
         )
         hint = (
             "Load the simulation before running it."
             if status_code == status.HTTP_404_NOT_FOUND
             else "Check the simulationId and optional runId parameters."
         )
-        code = ErrorCode.NOT_FOUND if status_code == status.HTTP_404_NOT_FOUND else ErrorCode.INVALID_INPUT
+        code = (
+            ErrorCode.NOT_FOUND
+            if status_code == status.HTTP_404_NOT_FOUND
+            else ErrorCode.INVALID_INPUT
+        )
         return http_error(
             status_code=status_code,
             message=message,
@@ -366,14 +397,20 @@ def _handle_tool_specific_errors(tool: str, exc: Exception) -> DetailedHTTPExcep
         exc, (RunPopulationSimulationValidationError, LoadSimulationValidationError)
     ):
         status_code = (
-            status.HTTP_404_NOT_FOUND if "not found" in message.lower() else status.HTTP_400_BAD_REQUEST
+            status.HTTP_404_NOT_FOUND
+            if "not found" in message.lower()
+            else status.HTTP_400_BAD_REQUEST
         )
         hint = (
             "Load the simulation and ensure cohort definitions are valid."
             if status_code == status.HTTP_404_NOT_FOUND
             else "Validate population configuration and model path inputs."
         )
-        code = ErrorCode.NOT_FOUND if status_code == status.HTTP_404_NOT_FOUND else ErrorCode.INVALID_INPUT
+        code = (
+            ErrorCode.NOT_FOUND
+            if status_code == status.HTTP_404_NOT_FOUND
+            else ErrorCode.INVALID_INPUT
+        )
         return http_error(
             status_code=status_code,
             message=message,
@@ -459,7 +496,10 @@ async def call_tool(
     call_kwargs = {name: dependency_map[name] for name in descriptor.dependencies}
     call_kwargs["payload"] = tool_request
 
-    if request.idempotency_key and descriptor.name in {"run_simulation", "run_population_simulation"}:
+    if request.idempotency_key and descriptor.name in {
+        "run_simulation",
+        "run_population_simulation",
+    }:
         call_kwargs["idempotency_key"] = request.idempotency_key
         call_kwargs["idempotency_fingerprint"] = _fingerprint_payload(tool_request)
 

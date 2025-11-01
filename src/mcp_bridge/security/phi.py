@@ -48,13 +48,13 @@ class PHIFilter:
                 if key in seen_ranges:
                     continue
                 seen_ranges.add(key)
-                findings.append(
-                    PHIFinding(type=name, value=match.group(), start=start, end=end)
-                )
+                findings.append(PHIFinding(type=name, value=match.group(), start=start, end=end))
         findings.sort(key=lambda finding: finding.start)
         return findings
 
-    def redact(self, text: str, *, label_format: str = "[REDACTED:{type}]") -> tuple[str, List[PHIFinding]]:
+    def redact(
+        self, text: str, *, label_format: str = "[REDACTED:{type}]"
+    ) -> tuple[str, List[PHIFinding]]:
         """Redact PHI occurrences and return the redacted text plus findings."""
 
         findings = self.detect(text)
@@ -66,7 +66,7 @@ class PHIFilter:
         for finding in findings:
             if finding.start < cursor:
                 continue  # overlapping match already handled
-            pieces.append(text[cursor:finding.start])
+            pieces.append(text[cursor : finding.start])
             pieces.append(label_format.format(type=finding.type))
             cursor = finding.end
         pieces.append(text[cursor:])

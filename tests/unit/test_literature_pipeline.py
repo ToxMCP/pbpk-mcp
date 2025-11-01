@@ -6,7 +6,12 @@ from typing import Iterable
 
 import pytest
 
-from mcp_bridge.literature.interfaces import FigureExtractor, LayoutExtractor, TableExtractor, TextExtractor
+from mcp_bridge.literature.interfaces import (
+    FigureExtractor,
+    LayoutExtractor,
+    TableExtractor,
+    TextExtractor,
+)
 from mcp_bridge.literature.models import (
     BoundingBox,
     ComponentType,

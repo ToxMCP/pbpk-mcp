@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import time
-
 from fastapi.testclient import TestClient
 
 from mcp_bridge.app import create_app

@@ -14,7 +14,6 @@ from mcp.session_registry import SessionRecord, SessionRegistry
 
 from ..adapter import AdapterError
 from ..adapter.interface import OspsuiteAdapter
-from ..adapter.schema import ParameterSummary
 from ..dependencies import get_adapter, get_session_registry
 from ..errors import DetailedHTTPException, ErrorCode, adapter_error_to_http, error_detail
 from ..util.concurrency import maybe_to_thread
@@ -120,7 +119,9 @@ def _http_error(
     hint: Optional[str] = None,
 ) -> DetailedHTTPException:
     details = [error_detail(issue=message, field=field, hint=hint)] if field or hint else []
-    return DetailedHTTPException(status_code=status_code, message=message, code=code, details=details)
+    return DetailedHTTPException(
+        status_code=status_code, message=message, code=code, details=details
+    )
 
 
 @router.get("/simulations", response_model=SimulationResourcePage)
@@ -252,7 +253,9 @@ async def list_parameter_resources(
             )
         )
         fingerprints.append(
-            f"{simulation_id}:{summary.path}:{summary.unit or ''}:{summary.display_name or ''}:{summary.category or ''}:{summary.is_editable}"
+            f"{simulation_id}:{summary.path}:{summary.unit or ''}:"
+            f"{summary.display_name or ''}:{summary.category or ''}:"
+            f"{summary.is_editable}"
         )
 
     etag = _weak_etag(fingerprints)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable, List, Mapping, Sequence
 
@@ -65,7 +65,9 @@ class PdfExtractKitLayoutExtractor(LayoutExtractor):
                     component_id=str(block.get("id") or f"page{page_number}-{len(components)}"),
                     page=page_number,
                     type=component_type,
-                    bbox=BoundingBox(x0=float(bbox[0]), y0=float(bbox[1]), x1=float(bbox[2]), y1=float(bbox[3])),
+                    bbox=BoundingBox(
+                        x0=float(bbox[0]), y0=float(bbox[1]), x1=float(bbox[2]), y1=float(bbox[3])
+                    ),
                     text=block.get("text") if isinstance(block.get("text"), str) else None,
                     metadata={k: v for k, v in block.items() if k not in {"bbox", "bounding_box"}},
                 )
@@ -78,7 +80,11 @@ class HeuristicTextExtractor(TextExtractor):
 
     def __init__(self) -> None:
         self._patterns: Sequence[tuple[re.Pattern[str], str, callable]] = (
-            (re.compile(r"weight\s+(?:is|=)\s*(\d+(?:\.\d+)?)\s*kg", re.I), "body_weight_kg", float),
+            (
+                re.compile(r"weight\s+(?:is|=)\s*(\d+(?:\.\d+)?)\s*kg", re.I),
+                "body_weight_kg",
+                float,
+            ),
             (re.compile(r"dose\s+(?:is|=)\s*(\d+(?:\.\d+)?)\s*mg", re.I), "dose_mg", float),
         )
 

@@ -150,6 +150,7 @@ def test_snapshot_and_restore_roundtrip() -> None:
     list_payload = list_resp.json()
     assert list_payload["latestSnapshot"]["snapshotId"] == snapshot_payload["snapshotId"]
 
+
 def test_missing_simulation_returns_not_found() -> None:
     client = TestClient(create_app())
 
@@ -191,7 +192,10 @@ def test_invalid_extension_returns_bad_request() -> None:
 def test_list_parameters_route() -> None:
     client = TestClient(create_app())
     load_payload = {"filePath": "tests/fixtures/demo.pkml", "simulationId": "sim-list"}
-    assert client.post("/load_simulation", json=load_payload, headers=CONFIRM_HEADERS).status_code == 201
+    assert (
+        client.post("/load_simulation", json=load_payload, headers=CONFIRM_HEADERS).status_code
+        == 201
+    )
 
     client.post(
         "/set_parameter_value",
@@ -314,7 +318,7 @@ def test_job_event_stream() -> None:
         for line in stream.iter_lines():
             if not line or not line.startswith("data: "):
                 continue
-            payload = json.loads(line[len("data: "):])
+            payload = json.loads(line[len("data: ") :])
             statuses.append(payload["status"])
             if payload["status"].lower() not in {"queued", "running"}:
                 break

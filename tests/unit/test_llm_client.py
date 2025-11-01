@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from mcp_bridge.audit import LocalAuditTrail
 from mcp_bridge.security.phi import PHIFilter
 from mcp_bridge.services.llm import LLMClient, LLMResponse, LLMTransport
