@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -10,11 +10,7 @@ from mcp.session_registry import SessionRegistry, SessionRegistryError, registry
 from mcp.tools.load_simulation import resolve_model_path
 from mcp_bridge.adapter import AdapterError
 from mcp_bridge.adapter.interface import OspsuiteAdapter
-from mcp_bridge.adapter.schema import (
-    PopulationCohortConfig,
-    PopulationOutputsConfig,
-    PopulationSimulationConfig,
-)
+from mcp_bridge.adapter.schema import PopulationCohortConfig, PopulationOutputsConfig, PopulationSimulationConfig
 from mcp_bridge.services.job_service import BaseJobService, JobRecord
 
 
@@ -59,7 +55,7 @@ class RunPopulationSimulationResponse(BaseModel):
     max_retries: int = Field(alias="maxRetries")
 
     @classmethod
-    def from_record(cls, record: JobRecord, simulation_id: str) -> RunPopulationSimulationResponse:
+    def from_record(cls, record: JobRecord, simulation_id: str) -> "RunPopulationSimulationResponse":
         return cls(
             jobId=record.job_id,
             simulationId=simulation_id,
@@ -92,16 +88,12 @@ def run_population_simulation(
     handle = None
     if not store.contains(payload.simulation_id):
         try:
-            handle = adapter.load_simulation(
-                str(resolved_path), simulation_id=payload.simulation_id
-            )
+            handle = adapter.load_simulation(str(resolved_path), simulation_id=payload.simulation_id)
         except AdapterError as exc:
             raise RunPopulationSimulationValidationError(str(exc)) from exc
     else:
         try:
-            handle = adapter.load_simulation(
-                str(resolved_path), simulation_id=payload.simulation_id
-            )
+            handle = adapter.load_simulation(str(resolved_path), simulation_id=payload.simulation_id)
         except AdapterError:
             handle = None  # Already loaded; ignore duplicates.
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -22,8 +22,8 @@ from mcp import (
     set_parameter_value,
 )
 from mcp.session_registry import registry
-from mcp.tools.get_parameter_value import GetParameterValueValidationError
 from mcp.tools.load_simulation import LoadSimulationRequest, load_simulation
+from mcp.tools.get_parameter_value import GetParameterValueValidationError
 from mcp_bridge.services.job_service import BaseJobService, JobStatus
 
 
@@ -185,11 +185,11 @@ def generate_scenarios(
             )
             baseline_values[spec.path] = response.parameter.value
             baseline_units[spec.path] = response.parameter.unit
-        except GetParameterValueValidationError as exc:
+        except GetParameterValueValidationError:
             if spec.baseline_value is None:
                 raise SensitivityAnalysisError(
                     f"Baseline value unavailable for parameter '{spec.path}'"
-                ) from exc
+                )
             baseline_values[spec.path] = spec.baseline_value
             baseline_units[spec.path] = spec.unit or ""
 
@@ -239,9 +239,7 @@ def run_sensitivity_analysis(
     """Execute the sensitivity analysis workflow and return a structured report."""
 
     if not config.parameters:
-        raise SensitivityAnalysisError(
-            "Sensitivity configuration must include at least one parameter"
-        )
+        raise SensitivityAnalysisError("Sensitivity configuration must include at least one parameter")
 
     scenarios, baseline_values, baseline_units = generate_scenarios(adapter, config)
 
@@ -301,9 +299,7 @@ def run_sensitivity_analysis(
         if scenario.results_id and scenario.job_status == JobStatus.SUCCEEDED.value:
             metrics = _calculate_pk(adapter, scenario.results_id, None)
         elif scenario.job_status != JobStatus.SUCCEEDED.value:
-            failures.append(
-                f"{scenario.scenario_id}:{scenario.job_status}:{scenario.error or 'unknown'}"
-            )
+            failures.append(f"{scenario.scenario_id}:{scenario.job_status}:{scenario.error or 'unknown'}")
 
         if scenario.scenario_id == "baseline":
             baseline_metrics = metrics

@@ -51,6 +51,6 @@ def test_golden_dialogue_fixtures_are_well_formed(fixture_name: str) -> None:
         if turn["role"] == "user":
             assert "content" in turn, "User turns must include content"
         else:
-            assert any(
-                key in turn for key in ("content", "check")
-            ), "Assistant turns must include content or check metadata"
+            assert any(key in turn for key in ("content", "check")), (
+                "Assistant turns must include content or check metadata"
+            )

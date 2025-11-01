@@ -8,7 +8,6 @@ import cProfile
 import json
 import math
 import os
-import pstats
 import sys
 import time
 import uuid
@@ -18,6 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 import httpx
+import pstats
 
 from mcp_bridge.app import create_app
 from mcp_bridge.config import AppConfig
@@ -204,10 +204,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--celery-broker-url",
         default=None,
-        help=(
-            "Celery broker URL used when job backend is celery "
-            "(defaults to CELERY_BROKER_URL env)."
-        ),
+        help="Celery broker URL used when job backend is celery (defaults to CELERY_BROKER_URL env).",
     )
     parser.add_argument(
         "--celery-result-backend",
@@ -230,10 +227,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         "--celery-task-eager-propagates",
         action=argparse.BooleanOptionalAction,
         default=None,
-        help=(
-            "Propagate exceptions during eager Celery execution "
-            "(defaults to existing configuration)."
-        ),
+        help="Propagate exceptions during eager Celery execution (defaults to existing configuration).",
     )
     parser.add_argument(
         "--celery-inline-worker",
@@ -526,9 +520,7 @@ def _summarise_job_metrics(runs: list[RunResult]) -> dict[str, Any]:
     if polls:
         job_summary["pollCount"] = _summarise_series([float(p) for p in polls])
     if statuses:
-        job_summary["statuses"] = {
-            status: statuses.count(status) for status in sorted(set(statuses))
-        }
+        job_summary["statuses"] = {status: statuses.count(status) for status in sorted(set(statuses))}
     return job_summary
 
 
@@ -696,8 +688,8 @@ async def _async_main(args: argparse.Namespace) -> int:
         }
         if job_backend == "celery":
             inline_worker_requested = bool(args.celery_inline_worker)
-            inline_worker_concurrency = args.celery_inline_worker_concurrency or max(
-                1, args.concurrency
+            inline_worker_concurrency = (
+                args.celery_inline_worker_concurrency or max(1, args.concurrency)
             )
             broker_url = (
                 args.celery_broker_url
@@ -759,8 +751,7 @@ async def _async_main(args: argparse.Namespace) -> int:
                 from celery.contrib.testing.worker import start_worker
             except ImportError as exc:  # pragma: no cover - optional dependency
                 raise RuntimeError(
-                    "celery.contrib.testing is required for --celery-inline-worker. "
-                    "Install celery[test]."
+                    "celery.contrib.testing is required for --celery-inline-worker. Install celery[test]."
                 ) from exc
             from mcp_bridge.services.celery_app import (
                 configure_celery as _configure_celery,
@@ -769,7 +760,6 @@ async def _async_main(args: argparse.Namespace) -> int:
             celery_instance = _configure_celery(config)
             celery_instance.loader.import_default_modules()
             if "celery.ping" not in celery_instance.tasks:  # pragma: no cover - defensive
-
                 @celery_instance.task(name="celery.ping")
                 def _benchmark_ping():
                     return "pong"
@@ -783,8 +773,7 @@ async def _async_main(args: argparse.Namespace) -> int:
     else:
         if token is None:
             print(
-                "[error] --token must be provided when using HTTP transport "
-                "without a shared dev secret",
+                "[error] --token must be provided when using HTTP transport without a shared dev secret",
                 file=sys.stderr,
             )
             return 1

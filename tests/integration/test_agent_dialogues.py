@@ -9,9 +9,10 @@ from typing import Any
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
-from mcp_bridge.adapter.mock import InMemoryAdapter
 from mcp_bridge.agent import create_agent_workflow, create_initial_agent_state
+from mcp_bridge.adapter.mock import InMemoryAdapter
 from mcp_bridge.services.job_service import JobService
+
 
 FIXTURE_DIR = Path("tests/fixtures/golden_dialogues")
 
@@ -70,7 +71,9 @@ def test_agent_golden_dialogues(fixture_name: str) -> None:
             elif role == "assistant":
                 check = turn.get("check", {})
                 if "awaiting_confirmation" in check:
-                    assert state.get("awaiting_confirmation") is check["awaiting_confirmation"]
+                    assert state.get("awaiting_confirmation") is check[
+                        "awaiting_confirmation"
+                    ]
                 if "contains" in check:
                     ai_content = _last_ai_content(state["messages"])
                     for needle in check["contains"]:

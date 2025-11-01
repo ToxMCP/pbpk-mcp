@@ -13,10 +13,10 @@ from typing import Dict, Iterable, List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from mcp_bridge.agent.sensitivity import (
-    ScenarioMetrics,
     SensitivityAnalysisReport,
     SensitivityConfig,
     SensitivityParameterSpec,
+    ScenarioMetrics,
     run_sensitivity_analysis,
 )
 from mcp_bridge.services.job_service import BaseJobService
@@ -138,11 +138,13 @@ def _metric_lookup(metrics: List[ScenarioMetrics]) -> Dict[str, ScenarioMetrics]
 
 
 def _format_csv(report: SensitivityAnalysisReport, *, filename_hint: str) -> tuple[str, Path]:
+    baseline_lookup = _metric_lookup(report.baseline_metrics)
     rows: List[_CsvRow] = []
 
     for scenario in report.scenarios:
         metric_lookup = _metric_lookup(scenario.metrics)
         for parameter, metric in metric_lookup.items():
+            baseline_metric = baseline_lookup.get(parameter)
             delta_map = scenario.delta_percent.get(parameter, {})
             rows.append(
                 _CsvRow(
@@ -242,9 +244,7 @@ def run_sensitivity_analysis_tool(
     )
 
     if not config.parameters:
-        raise RunSensitivityAnalysisValidationError(
-            "Sensitivity configuration must include parameters"
-        )
+        raise RunSensitivityAnalysisValidationError("Sensitivity configuration must include parameters")
 
     report = run_sensitivity_analysis(adapter, job_service, config)
     csv_text, csv_path = _format_csv(report, filename_hint=payload.simulation_id)

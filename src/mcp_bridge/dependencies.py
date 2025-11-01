@@ -11,8 +11,8 @@ from mcp.session_registry import RedisSessionRegistry, SessionRegistry
 from .adapter import OspsuiteAdapter
 from .audit import AuditTrail
 from .services.job_service import BaseJobService
-from .storage.population_store import PopulationResultStore
 from .storage.snapshot_store import SimulationSnapshotStore
+from .storage.population_store import PopulationResultStore
 
 
 class _AppState(Protocol):

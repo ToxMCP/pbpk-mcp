@@ -9,8 +9,8 @@ import pytest
 from botocore.response import StreamingBody
 from botocore.stub import Stubber
 
-from mcp_bridge.audit.trail import compute_event_hash
 from mcp_bridge.audit.verify import verify_s3_audit_trail
+from mcp_bridge.audit.trail import compute_event_hash
 
 
 @pytest.mark.skipif(boto3 is None, reason="boto3 not installed")

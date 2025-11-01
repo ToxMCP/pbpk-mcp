@@ -13,6 +13,7 @@ from mcp_bridge.literature.extractors import (
 )
 from mcp_bridge.literature.pipeline import LiteratureIngestionPipeline, PipelineDependencies
 
+
 FIXTURE_PDF = str(Path("tests/fixtures/literature/pdf_extract_kit_sample.pdf"))
 
 
@@ -43,17 +44,9 @@ def test_pdf_extract_kit_layout_extractor_parses_blocks(tmp_path) -> None:
     result = pipeline.run(str(pdf_path))
 
     assert len(result.components) == 3
-    assert any(
-        field.name == "body_weight_kg" for record in result.records for field in record.fields
-    )
-    table_fields = [
-        field for record in result.records for field in record.fields if field.name == "table_rows"
-    ]
+    assert any(field.name == "body_weight_kg" for record in result.records for field in record.fields)
+    table_fields = [field for record in result.records for field in record.fields if field.name == "table_rows"]
     assert table_fields and table_fields[0].value[0]["Subject"] == "A"
-    figure_fields = [
-        field
-        for record in result.records
-        for field in record.fields
-        if field.name == "figure_asset"
-    ]
+    figure_fields = [field for record in result.records for field in record.fields if field.name == "figure_asset"]
     assert figure_fields and figure_fields[0].value["image_path"].endswith("page1_fig1.png")
+

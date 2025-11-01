@@ -25,9 +25,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from starlette.types import ASGIApp
 
-from mcp.session_registry import set_registry
-
-from .audit import AuditTrail, S3AuditTrail
+from .audit import AuditTrail, LocalAuditTrail, S3AuditTrail
 from .audit.middleware import AuditMiddleware
 from .config import AppConfig, ConfigError, load_config
 from .constants import CORRELATION_HEADER
@@ -43,8 +41,8 @@ from .errors import (
 )
 from .logging import DEFAULT_LOG_LEVEL, bind_context, clear_context, get_logger, setup_logging
 from .routes import audit as audit_routes
-from .routes import console as console_routes
 from .routes import mcp as mcp_routes
+from .routes import console as console_routes
 from .routes import resources as resource_routes
 from .routes import simulation as simulation_routes
 from .runtime.factory import (
@@ -55,6 +53,8 @@ from .runtime.factory import (
     should_offload_adapter_calls,
 )
 from .services.job_service import create_job_service
+from mcp.session_registry import set_registry
+
 
 _REQUEST_COUNT = Counter(
     "mcp_http_requests_total",
@@ -232,9 +232,7 @@ def create_app(config: AppConfig | None = None, log_level: str | None = None) ->
     adapter.init()
     app.state.adapter = adapter
     app.state.adapter_offload = should_offload_adapter_calls(config)
-    job_service = create_job_service(
-        config=config, audit_trail=audit_trail, population_store=population_store
-    )
+    job_service = create_job_service(config=config, audit_trail=audit_trail, population_store=population_store)
     app.state.jobs = job_service
 
     router = APIRouter()

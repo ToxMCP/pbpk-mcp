@@ -4,15 +4,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from mcp_bridge.adapter.errors import AdapterError, AdapterErrorCode
-from mcp_bridge.adapter.mock import InMemoryAdapter
 from mcp_bridge.agent import (
     SensitivityConfig,
     SensitivityParameterSpec,
     run_sensitivity_analysis,
 )
 from mcp_bridge.agent.sensitivity import SensitivityAnalysisError
+from mcp_bridge.adapter.errors import AdapterError, AdapterErrorCode
+from mcp_bridge.adapter.mock import InMemoryAdapter
 from mcp_bridge.services.job_service import JobService
+
 
 FIXTURE_MODEL = Path("tests/fixtures/demo.pkml").resolve()
 
@@ -73,9 +74,7 @@ def test_run_sensitivity_analysis_records_failures() -> None:
     try:
         report = run_sensitivity_analysis(adapter, job_service, config)
         assert any(
-            scenario.job_status == "failed"
-            for scenario in report.scenarios
-            if scenario.scenario_id != "baseline"
+            scenario.job_status == "failed" for scenario in report.scenarios if scenario.scenario_id != "baseline"
         )
         assert report.failures, "Failures list should record errors"
     finally:

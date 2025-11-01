@@ -83,7 +83,9 @@ class PopulationChunkHandle(BaseModel):
     subject_range: Optional[tuple[int, int]] = Field(
         default=None, serialization_alias="subjectRange"
     )
-    time_range: Optional[tuple[float, float]] = Field(default=None, serialization_alias="timeRange")
+    time_range: Optional[tuple[float, float]] = Field(
+        default=None, serialization_alias="timeRange"
+    )
     preview: Optional[dict[str, Any]] = None
 
 

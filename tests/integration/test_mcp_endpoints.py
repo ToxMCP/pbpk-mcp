@@ -9,6 +9,7 @@ from mcp.session_registry import registry
 from mcp_bridge.app import create_app
 from mcp_bridge.tools.registry import get_tool_registry
 
+
 pytestmark = pytest.mark.compliance
 
 

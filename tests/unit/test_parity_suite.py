@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from mcp_bridge.parity.suite import ParitySuiteError, run_parity_suite
 
 

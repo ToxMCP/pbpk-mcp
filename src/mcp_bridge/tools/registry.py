@@ -47,11 +47,6 @@ from mcp.tools.run_population_simulation import (
     RunPopulationSimulationResponse,
     run_population_simulation,
 )
-from mcp.tools.run_sensitivity_analysis import (
-    RunSensitivityAnalysisRequest,
-    RunSensitivityAnalysisResponse,
-    run_sensitivity_analysis_tool,
-)
 from mcp.tools.run_simulation import (
     RunSimulationRequest,
     RunSimulationResponse,
@@ -62,6 +57,12 @@ from mcp.tools.set_parameter_value import (
     SetParameterValueResponse,
     set_parameter_value,
 )
+from mcp.tools.run_sensitivity_analysis import (
+    RunSensitivityAnalysisRequest,
+    RunSensitivityAnalysisResponse,
+    run_sensitivity_analysis_tool,
+)
+
 
 DependencyName = str
 
@@ -110,10 +111,7 @@ def get_tool_registry() -> Dict[str, ToolDescriptor]:
         ),
         "list_parameters": ToolDescriptor(
             name="list_parameters",
-            description=(
-                "List parameter paths available in a loaded simulation "
-                "(supports glob filters)."
-            ),
+            description="List parameter paths available in a loaded simulation (supports glob filters).",
             request_model=ListParametersRequest,
             response_model=ListParametersResponse,
             handler=list_parameters,
@@ -162,10 +160,7 @@ def get_tool_registry() -> Dict[str, ToolDescriptor]:
         ),
         "calculate_pk_parameters": ToolDescriptor(
             name="calculate_pk_parameters",
-            description=(
-                "Compute PK metrics (Cmax, Tmax, AUC) for an existing "
-                "simulation results handle."
-            ),
+            description="Compute PK metrics (Cmax, Tmax, AUC) for an existing simulation results handle.",
             request_model=CalculatePkParametersRequest,
             response_model=CalculatePkParametersResponse,
             handler=calculate_pk_parameters,
@@ -185,10 +180,7 @@ def get_tool_registry() -> Dict[str, ToolDescriptor]:
         ),
         "get_population_results": ToolDescriptor(
             name="get_population_results",
-            description=(
-                "Fetch aggregated results and chunk handles for a completed "
-                "population simulation."
-            ),
+            description="Fetch aggregated results and chunk handles for a completed population simulation.",
             request_model=GetPopulationResultsRequest,
             response_model=GetPopulationResultsResponse,
             handler=get_population_results,
@@ -206,10 +198,7 @@ def get_tool_registry() -> Dict[str, ToolDescriptor]:
         ),
         "run_sensitivity_analysis": ToolDescriptor(
             name="run_sensitivity_analysis",
-            description=(
-                "Execute a multi-parameter sensitivity analysis workflow "
-                "and return PK deltas."
-            ),
+            description="Execute a multi-parameter sensitivity analysis workflow and return PK deltas.",
             request_model=RunSensitivityAnalysisRequest,
             response_model=RunSensitivityAnalysisResponse,
             handler=run_sensitivity_analysis_tool,

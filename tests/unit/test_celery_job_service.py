@@ -11,6 +11,7 @@ from mcp_bridge.config import AppConfig
 from mcp_bridge.runtime.factory import build_adapter, build_population_store
 from mcp_bridge.services.job_service import JobStatus, create_job_service
 
+
 pytest.importorskip("celery")
 
 

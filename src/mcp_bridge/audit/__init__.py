@@ -1,7 +1,7 @@
 """Audit trail package."""
 
-from .jobs import run_scheduled_verification
 from .trail import AuditTrail, LocalAuditTrail, S3AuditTrail, compute_event_hash
+from .jobs import run_scheduled_verification
 
 __all__ = [
     "AuditTrail",

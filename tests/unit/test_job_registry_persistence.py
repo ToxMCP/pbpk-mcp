@@ -3,9 +3,9 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
+from mcp_bridge.adapter.mock import InMemoryAdapter
 from mcp.session_registry import registry as session_registry
 from mcp.tools.load_simulation import LoadSimulationRequest, load_simulation
-from mcp_bridge.adapter.mock import InMemoryAdapter
 from mcp_bridge.services.job_service import (
     DurableJobRegistry,
     JobRecord,

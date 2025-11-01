@@ -12,6 +12,7 @@ from mcp_bridge.app import create_app
 from mcp_bridge.config import AppConfig
 from mcp_bridge.security.simple_jwt import jwt
 
+
 DEV_SECRET = "test-secret"
 
 
@@ -22,9 +23,7 @@ def _make_client() -> TestClient:
     return TestClient(app)
 
 
-def _encode_token(
-    subject: str, roles: list[str], *, jti: str | None = None, exp_offset: int = 300
-) -> str:
+def _encode_token(subject: str, roles: list[str], *, jti: str | None = None, exp_offset: int = 300) -> str:
     now = int(time.time())
     payload = {
         "sub": subject,

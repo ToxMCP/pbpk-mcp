@@ -6,7 +6,8 @@ from collections import defaultdict
 from statistics import mean
 from typing import Dict, List, Optional, Tuple
 
-from .models import ActionSuggestion, ExtractedField, ExtractionRecord, LiteratureExtractionResult
+from .models import ActionSuggestion, ExtractionRecord, ExtractedField, LiteratureExtractionResult
+
 
 DEFAULT_FIELD_PARAMETER_MAP: Dict[str, Tuple[str, str]] = {
     "body_weight_kg": ("Organism|Weight", "kg"),
@@ -32,14 +33,12 @@ class LiteratureActionMapper:
         self._field_parameter_map = field_parameter_map or DEFAULT_FIELD_PARAMETER_MAP
 
     def map_actions(self, extraction: LiteratureExtractionResult) -> List[ActionSuggestion]:
-        accumulator: Dict[str, Dict[str, object]] = defaultdict(
-            lambda: {
-                "unit": None,
-                "values": [],
-                "confidences": [],
-                "provenance": [],
-            }
-        )
+        accumulator: Dict[str, Dict[str, object]] = defaultdict(lambda: {
+            "unit": None,
+            "values": [],
+            "confidences": [],
+            "provenance": [],
+        })
 
         for record in extraction.records:
             for field in record.fields:
@@ -55,10 +54,7 @@ class LiteratureActionMapper:
             provenance = data["provenance"]  # type: ignore[assignment]
             value = mean(values)
             confidence = mean(confidences) if confidences else 0.5
-            summary = (
-                f"Set {parameter_path} to {value:.3g} {unit} derived from {len(values)} "
-                "literature value(s)."
-            )
+            summary = f"Set {parameter_path} to {value:.3g} {unit} derived from {len(values)} literature value(s)."
             suggestions.append(
                 ActionSuggestion(
                     tool_name="set_parameter_value",
@@ -89,15 +85,7 @@ class LiteratureActionMapper:
             parameter_path, unit = mapping
             value = self._coerce_float(field.value)
             if value is not None:
-                self._append_entry(
-                    accumulator,
-                    parameter_path,
-                    unit,
-                    value,
-                    field.confidence,
-                    component.component_id,
-                    component.page,
-                )
+                self._append_entry(accumulator, parameter_path, unit, value, field.confidence, component.component_id, component.page)
             return
 
         if field.name == "table_rows" and isinstance(field.value, list):
@@ -162,3 +150,4 @@ class LiteratureActionMapper:
         bucket["provenance"].append(  # type: ignore[call-arg]
             {"componentId": component_id, "page": page}
         )
+

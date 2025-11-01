@@ -8,18 +8,7 @@ import sqlite3
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Tuple,
-    TypedDict,
-)
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple, TypedDict
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.pydantic_v1 import BaseModel, Field, validator
@@ -67,10 +56,10 @@ from mcp_bridge.agent.prompts import (
     format_error_response,
     format_success_response,
 )
-from mcp_bridge.services.job_service import BaseJobService, JobService
+from mcp_bridge.services.job_service import BaseJobService
 
 if TYPE_CHECKING:  # pragma: no cover - import only for type hints
-    pass
+    from mcp.tools.run_sensitivity_analysis import RunSensitivityAnalysisRequest
 
 
 class AgentState(TypedDict, total=False):
@@ -107,32 +96,6 @@ def _augment_config(config: Mapping[str, Any] | None) -> Dict[str, Any]:
     return base
 
 
-def _build_checkpoint_tuple(
-    tuple_cls,
-    *,
-    config,
-    checkpoint,
-    metadata,
-    parent_config,
-    pending_writes,
-):
-    try:
-        return tuple_cls(
-            config=config,
-            checkpoint=checkpoint,
-            metadata=metadata,
-            parent_config=parent_config,
-            pending_writes=pending_writes,
-        )
-    except TypeError:  # pragma: no cover - legacy langgraph without pending_writes
-        return tuple_cls(
-            config=config,
-            checkpoint=checkpoint,
-            metadata=metadata,
-            parent_config=parent_config,
-        )
-
-
 def _seed_versions(checkpoint: Dict[str, Any], node_names: Iterable[str]) -> Dict[str, Any]:
     versions_seen = checkpoint.get("versions_seen")
     if versions_seen is None:
@@ -148,7 +111,6 @@ def _seed_versions(checkpoint: Dict[str, Any], node_names: Iterable[str]) -> Dic
         versions_seen = defaultdict(dict, versions_seen)
     checkpoint["versions_seen"] = versions_seen
     return checkpoint
-
 
 _APPROVAL_WORDS = {"yes", "y", "approve", "approved", "proceed", "ok", "okay"}
 
@@ -177,7 +139,9 @@ def create_tool_registry(
     """Register MCP bridge tools as LangChain structured tools."""
 
     class LoadSimulationArgs(BaseModel):
-        filePath: str = Field(..., description="Absolute path to the simulation .pkml file.")
+        filePath: str = Field(
+            ..., description="Absolute path to the simulation .pkml file."
+        )
         simulationId: Optional[str] = Field(
             default=None,
             description="Identifier to assign to the loaded simulation.",
@@ -186,7 +150,9 @@ def create_tool_registry(
         class Config:
             allow_population_by_field_name = True
 
-    def _load_simulation(*, filePath: str, simulationId: Optional[str] = None) -> Dict[str, Any]:
+    def _load_simulation(
+        *, filePath: str, simulationId: Optional[str] = None
+    ) -> Dict[str, Any]:
         payload: Dict[str, Any] = {"filePath": filePath}
         if simulationId is not None:
             payload["simulationId"] = simulationId
@@ -195,15 +161,23 @@ def create_tool_registry(
         return response.model_dump(by_alias=True)
 
     class SetParameterArgs(BaseModel):
-        simulationId: str = Field(..., description="Simulation identifier to update.")
-        parameterPath: str = Field(..., description="Path to the parameter in the simulation.")
+        simulationId: str = Field(
+            ..., description="Simulation identifier to update."
+        )
+        parameterPath: str = Field(
+            ..., description="Path to the parameter in the simulation."
+        )
         value: float = Field(..., description="New parameter value.")
-        unit: Optional[str] = Field(default=None, description="Unit of the provided value.")
+        unit: Optional[str] = Field(
+            default=None, description="Unit of the provided value."
+        )
         updateMode: Optional[str] = Field(
             default="absolute",
             description="Update mode (absolute or relative).",
         )
-        comment: Optional[str] = Field(default=None, description="Optional comment for the change.")
+        comment: Optional[str] = Field(
+            default=None, description="Optional comment for the change."
+        )
 
     def _set_parameter_value(
         *,
@@ -231,7 +205,9 @@ def create_tool_registry(
         return response.model_dump(by_alias=True)
 
     class ListParametersArgs(BaseModel):
-        simulationId: str = Field(..., description="Simulation identifier to query.")
+        simulationId: str = Field(
+            ..., description="Simulation identifier to query."
+        )
         searchPattern: Optional[str] = Field(
             default="*", description="Glob pattern for filtering parameters."
         )
@@ -250,7 +226,9 @@ def create_tool_registry(
         simulationId: str = Field(...)
         parameterPath: str = Field(...)
 
-    def _get_parameter_value(*, simulationId: str, parameterPath: str) -> Dict[str, Any]:
+    def _get_parameter_value(
+        *, simulationId: str, parameterPath: str
+    ) -> Dict[str, Any]:
         payload = GetParameterValueRequest.model_validate(
             {"simulationId": simulationId, "parameterPath": parameterPath}
         )
@@ -271,9 +249,7 @@ def create_tool_registry(
             allow_population_by_field_name = True
 
     class RunSensitivityArgs(BaseModel):
-        modelPath: str = Field(
-            ..., description="Absolute path to the baseline simulation .pkml file."
-        )
+        modelPath: str = Field(..., description="Absolute path to the baseline simulation .pkml file.")
         simulationId: str = Field(..., description="Base simulation identifier used for the sweep.")
         parameters: List[SensitivityParameterArgs] = Field(
             ..., description="Parameters to perturb during the sweep."
@@ -331,25 +307,13 @@ def create_tool_registry(
         return response.model_dump(mode="json")
 
     class RunPopulationArgs(BaseModel):
-        modelPath: str = Field(
-            ..., description="Absolute path to the population simulation .pkml file."
-        )
+        modelPath: str = Field(..., description="Absolute path to the population simulation .pkml file.")
         simulationId: str = Field(..., description="Identifier assigned to the population run.")
-        cohort: Dict[str, Any] = Field(
-            ..., description="Cohort configuration (size, sampling, optional seed)."
-        )
-        outputs: Dict[str, Any] = Field(
-            default_factory=dict, description="Requested output aggregates and time series."
-        )
-        metadata: Dict[str, Any] = Field(
-            default_factory=dict, description="Optional metadata to persist with the run."
-        )
-        timeoutSeconds: Optional[float] = Field(
-            default=None, description="Timeout override applied to the job (seconds)."
-        )
-        maxRetries: Optional[int] = Field(
-            default=None, description="Override for maximum retry attempts."
-        )
+        cohort: Dict[str, Any] = Field(..., description="Cohort configuration (size, sampling, optional seed).")
+        outputs: Dict[str, Any] = Field(default_factory=dict, description="Requested output aggregates and time series.")
+        metadata: Dict[str, Any] = Field(default_factory=dict, description="Optional metadata to persist with the run.")
+        timeoutSeconds: Optional[float] = Field(default=None, description="Timeout override applied to the job (seconds).")
+        maxRetries: Optional[int] = Field(default=None, description="Override for maximum retry attempts.")
 
         class Config:
             allow_population_by_field_name = True
@@ -379,7 +343,9 @@ def create_tool_registry(
 
     class RunSimulationArgs(BaseModel):
         simulationId: str = Field(...)
-        runId: Optional[str] = Field(default=None, description="Optional run identifier.")
+        runId: Optional[str] = Field(
+            default=None, description="Optional run identifier."
+        )
         timeoutSeconds: Optional[float] = Field(
             default=None,
             description="Timeout override for job execution (seconds).",
@@ -474,9 +440,7 @@ def create_tool_registry(
             _run_population_simulation,
             name="run_population_simulation",
             args_schema=RunPopulationArgs,
-            description=(
-                "Submit a population simulation job asynchronously and return job metadata."
-            ),
+            description="Submit a population simulation job asynchronously and return job metadata.",
         ),
         "get_job_status": _wrap_langchain_tool(
             _get_job_status,
@@ -585,10 +549,7 @@ class _BackwardCompatibleMemorySaver(MemorySaver):
             new_versions = dict(channel_versions)
         checkpoint = _seed_versions(dict(checkpoint), self._node_names)
         safe_config = _augment_config(config)
-        try:
-            return super().put(safe_config, checkpoint, metadata, new_versions)
-        except TypeError:  # pragma: no cover - legacy langgraph without new_versions support
-            return super().put(safe_config, checkpoint, metadata)
+        return super().put(safe_config, checkpoint, metadata, new_versions)
 
     def put_writes(self, config, writes, task_id):  # type: ignore[override]
         safe_config = _augment_config(config)
@@ -602,8 +563,7 @@ class _BackwardCompatibleMemorySaver(MemorySaver):
             metadata = {"source": "bootstrap", "step": -1, "writes": {}}
             from langgraph.checkpoint.base import CheckpointTuple
 
-            return _build_checkpoint_tuple(
-                CheckpointTuple,
+            return CheckpointTuple(
                 config=safe_config,
                 checkpoint=checkpoint,
                 metadata=metadata,
@@ -613,13 +573,12 @@ class _BackwardCompatibleMemorySaver(MemorySaver):
         checkpoint = _seed_versions(dict(saved.checkpoint), self._node_names)
         from langgraph.checkpoint.base import CheckpointTuple
 
-        return _build_checkpoint_tuple(
-            CheckpointTuple,
+        return CheckpointTuple(
             config=_augment_config(saved.config),
             checkpoint=checkpoint,
             metadata=saved.metadata,
             parent_config=saved.parent_config,
-            pending_writes=getattr(saved, "pending_writes", []),
+            pending_writes=saved.pending_writes,
         )
 
 
@@ -721,7 +680,9 @@ def create_agent_workflow(
         if state.get("awaiting_confirmation"):
             return state
 
-        derived_plan = _derive_plan(last_message.content, state.get("simulation_context"))
+        derived_plan = _derive_plan(
+            last_message.content, state.get("simulation_context")
+        )
         state["confirmation_prompt"] = None
 
         if not derived_plan:
@@ -730,11 +691,7 @@ def create_agent_workflow(
                 "including any identifiers, parameter paths, values, and units."
             )
             updated_messages = list(messages)
-            if (
-                not updated_messages
-                or not isinstance(updated_messages[-1], AIMessage)
-                or updated_messages[-1].content != clarification
-            ):
+            if not updated_messages or not isinstance(updated_messages[-1], AIMessage) or updated_messages[-1].content != clarification:
                 updated_messages.append(AIMessage(content=clarification))
             state["messages"] = updated_messages
             state["plan"] = None
@@ -947,7 +904,9 @@ def create_agent_workflow(
             if state.get("last_error"):
                 content = format_error_response(tool_name, state["last_error"] or "")
             else:
-                content = format_success_response(tool_name, state.get("last_tool_result") or {})
+                content = format_success_response(
+                    tool_name, state.get("last_tool_result") or {}
+                )
             messages.append(AIMessage(content=content))
             state["messages"] = messages
         state.pop(INTERRUPT, None)
@@ -965,7 +924,6 @@ def create_agent_workflow(
 
     return graph, tool_registry, create_initial_agent_state()
 
-
 def _derive_plan(
     message: str,
     simulation_context: Optional[Mapping[str, Any]] = None,
@@ -974,6 +932,7 @@ def _derive_plan(
     if not text:
         return None
 
+    lower = text.lower()
     sim_id = None
     if simulation_context:
         sim_id = simulation_context.get("simulationId")

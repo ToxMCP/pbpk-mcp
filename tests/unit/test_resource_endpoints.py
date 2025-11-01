@@ -102,9 +102,7 @@ def test_parameter_resource_listing_returns_parameter_metadata(client: TestClien
     adapter = client.app.state.adapter
     simulation_id = "sim-params"
     load_simulation(adapter, _load_demo_simulation(simulation_id))
-    set_parameter_value(
-        adapter, _set_parameter(simulation_id, path="Organism|Weight", value=70.0, unit="kg")
-    )
+    set_parameter_value(adapter, _set_parameter(simulation_id, path="Organism|Weight", value=70.0, unit="kg"))
     set_parameter_value(
         adapter, _set_parameter(simulation_id, path="Organism|Height", value=180.0, unit="cm")
     )

@@ -141,7 +141,7 @@ class RedisSessionRegistry:
         self,
         *,
         redis_url: str | None = None,
-        client: redis.Redis[Any] | None = None,
+        client: "redis.Redis[Any]" | None = None,
         key_prefix: str = "mcp:sessions",
         ttl_seconds: Optional[int] = None,
     ) -> None:

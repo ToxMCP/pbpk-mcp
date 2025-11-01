@@ -5,14 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from mcp.session_registry import RedisSessionRegistry, SessionRegistry
-
 from ..adapter import AdapterConfig
 from ..adapter.mock import InMemoryAdapter
 from ..adapter.ospsuite import SubprocessOspsuiteAdapter
 from ..config import AppConfig, ConfigError
 from ..storage.population_store import PopulationResultStore
 from ..storage.snapshot_store import SimulationSnapshotStore
+from mcp.session_registry import RedisSessionRegistry, SessionRegistry
 
 
 def build_population_store(config: AppConfig) -> PopulationResultStore:
@@ -59,7 +58,6 @@ def should_offload_adapter_calls(config: AppConfig) -> bool:
     """Return True when adapter operations should run in background threads."""
 
     return bool(getattr(config, "adapter_to_thread", True))
-
 
 def build_session_registry(config: AppConfig) -> SessionRegistry | RedisSessionRegistry:
     """Create the session registry backend based on configuration."""

@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, List, Optional
 
+
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
 
 
@@ -101,16 +102,13 @@ class SimulationSnapshotStore:
 
     def list(self, simulation_id: str) -> List[SnapshotMetadata]:
         records = self._load_all(simulation_id)
-        return [
-            SnapshotMetadata(
-                simulation_id=record.simulation_id,
-                snapshot_id=record.snapshot_id,
-                created_at=record.created_at,
-                hash=record.hash,
-                path=record.path,
-            )
-            for record in records
-        ]
+        return [SnapshotMetadata(
+            simulation_id=record.simulation_id,
+            snapshot_id=record.snapshot_id,
+            created_at=record.created_at,
+            hash=record.hash,
+            path=record.path,
+        ) for record in records]
 
     def delete(self, simulation_id: str, snapshot_id: str | None = None) -> None:
         safe_id = _normalise_simulation_id(simulation_id)

@@ -7,12 +7,7 @@ import json
 import sys
 from typing import Any
 
-from mcp.session_registry import (
-    RedisSessionRegistry,
-    SessionRegistry,
-    SessionRegistryError,
-    set_registry,
-)
+from mcp.session_registry import RedisSessionRegistry, SessionRegistry, SessionRegistryError, set_registry
 
 from ..config import load_config
 from .factory import build_session_registry

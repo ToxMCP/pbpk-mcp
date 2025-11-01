@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+
 REFERENCE_MODELS = {
     "midazolam_adult": '<Simulation name="midazolam_adult" />\n',
     "caffeine": '<Simulation name="caffeine" />\n',

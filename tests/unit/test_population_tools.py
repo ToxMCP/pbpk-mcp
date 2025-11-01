@@ -6,25 +6,24 @@ from pathlib import Path
 
 import pytest
 
-from mcp.tools.get_population_results import (
-    GetPopulationResultsRequest,
-    get_population_results,
-)
 from mcp.tools.run_population_simulation import (
     RunPopulationSimulationRequest,
     RunPopulationSimulationValidationError,
     run_population_simulation,
 )
+from mcp.tools.get_population_results import (
+    GetPopulationResultsRequest,
+    get_population_results,
+)
 from mcp_bridge.adapter.mock import InMemoryAdapter
 from mcp_bridge.services.job_service import JobService
 from mcp_bridge.storage.population_store import PopulationResultStore
 
+
 FIXTURE_PATH = str(Path("tests/fixtures/demo.pkml").resolve())
 
 
-def _make_adapter_and_service(
-    tmp_path,
-) -> tuple[InMemoryAdapter, JobService, PopulationResultStore]:
+def _make_adapter_and_service(tmp_path) -> tuple[InMemoryAdapter, JobService, PopulationResultStore]:
     store = PopulationResultStore(tmp_path / "population-store")
     adapter = InMemoryAdapter(population_store=store)
     adapter.init()

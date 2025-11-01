@@ -5,6 +5,7 @@ import pytest
 from mcp.session_registry import RedisSessionRegistry, SessionRegistryError
 from mcp_bridge.adapter.schema import SimulationHandle
 
+
 fakeredis = pytest.importorskip("fakeredis")
 
 

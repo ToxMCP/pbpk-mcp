@@ -5,11 +5,13 @@ from __future__ import annotations
 import time
 import uuid
 
+import pytest
 from fastapi.testclient import TestClient
 
 from mcp_bridge.app import create_app
 from mcp_bridge.config import AppConfig
 from mcp_bridge.security.simple_jwt import jwt
+
 
 DEV_SECRET = "security-secret"
 
@@ -90,8 +92,7 @@ def test_rate_limit_enforced(tmp_path) -> None:
     config = _make_config(tmp_path, auth_rate_limit_per_minute=2)
     client = TestClient(create_app(config=config))
 
-    def headers() -> dict[str, str]:
-        return {"Authorization": f"Bearer {_encode_token('rate', ['viewer'])}"}
+    headers = lambda: {"Authorization": f"Bearer {_encode_token('rate', ['viewer'])}"}
 
     assert client.get("/mcp/list_tools", headers=headers()).status_code == 200
     assert client.get("/mcp/list_tools", headers=headers()).status_code == 200

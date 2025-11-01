@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, Optional
 
-from .models import ExtractedField, ExtractionRecord, LiteratureExtractionResult
+from .models import ExtractionRecord, ExtractedField, LiteratureExtractionResult
 
 
 @dataclass
@@ -84,19 +84,13 @@ def load_fixture(path: str | Path) -> EvaluationFixture:
         GoldTable(component_id=table["componentId"], rows=list(table.get("rows", [])))
         for table in payload.get("tables", [])
     ]
-    return EvaluationFixture(
-        source_id=payload.get("sourceId", "unknown"), facts=facts, tables=tables
-    )
+    return EvaluationFixture(source_id=payload.get("sourceId", "unknown"), facts=facts, tables=tables)
 
 
-def evaluate(
-    extraction: LiteratureExtractionResult, fixture: EvaluationFixture
-) -> EvaluationReport:
+def evaluate(extraction: LiteratureExtractionResult, fixture: EvaluationFixture) -> EvaluationReport:
     fact_scores = _score_facts(extraction.records, fixture.facts)
     table_scores = _score_tables(extraction.records, fixture.tables)
-    return EvaluationReport(
-        source_id=fixture.source_id, fact_scores=fact_scores, table_scores=table_scores
-    )
+    return EvaluationReport(source_id=fixture.source_id, fact_scores=fact_scores, table_scores=table_scores)
 
 
 def _score_facts(records: Iterable[ExtractionRecord], facts: Iterable[GoldFact]) -> List[FactScore]:
@@ -125,9 +119,7 @@ def _score_facts(records: Iterable[ExtractionRecord], facts: Iterable[GoldFact])
     return scores
 
 
-def _score_tables(
-    records: Iterable[ExtractionRecord], tables: Iterable[GoldTable]
-) -> List[TableScore]:
+def _score_tables(records: Iterable[ExtractionRecord], tables: Iterable[GoldTable]) -> List[TableScore]:
     table_index: Dict[str, ExtractionRecord] = {
         record.source_component.component_id: record for record in records
     }
@@ -147,3 +139,4 @@ def _score_tables(
             )
         )
     return scores
+

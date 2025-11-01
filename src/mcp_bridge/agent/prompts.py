@@ -51,9 +51,8 @@ _CONFIRMATION_TEMPLATES = {
         "Do you approve?"
     ),
     "set_parameter_value": (
-        "I am ready to update {parameterPath} in simulation '{simulationId}' "
-        "to {value}{unit_suffix}. This will permanently change the parameter value "
-        "used in subsequent runs. Do you approve?"
+        "I am ready to update {parameterPath} in simulation '{simulationId}' to {value}{unit_suffix}. "
+        "This will permanently change the parameter value used in subsequent runs. Do you approve?"
     ),
     "run_simulation": (
         "I am about to run the simulation '{simulationId}'. This may take time and consume compute "
@@ -115,36 +114,41 @@ def format_success_response(tool: str, result: Mapping[str, Any]) -> str:
     """Summarise a successful tool execution for user-facing output."""
 
     if tool == "load_simulation":
-        return ("Loaded simulation '{simulationId}' from {filePath}.").format(
+        return (
+            "Loaded simulation '{simulationId}' from {filePath}."
+        ).format(
             simulationId=result.get("simulationId", "unknown"),
-            filePath=result.get("metadata", {}).get("filePath")
-            or result.get("filePath", "the provided path"),
+            filePath=result.get("metadata", {}).get("filePath") or result.get("filePath", "the provided path"),
         )
 
     if tool == "set_parameter_value":
         parameter = result.get("parameter", {})
-        return ("Updated {path} to {value}{unit}.").format(
+        return (
+            "Updated {path} to {value}{unit}."
+        ).format(
             path=parameter.get("path", "the parameter"),
             value=parameter.get("value", "?"),
             unit=f" {parameter.get('unit')}" if parameter.get("unit") else "",
         )
 
     if tool == "run_simulation":
-        return ("Simulation job {jobId} queued. Check status when ready.").format(
-            jobId=result.get("jobId", "unknown")
-        )
+        return (
+            "Simulation job {jobId} queued. Check status when ready."
+        ).format(jobId=result.get("jobId", "unknown"))
 
     if tool == "get_job_status":
         job = result.get("job", {})
         status = job.get("status", "unknown")
         if status.lower() == "succeeded" and job.get("resultHandle"):
-            return ("Job {jobId} succeeded. Retrieve results with ID {resultsId}.").format(
+            return (
+                "Job {jobId} succeeded. Retrieve results with ID {resultsId}."
+            ).format(
                 jobId=job.get("jobId", "unknown"),
                 resultsId=job.get("resultHandle", {}).get("resultsId", "unknown"),
             )
-        return ("Job {jobId} status: {status}.").format(
-            jobId=job.get("jobId", "unknown"), status=status
-        )
+        return (
+            "Job {jobId} status: {status}."
+        ).format(jobId=job.get("jobId", "unknown"), status=status)
 
     if tool == "calculate_pk_parameters":
         return "PK parameters calculated successfully."
