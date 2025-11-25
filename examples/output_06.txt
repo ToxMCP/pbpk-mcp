@@ -1,0 +1,19 @@
+=== Use Case 6: Automated Sensitivity Analysis Tool ===
+
+Goal: Use the 'run_sensitivity_analysis' tool to automatically sweep Liver Volume.
+[1] Submitting Job...
+
+[2] Analysis Complete (28.4s)!
+
+Generated CSV: sens_tool_294a-20251125T172907Z.csv (1712 bytes)
+
+=== REPORT SCENARIOS ===
+
+Scenario: Liver Volume = Baseline L (Status: succeeded)
+  Brain AUC: 50903.74
+
+Scenario: Liver Volume = 0.96 L (Status: succeeded)
+  Brain AUC: 75268.23
+
+Scenario: Liver Volume = 3.83 L (Status: succeeded)
+  Brain AUC: 31812.14

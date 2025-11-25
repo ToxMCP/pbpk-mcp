@@ -212,7 +212,7 @@ def _format_csv(report: SensitivityAnalysisReport, *, filename_hint: str) -> tup
 
     csv_text = buffer.getvalue()
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    reports_dir = Path("reports") / "sensitivity"
+    reports_dir = Path("var/reports") / "sensitivity"
     reports_dir.mkdir(parents=True, exist_ok=True)
     filename = f"{filename_hint}-{timestamp}.csv"
     output_path = reports_dir / filename

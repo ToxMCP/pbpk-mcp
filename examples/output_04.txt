@@ -1,0 +1,15 @@
+=== Use Case 4: Parameter Exploration & Inspection ===
+
+Goal: Demonstrate model introspection tools (listing and reading parameters).
+
+[1] Loading Model...
+
+[2] Searching for 'Liver Volume' parameters...
+    Found 420 parameters matching 'Liver'.
+    Target Identified: Organism|Liver|Volume
+
+[3] Inspecting Value for: Organism|Liver|Volume
+    Current Value: 1.9171 l
+
+[4] Verifying Update Capability...
+    New Value:     2.0 l

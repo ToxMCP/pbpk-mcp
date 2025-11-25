@@ -164,7 +164,7 @@ def get_tool_registry() -> Dict[str, ToolDescriptor]:
             request_model=CalculatePkParametersRequest,
             response_model=CalculatePkParametersResponse,
             handler=calculate_pk_parameters,
-            dependencies=("adapter",),
+            dependencies=("adapter", "job_service"),
             roles=_standard_roles("viewer", "operator", "admin"),
         ),
         "run_population_simulation": ToolDescriptor(

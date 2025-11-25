@@ -9,6 +9,7 @@ services:
       - redis-data:/data
 
   api:
+    platform: linux/amd64
     build: .
     depends_on:
       - redis
@@ -18,15 +19,21 @@ services:
       JOB_BACKEND: celery
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
-      JOB_REGISTRY_PATH: /app/var/jobs/registry.json
     volumes:
       - ./var:/app/var
+      - ./scripts:/app/scripts
+      - ./src:/app/src
     ports:
       - "8000:8000"
     command: ["uvicorn", "mcp_bridge.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+    deploy:
+      resources:
+        limits:
+          memory: 4G
     restart: unless-stopped
 
   worker:
+    platform: linux/amd64
     build: .
     depends_on:
       - redis
@@ -38,9 +45,16 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/1
       JOB_REGISTRY_PATH: /app/var/jobs/registry.json
       CELERY_TASK_ALWAYS_EAGER: "false"
-    command: ["celery", "-A", "mcp_bridge.services.celery_app.celery_app", "worker", "--loglevel=info"]
+      PYTHONPATH: /app/src
+    command: ["celery", "-A", "mcp_bridge.services.celery_app.celery_app", "worker", "--loglevel=info", "--concurrency=1"]
+    deploy:
+      resources:
+        limits:
+          memory: 4G
     volumes:
       - ./var:/app/var
+      - ./scripts:/app/scripts
+      - ./src:/app/src
     restart: unless-stopped
 
 volumes:

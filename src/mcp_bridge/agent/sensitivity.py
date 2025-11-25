@@ -127,9 +127,9 @@ def _metric_map(metrics: List[ScenarioMetrics]) -> Dict[str, ScenarioMetrics]:
     return {metric.parameter: metric for metric in metrics}
 
 
-def _calculate_pk(adapter, results_id: str, output_path: Optional[str]) -> List[ScenarioMetrics]:
+def _calculate_pk(adapter, job_service, results_id: str, output_path: Optional[str]) -> List[ScenarioMetrics]:
     payload = CalculatePkParametersRequest(resultsId=results_id, outputPath=output_path)
-    response = calculate_pk_parameters(adapter, payload)
+    response = calculate_pk_parameters(adapter, job_service, payload)
     summaries = []
     for metric in response.metrics:
         summaries.append(
@@ -297,7 +297,7 @@ def run_sensitivity_analysis(
     for scenario in scenarios:
         metrics: List[ScenarioMetrics] = []
         if scenario.results_id and scenario.job_status == JobStatus.SUCCEEDED.value:
-            metrics = _calculate_pk(adapter, scenario.results_id, None)
+            metrics = _calculate_pk(adapter, job_service, scenario.results_id, None)
         elif scenario.job_status != JobStatus.SUCCEEDED.value:
             failures.append(f"{scenario.scenario_id}:{scenario.job_status}:{scenario.error or 'unknown'}")
 

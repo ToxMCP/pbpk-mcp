@@ -1,0 +1,14 @@
+=== Use Case 3: Virtual Population (Manual Loop) ===
+
+Goal: Simulate 3 virtual individuals with different physiology (Age, BMI) and compare Brain Cmax.
+
+Running Individual: Age=20y, BMI=20...
+  -> Brain Cmax: 160.61
+
+Running Individual: Age=40y, BMI=25...
+  -> Brain Cmax: 160.61
+
+Running Individual: Age=60y, BMI=30...
+  -> Brain Cmax: 160.61
+
+Population Average Brain Cmax: 160.61

@@ -1,0 +1,23 @@
+=== Use Case 1: Brain Barrier Distribution (Single Individual) ===
+
+Goal: Simulate a 30-year-old adult and measure drug concentration in the Brain vs Blood.
+(Using Acetaminophen as a proxy compound)
+
+[1] Loading Acetaminophen Pregnancy Model...
+    Model loaded. ID: sim_72c36d58
+
+[2] Configuring Subject Parameters...
+    Organism|Age set to 30.0 years.
+
+[3] Running Simulation (Real Physics Engine)...
+    Job submitted: 2bfb7b61-abc3-4673-944b-b7e568663679
+
+[4] Waiting for completion...
+
+[5] Analyzing Results (Result ID: sim_72c36d58_1764086745)...
+
+=== PHARMACOKINETIC METRICS ===
+BRAIN (Intracellular): Cmax=160.61 µmol/l, AUC=50903.84
+BLOOD (Arterial):      Cmax=545.08 µmol/l, AUC=52036.25
+
+Conclusion: Drug successfully crosses the BBB in this simulation.

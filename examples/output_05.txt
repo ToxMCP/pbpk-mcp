@@ -1,0 +1,12 @@
+=== Use Case 5: Job Control (Status & Cancellation) ===
+
+Goal: Submit a job and inspect its lifecycle status.
+[1] Submitting Simulation...
+    Job ID: 8c9d3285-07e0-4b39-a7e8-d2089c04a99f
+    Status (poll 1): queued
+    Status (poll 2): queued
+    Status (poll 3): queued
+
+[2] Requesting Cancellation...
+    Cancellation requested. Status: queued
+    Final Status: cancelled

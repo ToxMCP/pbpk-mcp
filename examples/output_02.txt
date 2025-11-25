@@ -1,0 +1,13 @@
+=== Use Case 2: Sensitivity Analysis (Liver Volume Impact) ===
+
+Goal: Manually sweep Liver Volume (0.75, 1.5, 3.0 L) to analyze impact on Brain Exposure.
+
+Running Scenario: Liver Volume=0.75 L...
+  -> Brain Cmax: 186.52 µmol/l
+
+Running Scenario: Liver Volume=1.5 L...
+  -> Brain Cmax: 168.34 µmol/l
+
+Running Scenario: Liver Volume=3.0 L...
+  -> Brain Cmax: 144.37 µmol/l
+  -> Change from Baseline (1.5L): -14.24%

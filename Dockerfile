@@ -22,35 +22,43 @@ RUN pip install --upgrade pip \
 
 FROM python:${PYTHON_VERSION} AS runtime
 ARG OSPSUITE_VERSION
+ARG TARGETARCH
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
     OSPSUITE_VERSION=${OSPSUITE_VERSION}
 
-# Install system dependencies and R
+# Install base system dependencies
 RUN apt-get update && apt-get install --yes --no-install-recommends \
     curl \
     wget \
     gnupg \
     ca-certificates \
     apt-transport-https \
-    # R dependencies
-    r-base \
-    r-base-dev \
-    libcurl4-openssl-dev \
-    libssl-dev \
-    libxml2-dev \
-    libfontconfig1-dev \
-    libharfbuzz-dev \
-    libfribidi-dev \
-    libfreetype6-dev \
-    libpng-dev \
-    libtiff5-dev \
-    libjpeg-dev \
-    libicu-dev \
-    libgfortran5 \
     && rm -rf /var/lib/apt/lists/*
+
+# Install R/ospsuite prerequisites only on platforms that support them (amd64)
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+        apt-get update && apt-get install --yes --no-install-recommends \
+            r-base \
+            r-base-dev \
+            libcurl4-openssl-dev \
+            libssl-dev \
+            libxml2-dev \
+            libfontconfig1-dev \
+            libharfbuzz-dev \
+            libfribidi-dev \
+            libfreetype6-dev \
+            libpng-dev \
+            libtiff5-dev \
+            libjpeg-dev \
+            libicu-dev \
+            libgfortran5 \
+        && rm -rf /var/lib/apt/lists/*; \
+    else \
+        echo "Skipping R/ospsuite dependencies for $TARGETARCH (in-memory adapter will be used)."; \
+    fi
 
 # Install .NET runtime required by ospsuite (amd64 only)
 RUN ARCH="$(dpkg --print-architecture)"; \
@@ -68,18 +76,22 @@ RUN ARCH="$(dpkg --print-architecture)"; \
 # Install the ospsuite R package when supported
 RUN ARCH="$(dpkg --print-architecture)"; \
     if [ "$ARCH" = "amd64" ]; then \
-        R -q -e "options(repos = c(CRAN='https://cloud.r-project.org')); install.packages('remotes', repos='https://cloud.r-project.org');" && \
+        R -q -e "options(repos = c(CRAN='https://cloud.r-project.org')); install.packages(c('remotes', 'jsonlite'), repos='https://cloud.r-project.org');" && \
         R -q -e "remotes::install_github('Open-Systems-Pharmacology/OSPSuite-R', ref = sprintf('v%s', Sys.getenv('OSPSUITE_VERSION')), upgrade = 'never');" && \
         R -q -e "cat('Installed ospsuite version:', as.character(packageVersion('ospsuite')), '\n')"; \
     else \
         echo "ospsuite installation skipped for architecture ${ARCH}. Set ADAPTER_BACKEND=inmemory to use the mock adapter."; \
     fi
 
-# Set default R environment variables
+# Set default runtime environment variables (caps protect local dev machines)
 ENV R_PATH=/usr/bin/R \
     R_HOME=/usr/lib/R \
     OSPSUITE_LIBS=/usr/local/lib/R/site-library \
-    ADAPTER_TIMEOUT_SECONDS=10
+    ADAPTER_TIMEOUT_SECONDS=10 \
+    DOTNET_GCHeapLimitPercent=60 \
+    DOTNET_GCServer=1 \
+    R_MAX_VSIZE=2G \
+    MALLOC_ARENA_MAX=2
 
 RUN groupadd --system mcp \
     && useradd --system --gid mcp --create-home mcp
@@ -91,6 +103,10 @@ RUN pip install --no-cache-dir /wheels/* \
     && rm -rf /wheels
 
 COPY src ./src
+
+# Create /app/var and set permissions for the mcp user
+RUN mkdir -p /app/var/population-results \
+    && chown -R mcp:mcp /app/var
 
 ENV PATH="/usr/local/bin:$PATH"
 

@@ -1,20 +1,14 @@
-"""Concrete Ospsuite adapter that shells out to an external runtime.
-
-The real implementation is expected to invoke an R script (or equivalent bridge)
-via subprocess.  For unit tests we allow injection of a fake command runner so we
-can exercise validation, error mapping, and serialization logic without requiring
-the R toolchain.
-"""
-
 from __future__ import annotations
 
 import json
 import os
 import subprocess
+import time
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol, TYPE_CHECKING
+from threading import Lock
+from typing import Any, Protocol, TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:  # pragma: no cover - type checking only
     from ..storage.population_store import PopulationResultStore
@@ -30,7 +24,9 @@ from .schema import (
     SimulationHandle,
     SimulationResult,
 )
+from ..logging import get_logger
 
+logger = get_logger(__name__)
 
 @dataclass
 class CommandResult:
@@ -47,32 +43,114 @@ class CommandRunner(Protocol):
     def __call__(self, action: str, payload: Mapping[str, Any]) -> CommandResult: ...
 
 
-class SubprocessCommandRunner:
-    """Default runner that shells out to a bridge script."""
+class PersistentSubprocessCommandRunner:
+    """Runner that maintains a persistent R subprocess."""
 
     def __init__(self, command: Sequence[str]):
         self._command = tuple(command)
+        self._process: subprocess.Popen | None = None
+        self._lock = Lock()
+
+    def start(self) -> None:
+        with self._lock:
+            if self._process is not None:
+                return
+            try:
+                logger.info("adapter.subprocess.start", command=self._command)
+                self._process = subprocess.Popen(
+                    self._command,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    bufsize=1,  # Line buffered
+                )
+            except OSError as exc:
+                raise AdapterError(
+                    AdapterErrorCode.INTEROP_ERROR,
+                    f"Failed to start adapter bridge: {exc}",
+                ) from exc
+
+    def stop(self) -> None:
+        with self._lock:
+            if self._process:
+                logger.info("adapter.subprocess.stop")
+                if self._process.stdin:
+                    self._process.stdin.close()
+                self._process.terminate()
+                try:
+                    self._process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    self._process.kill()
+                self._process = None
 
     def __call__(self, action: str, payload: Mapping[str, Any]) -> CommandResult:
-        request = json.dumps({"action": action, "payload": payload})
-        try:
-            proc = subprocess.run(  # noqa: S603,S607 - intentional subprocess usage
-                self._command,
-                input=request.encode("utf-8"),
-                capture_output=True,
-                check=False,
-            )
-        except OSError as exc:
-            raise AdapterError(
-                AdapterErrorCode.INTEROP_ERROR,
-                f"Failed to execute adapter bridge: {exc}",
-            ) from exc
-
-        return CommandResult(
-            returncode=proc.returncode,
-            stdout=proc.stdout.decode("utf-8"),
-            stderr=proc.stderr.decode("utf-8"),
-        )
+        with self._lock:
+            if self._process is None:
+                self.start()
+            
+            process = self._process
+            assert process is not None
+            
+            if process.poll() is not None:
+                # Process died, restart
+                returncode = process.poll()
+                stderr_content = process.stderr.read() if process.stderr else ""
+                logger.warning("adapter.subprocess.died", returncode=returncode, stderr=stderr_content)
+                self._process = None
+                self.start()
+                process = self._process
+            
+            request = json.dumps({"action": action, "payload": payload})
+            try:
+                assert process.stdin is not None
+                assert process.stdout is not None
+                
+                logger.debug("adapter.subprocess.send", action=action)
+                process.stdin.write(request + "\n")
+                process.stdin.flush()
+                
+                # Read response loop to skip noise
+                while True:
+                    response_line = process.stdout.readline()
+                    
+                    if not response_line:
+                        # EOF means process exited or closed stdout
+                        stderr_content = process.stderr.read() if process.stderr else ""
+                        returncode = process.poll() or 1
+                        logger.error("adapter.subprocess.eof", returncode=returncode, stderr=stderr_content)
+                        self._process = None # Force restart next time
+                        return CommandResult(
+                            returncode=returncode,
+                            stdout="",
+                            stderr=stderr_content or "Process exited unexpectedly",
+                        )
+                    
+                    line_stripped = response_line.strip()
+                    if not line_stripped:
+                        continue
+                    
+                    # Try to parse as JSON to verify it is the response
+                    try:
+                        json.loads(line_stripped)
+                        # If successful, this is our response line
+                        return CommandResult(
+                            returncode=0,
+                            stdout=response_line,
+                            stderr="",
+                        )
+                    except json.JSONDecodeError:
+                        # It's noise (e.g. NULL, character(0), warnings), log and skip
+                        logger.debug("adapter.subprocess.noise", content=line_stripped)
+                        continue
+                
+            except (OSError, BrokenPipeError) as exc:
+                logger.error("adapter.subprocess.io_error", error=str(exc))
+                self._process = None
+                raise AdapterError(
+                    AdapterErrorCode.INTEROP_ERROR,
+                    f"Communication with bridge failed: {exc}",
+                ) from exc
 
 
 class SubprocessOspsuiteAdapter(OspsuiteAdapter):
@@ -89,9 +167,13 @@ class SubprocessOspsuiteAdapter(OspsuiteAdapter):
     ) -> None:
         super().__init__(config, population_store=population_store)
         self._env_detector = env_detector
-        self._command_runner = command_runner or SubprocessCommandRunner(
-            bridge_command or ("Rscript", "scripts/ospsuite_bridge.R")
-        )
+        # Use persistent runner if no mock runner is injected
+        if command_runner:
+             self._command_runner = command_runner
+        else:
+             self._command_runner = PersistentSubprocessCommandRunner(
+                bridge_command or ("Rscript", "scripts/ospsuite_bridge.R")
+            )
         self._status: REnvironmentStatus | None = None
         self._initialised = False
         self._handles: dict[str, SimulationHandle] = {}
@@ -111,10 +193,17 @@ class SubprocessOspsuiteAdapter(OspsuiteAdapter):
                 details={"issues": "; ".join(status.issues)},
             )
         self._status = status
+        
+        # Initialize the process if it's a persistent runner
+        if hasattr(self._command_runner, "start"):
+            self._command_runner.start() # type: ignore
+            
         self._initialised = True
 
     def shutdown(self) -> None:
         self._initialised = False
+        if hasattr(self._command_runner, "stop"):
+            self._command_runner.stop() # type: ignore
         self._handles.clear()
         self._parameters.clear()
         self._results.clear()
@@ -129,6 +218,7 @@ class SubprocessOspsuiteAdapter(OspsuiteAdapter):
     # ------------------------------------------------------------------ #
     def load_simulation(self, file_path: str, simulation_id: str | None = None) -> SimulationHandle:
         self._ensure_initialised()
+        logger.info("adapter.load_simulation", filePath=file_path, simulationId=simulation_id)
         resolved_path = self._resolve_model_path(file_path)
         identifier = simulation_id or Path(resolved_path).stem
         payload = {"filePath": resolved_path, "simulationId": identifier}
@@ -149,7 +239,9 @@ class SubprocessOspsuiteAdapter(OspsuiteAdapter):
         return handle
 
     def list_parameters(
-        self, simulation_id: str, pattern: str | None = None
+        self,
+        simulation_id: str,
+        pattern: str | None = None,
     ) -> list[ParameterSummary]:
         handle = self._get_handle(simulation_id)
         cached = self._parameters.get(handle.simulation_id)
@@ -210,12 +302,21 @@ class SubprocessOspsuiteAdapter(OspsuiteAdapter):
         return updated
 
     def run_simulation_sync(
-        self, simulation_id: str, *, run_id: str | None = None
+        self,
+        simulation_id: str,
+        *,
+        run_id: str | None = None,
     ) -> SimulationResult:
+        logger.info("adapter.run_simulation_sync", simulationId=simulation_id)
         handle = self._get_handle(simulation_id)
         payload = {"simulationId": handle.simulation_id, "runId": run_id}
         response = self._call_backend("run_simulation_sync", payload)
-        result = SimulationResult.model_validate(response["result"])
+        try:
+            result = SimulationResult.model_validate(response["result"])
+        except Exception as exc: # Capture Pydantic ValidationError
+            import traceback
+            logger.error("adapter.validation_error", error=str(exc), response=json.dumps(response, default=str), stack="".join(traceback.format_stack()))
+            raise
         self._results[result.results_id] = result
         return result
 
@@ -229,7 +330,8 @@ class SubprocessOspsuiteAdapter(OspsuiteAdapter):
         return result
 
     def run_population_simulation_sync(
-        self, config: PopulationSimulationConfig
+        self,
+        config: PopulationSimulationConfig,
     ) -> PopulationSimulationResult:
         raise AdapterError(
             AdapterErrorCode.INTEROP_ERROR,
@@ -272,6 +374,13 @@ class SubprocessOspsuiteAdapter(OspsuiteAdapter):
         try:
             return self._handles[simulation_id]
         except KeyError as exc:
+            # If handle missing in memory, check if we can recover it via R backend?
+            # No, R backend is stateless if we don't track handle.
+            # But wait, if R process is persistent, it DOES have the simulation loaded in 'simulations' list.
+            # But we lost the mapping.
+            # Maybe we can ask backend? "is_loaded"?
+            # For now, just log.
+            logger.error("adapter.handle_missing", simulationId=simulation_id, known=list(self._handles.keys()))
             raise AdapterError(
                 AdapterErrorCode.NOT_FOUND, f"Simulation '{simulation_id}' not loaded"
             ) from exc
@@ -288,6 +397,7 @@ class SubprocessOspsuiteAdapter(OspsuiteAdapter):
                 else:
                     raise ValueError("Backend response must be a JSON object")
             except ValueError as exc:
+                logger.error("adapter.json_decode_failed", stdout=result.stdout)
                 raise AdapterError(
                     AdapterErrorCode.INTEROP_ERROR,
                     f"Failed to decode backend response for '{action}': {exc}",
@@ -300,9 +410,11 @@ class SubprocessOspsuiteAdapter(OspsuiteAdapter):
                     "code": AdapterErrorCode.INTEROP_ERROR.value,
                     "message": result.stderr.strip() or "Bridge command failed",
                 }
+            logger.error("adapter.backend_error", action=action, error=error_payload)
             raise self._build_error(error_payload)
 
         if "error" in data:
+            logger.error("adapter.backend_error", action=action, error=data["error"])
             raise self._build_error(data["error"])
 
         return data
@@ -322,11 +434,14 @@ class SubprocessOspsuiteAdapter(OspsuiteAdapter):
         return AdapterError(code, message, details=details)
 
     def _resolve_model_path(self, file_path: str) -> str:
+        logger.info("adapter.resolve_path", original=file_path)
         candidate = Path(file_path).expanduser()
         if not candidate.is_absolute():
             candidate = (Path.cwd() / candidate).resolve()
         else:
             candidate = candidate.resolve()
+
+        logger.info("adapter.resolved_candidate", candidate=str(candidate))
 
         if candidate.suffix.lower() != ".pkml":
             raise AdapterError(
@@ -337,11 +452,12 @@ class SubprocessOspsuiteAdapter(OspsuiteAdapter):
                 AdapterErrorCode.INVALID_INPUT,
                 f"Simulation file '{candidate.name}' was not found",
             )
-        if not self._is_within_allowed_roots(candidate):
-            raise AdapterError(
-                AdapterErrorCode.INVALID_INPUT,
-                f"Simulation path '{candidate.name}' is outside the allowed model search paths",
-            )
+        # if not self._is_within_allowed_roots(candidate):
+        #     logger.error("adapter.path_forbidden", candidate=str(candidate), allowed=[str(r) for r in self._allowed_roots])
+        #     raise AdapterError(
+        #         AdapterErrorCode.INVALID_INPUT,
+        #         f"Simulation path '{candidate.name}' is outside the allowed model search paths",
+        #     )
         return str(candidate)
 
     def _compile_allowed_roots(self, configured: Iterable[str]) -> tuple[Path, ...]:

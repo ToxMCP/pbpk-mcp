@@ -1,279 +1,219 @@
-# MCP Bridge Server
+# PBPK MCP Server
 
-Bridge service exposing Open Systems Pharmacology Suite capabilities via the Model Context Protocol.
+**Public MCP endpoint for physiologically based pharmacokinetic (PBPK) modeling with Open Systems Pharmacology Suite.**  
+Expose deterministic/population simulations, parameter edits, and PK analytics to any MCP-aware agent (Codex CLI, Gemini CLI, Claude Code, etc.).
 
-## Getting Started
+## Why this project exists
+
+PBPK workflows typically juggle `.pkml` models, ospsuite tooling, and ad-hoc scripts that are hard for coding agents to automate safely. The PBPK MCP server wraps those workflows in a **secure, programmable interface**:
+
+- **Single MCP surface** for loading models, editing parameters, running simulations, and computing PK metrics.
+- **Adapter flexibility** – in-memory adapter for fast local work; subprocess adapter to call R/ospsuite when you need full fidelity.
+- **Job safety** – confirmation gating for critical tools, idempotency keys for reruns, and persistent job registry with cancellation.
+- **Audit + observability** – immutable audit chain, Prometheus metrics, and parity/benchmark harnesses to guard regressions.
+
+---
+
+## Feature snapshot
+
+| Capability | Description |
+| --- | --- |
+| 🧬 **PBPK simulation control** | Load `.pkml` models, list/edit parameters, and run deterministic or population simulations via MCP tools. |
+| 🧾 **PK analytics** | Compute Cmax/Tmax/AUC on completed runs; retrieve aggregated population results and chunk handles. |
+| 🔁 **Job orchestration & idempotency** | Async job service with idempotency keys, cancellation, and persistent registry (thread, Celery, or HPC stub backends). |
+| 🛡️ **Guardrails by default** | Critical tools require explicit confirmation; role annotations and JSON Schemas are returned in the tool catalog. |
+| 📈 **Observability** | Structured logs, audit bundles, `/metrics` (Prometheus), and benchmark/parity suites baked into the repo. |
+| 🤖 **Agent friendly** | MCP HTTP endpoints expose `list_tools`, `call_tool`, and capability data; smoke scripts and integration snippets are included. |
+
+---
+
+## Table of contents
+
+1. [Quick start](#quick-start)
+2. [Real-World Examples](#real-world-examples)
+3. [Configuration](#configuration)
+4. [Tool catalog](#tool-catalog)
+5. [Running the server](#running-the-server)
+6. [Integrating with coding agents](#integrating-with-coding-agents)
+7. [Output artifacts](#output-artifacts)
+8. [Security checklist](#security-checklist)
+9. [Development notes](#development-notes)
+10. [Roadmap](#roadmap)
+11. [License](#license)
+
+---
+
+## Quick start (Docker)
+
+The easiest way to run the server with the **Real Physics Engine (OSPSuite/R)** is via Docker Compose.
 
 ```bash
-make install
-make lint
-make test
-# Provision reference parity data and run the deterministic parity suite
-make fetch-bench-data
-make parity
-# Enforce literature extraction accuracy thresholds against the gold set
-make goldset-eval
+git clone https://github.com/senseibelbi/PBPK_MCP.git
+cd PBPK_MCP
+
+# Create necessary directories
+mkdir -p var/jobs var/reports var/population-results
+
+# Copy example environment
+cp .env.example .env
+
+# Start the API and Worker with R support
+docker compose -f docker-compose.celery.yml up -d --build
 ```
 
-### Benchmarking
+- **API Endpoint:** `http://localhost:8000/mcp`
+- **Worker:** Handles simulation jobs using the installed R runtime.
+- **Models:** Place your `.pkml` files in `var/`. (Acetaminophen_Pregnancy.pkml is auto-downloaded in some setups).
 
-- `make benchmark` runs the smoke scenario locally (in-process ASGI transport) and stores JSON artefacts under `var/benchmarks/`.
-- Append `BENCH_PROFILE=1` to capture a cProfile trace alongside the JSON (e.g. `make benchmark BENCH_PROFILE=1`).
-- Compare a result against the repository baseline with `python scripts/check_benchmark_regression.py --benchmark var/benchmarks/<file>.json --baseline benchmarks/thresholds/smoke.json`.
+## Real-World Examples
 
-### Idempotent tool calls
+We provide a comprehensive suite of examples in the `examples/` directory demonstrating full workflows against the real engine:
 
-- Provide an `idempotencyKey` field when calling `/mcp/call_tool` (or the `Idempotency-Key` header once exposed on REST endpoints) to deduplicate repeated submissions.
-- Duplicate payloads with the same key return the original job metadata; mismatched payloads respond with HTTP `409` so clients can remediate.
+1.  **Brain Barrier Distribution:** Checks if a drug crosses the BBB by comparing Brain vs Blood AUC.
+2.  **Sensitivity Analysis:** Sweeps physiological parameters (e.g., Liver Volume) to assess impact on clearance.
+3.  **Virtual Population:** Simulates a cohort with varying physiology.
+4.  **Automated Sensitivity Tool:** Demonstrates the high-level `run_sensitivity_analysis` tool.
 
-Detailed walkthroughs for REST and agent flows live under
-`docs/mcp-bridge/getting-started/quickstart-cli.md` and
-`docs/mcp-bridge/getting-started/quickstart-agent.md`.
+To run the examples (requires Python requests):
 
-### Agent Workflows
+```bash
+python3 examples/01_brain_barrier_distribution.py
+python3 examples/02_liver_volume_sensitivity.py
+python3 examples/06_sensitivity_tool_demo.py
+```
 
-- `run_agent.py demo` executes the end-to-end confirm-before-execute pipeline using the in-memory adapter.
-- `run_agent.py` (interactive mode) exercises the LangGraph agent loop and prompts for confirmation before
-  mutating or running simulations.
-- Follow the Quickstart guides in `docs/mcp-bridge/getting-started/` for step-by-step tutorials.
-- REST surface area and configuration variables are documented in `docs/mcp-bridge/reference/api.md`
-  and `docs/mcp-bridge/reference/configuration.md`.
-- Documentation for prompt policies and tooling lives in `docs/mcp-bridge/agent-prompts.md`.
-- Authentication/authorization behaviour and configuration is documented in `docs/mcp-bridge/authentication.md`.
-- Immutable audit trail design and verification plan is in `docs/mcp-bridge/audit-trail.md`.
-- Value-oriented scenarios live in the [use-case packs](use-cases/README.md) (notebooks covering sensitivity, population scale, and literature-assisted calibration).
-- Prometheus metrics and Grafana dashboards are provided under `docs/monitoring/`.
+See `examples/README.md` for details.
 
-### Sensitivity Analysis
-
-- The reusable sensitivity utilities live in `src/mcp_bridge/agent/sensitivity.py`.
-- Refer to `docs/mcp-bridge/sensitivity-analysis.md` for configuration and workflow details.
-- Unit coverage is provided via `tests/unit/test_sensitivity_analysis.py`.
-
-## Project Layout
-
-- `src/` – package source code.
-- `tests/` – unit and integration tests.
-- `docs/` – architecture, contracts, and threat model reference material.
-- `docs/tools/` – per-tool documentation for the MCP surface.
+---
 
 ## Configuration
 
-Settings are supplied through environment variables (a `.env` file is supported):
+Settings are loaded via `pydantic-settings` with `.env` support. Common knobs (see `docs/mcp-bridge/reference/configuration.md` for the full matrix):
 
-- `HOST` – interface the HTTP server binds to (default `0.0.0.0`).
-- `PORT` – TCP port for the HTTP server (default `8000`).
-- `LOG_LEVEL` – log level for structlog output (default `INFO`).
-- `SERVICE_NAME` – emitted service identifier (default `mcp-bridge`).
-- `SERVICE_VERSION` – override for the version reported in `/health` (defaults to package version).
-- `ENVIRONMENT` – environment tag (default `development`).
-- `MCP_MODEL_SEARCH_PATHS` – optional colon-separated list of directories that contain PBPK
-  `.pkml` files. If unset, the server allows paths under `tests/fixtures` for local testing.
-- `ADAPTER_BACKEND` – `inmemory` (default) or `subprocess`. The latter shells out to an R/ospsuite bridge.
-- `ADAPTER_REQUIRE_R_ENV` – set to `true` to fail startup if R/ospsuite cannot be detected (default `false`).
-- `ADAPTER_TIMEOUT_MS` – default timeout (in milliseconds) for adapter operations (default `30000`).
-- `ADAPTER_R_PATH` / `ADAPTER_R_HOME` / `ADAPTER_R_LIBS` – explicit R binary, home, and library locations.
-- `OSPSUITE_LIBS` – absolute path to ospsuite R libraries when using the subprocess backend.
-- `ADAPTER_MODEL_PATHS` – colon-separated allow list of `.pkml` directories when using the subprocess backend.
-- `ADAPTER_TO_THREAD` – when `true` (default) FastAPI routes run blocking adapter calls in background threads to protect the event loop.
-- `JOB_WORKER_THREADS` – size of the in-process job worker pool (default `2`).
-- `JOB_BACKEND` – select `thread` (default) or `celery` to offload work to distributed workers.
-- `JOB_TIMEOUT_SECONDS` – execution timeout for queued simulation jobs (default `300`).
-- `JOB_MAX_RETRIES` – automatic retry attempts for failed jobs (default `0`).
-- `JOB_REGISTRY_PATH` – SQLite database used to persist job metadata across API restarts (default `var/jobs/registry.db`; `.json` paths are automatically converted).
-- `SESSION_BACKEND` – `memory` (default) or `redis` for the simulation session registry.
-- `SESSION_REDIS_URL` – connection string used when `SESSION_BACKEND=redis`.
-- `SESSION_REDIS_PREFIX` – Redis key prefix for session entries (default `mcp:sessions`).
-- `SESSION_TTL_SECONDS` – optional TTL applied to Redis session records; leave unset to disable expiry.
-- `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND` – Celery connection URIs when `JOB_BACKEND=celery`.
-- `CELERY_TASK_ALWAYS_EAGER` / `CELERY_TASK_EAGER_PROPAGATES` – toggle inline execution for tests and whether exceptions propagate.
-- `AUDIT_ENABLED` – toggles immutable audit logging (default `true`).
-- `AUDIT_STORAGE_PATH` – filesystem path used for audit JSONL logs (default `var/audit`).
-- `AUDIT_STORAGE_BACKEND` – `local` (default) or `s3` to enable Object Lock uploads.
-- `AUDIT_S3_BUCKET` / `AUDIT_S3_PREFIX` / `AUDIT_S3_REGION` – S3 settings for audit storage when backend is `s3`.
-- `AUDIT_S3_OBJECT_LOCK_MODE` / `AUDIT_S3_OBJECT_LOCK_DAYS` – configure S3 Object Lock governance/compliance retention.
-- `AUDIT_S3_KMS_KEY_ID` – optional KMS key for encrypting audit events at rest in S3.
-- `AUDIT_VERIFY_LOOKBACK_DAYS` – window (days) verified by the scheduled audit integrity job (default `1`).
-- `MCP_RUN_R_TESTS` – opt-in flag for R-dependent integration tests (`1` runs them, default `0` skips).
-- `AUTH_ISSUER_URL` / `AUTH_AUDIENCE` / `AUTH_JWKS_URL` / `AUTH_JWKS_CACHE_SECONDS` – configure JWT validation against your IdP.
-- `AUTH_DEV_SECRET` – optional HS256 secret for local development/testing tokens.
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `HOST` | Optional | `0.0.0.0` | Bind address for the FastAPI app. |
+| `PORT` | Optional | `8000` | HTTP port. |
+| `ADAPTER_BACKEND` | Optional | `inmemory` | Switch to `subprocess` to use R/ospsuite (Docker default). |
+| `MCP_MODEL_SEARCH_PATHS` | Optional | `tests/fixtures` | Colon-separated allow list of `.pkml` directories. |
+| `ADAPTER_TIMEOUT_MS` | Optional | `30000` | Adapter call timeout. |
+| `JOB_BACKEND` | Optional | `thread` | `thread`, `celery`, or `hpc` (stub) job runner. |
+| `JOB_WORKER_THREADS` | Optional | `2` | In-process worker pool size. |
+| `JOB_TIMEOUT_SECONDS` | Optional | `300` | Per-job timeout for queued executions. |
+| `JOB_REGISTRY_PATH` | Optional | `var/jobs/registry.db` | Persistent job registry for status checks/idempotency. |
+| `AUTH_DEV_SECRET` | Dev | – | HS256 secret for local tokens (set issuer/audience values for production JWT validation). |
+| `AUDIT_ENABLED` | Optional | `true` | Toggle immutable audit logging. |
+| `AUDIT_STORAGE_BACKEND` | Optional | `local` | `local` JSONL logs or `s3` with Object Lock (`AUDIT_S3_*`). |
+| `LOG_LEVEL` | Optional | `INFO` | Structured log verbosity. |
+| `ENVIRONMENT` | Optional | `development` | Environment banner used in `/health` and logs. |
 
-Refer to `docs/mcp-bridge/reference/configuration.md` for an exhaustive table of supported variables.
+---
 
-### R / ospsuite Integration
+## Tool catalog
 
-By default the application uses the in-memory adapter suitable for local development and CI without
-an R toolchain. To exercise the subprocess-backed adapter, set:
+| Tool | Description |
+| --- | --- |
+| `load_simulation` | Load a PBPK `.pkml` file into the session registry (critical; requires confirmation). |
+| `list_parameters` | List parameter paths for a loaded simulation (supports glob filters). |
+| `get_parameter_value` | Retrieve the current value for a simulation parameter. |
+| `set_parameter_value` | Update a parameter with optional unit/comment (critical; requires confirmation). |
+| `run_simulation` | Submit an asynchronous deterministic simulation and receive a job handle (supports `idempotencyKey`). |
+| `get_job_status` | Inspect the status/result of a submitted job. |
+| `calculate_pk_parameters` | Compute PK metrics (Cmax, Tmax, AUC) for a completed simulation result. |
+| `run_population_simulation` | Execute a population simulation asynchronously and return a job handle (supports `idempotencyKey`). |
+| `get_population_results` | Fetch aggregated results and chunk handles for a population run. |
+| `cancel_job` | Request cancellation of a queued or running job. |
+| `run_sensitivity_analysis` | Run a multi-parameter sensitivity analysis workflow and return PK deltas (critical; requires confirmation). |
 
-```bash
-export ADAPTER_BACKEND=subprocess
-export MCP_MODEL_SEARCH_PATHS=/path/to/models
-export MCP_RUN_R_TESTS=1
-```
+Each tool in `list_tools` returns JSON Schemas plus annotations for `roles`, `critical`, and `requiresConfirmation` to help agents enforce guardrails client-side.
 
-You can then run the full test suite (including R-dependent integrations) with:
+---
+
+## Running the server
+
+### Local development (Python only)
 
 ```bash
-make test
+# in-memory adapter (no R), with development JWTs
+export AUTH_DEV_SECRET=dev-secret
+export ADAPTER_BACKEND=inmemory
+export MCP_MODEL_SEARCH_PATHS=$(pwd)/tests/fixtures
+uvicorn mcp_bridge.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-If the R environment is optional, leave `ADAPTER_REQUIRE_R_ENV` unset so the service continues to
-start even when ospsuite is unavailable. Setting `ADAPTER_REQUIRE_R_ENV=true` enforces a hard failure.
-
-Supported OSPSuite releases and tested environments are tracked in
-`docs/mcp-bridge/reference/compatibility.md`; review it when upgrading
-automation binaries or base images.
-
-### Durable Session Registry (Redis)
-
-Set the session registry backend to Redis to survive API restarts and support multi-instance
-deployments:
+### Quick MCP smoke test
 
 ```bash
-export SESSION_BACKEND=redis
-export SESSION_REDIS_URL=redis://localhost:6379/2
-export SESSION_REDIS_PREFIX=mcp:sessions
-# Optional – expire sessions after 24 hours
-export SESSION_TTL_SECONDS=86400
+BASE_URL=http://localhost:8000
+AUTH_HEADER="Authorization: Bearer $(PYTHONPATH=src python - <<'PY'
+from mcp_bridge.security.simple_jwt import jwt
+print(jwt.encode({"sub": "smoke", "roles": ["admin"]}, "dev-secret", algorithm="HS256"))
+PY
+)"
+
+# Tool discovery
+curl -s "$BASE_URL/mcp/list_tools" -H "$AUTH_HEADER" | jq '.tools | length'
+
+# Load demo model and run a deterministic simulation
+curl -s -X POST "$BASE_URL/mcp/call_tool" \
+  -H "Content-Type: application/json" -H "$AUTH_HEADER" \
+  -d '{"tool":"load_simulation","arguments":{"filePath":"tests/fixtures/demo.pkml","simulationId":"smoke"},"critical":true}' | jq '.structuredContent.simulationId'
+
+curl -s -X POST "$BASE_URL/mcp/call_tool" \
+  -H "Content-Type: application/json" -H "$AUTH_HEADER" \
+  -d '{"tool":"run_simulation","arguments":{"simulationId":"smoke"},"critical":true,"idempotencyKey":"smoke-1"}' | jq '.structuredContent.jobId'
 ```
 
-Ensure the Redis instance is reachable from both the API and Celery workers (if enabled). The
-registry stores the JSON representation of `SimulationHandle` objects and metadata under the
-configured prefix. Use `python -m mcp_bridge.runtime.session_cli dump --pretty` (see docs) to
-inspect active sessions.
+Use `scripts/mcp_http_smoke.sh` for a scripted handshake and CLI walkthroughs in `docs/mcp-bridge/getting-started/` for REST + agent flows.
 
-### Immutable Audit Trail in S3
+---
 
-Production deployments can ship audit events directly to an S3 bucket configured with Object Lock:
+## Integrating with coding agents
 
-```bash
-export AUDIT_STORAGE_BACKEND=s3
-export AUDIT_S3_BUCKET=my-audit-bucket
-export AUDIT_S3_PREFIX=bridge/audit
-export AUDIT_S3_REGION=us-east-1
-export AUDIT_S3_OBJECT_LOCK_MODE=governance
-export AUDIT_S3_OBJECT_LOCK_DAYS=90
-```
+- Add `http://localhost:8000/mcp` as an MCP provider (Codex CLI, Gemini CLI, Claude Code, or other hosts).
+- Include `Authorization: Bearer <token>` and set `critical: true` in payloads for critical tools (legacy `X-MCP-Confirm: true` is also honoured).
+- Reference `docs/mcp-bridge/integration_guides/mcp_integration.md` for client-specific JSON snippets and binary payload handling.
 
-Each event is stored as an immutable object (`prefix/YYYY/MM/DD/<timestamp>-<eventId>.jsonl`) with
-hash chaining preserved across restarts. Ensure the target bucket has Object Lock enabled in the
-same mode you configure. Optional `AUDIT_S3_KMS_KEY_ID` allows encrypting objects with a customer
-managed KMS key.
+---
 
-To periodically verify the chain and retention policy, run:
+## Output artifacts
 
-```bash
-python -m mcp_bridge.audit.verify s3://$AUDIT_S3_BUCKET/$AUDIT_S3_PREFIX \
-  --object-lock-mode $AUDIT_S3_OBJECT_LOCK_MODE \
-  --object-lock-days $AUDIT_S3_OBJECT_LOCK_DAYS
-```
+- **Structured MCP payloads** – responses include `content` plus `structuredContent` with job handles, simulation IDs, PK metrics, and population result metadata.
+- **Audit + provenance** – critical tool invocations record digests, argument keys, and identities; optional S3 Object Lock storage keeps the chain immutable.
+- **Metrics** – `/metrics` exposes MCP tool latency/histograms and HTTP counters suitable for Prometheus/Grafana (see `docs/monitoring/`).
+- **Benchmarks** – smoke/parity benchmark JSON artefacts land in `var/benchmarks/` for regression checks.
 
-To run the scheduled verification logic that respects `AUDIT_VERIFY_LOOKBACK_DAYS`, execute:
+---
 
-```bash
-python -m mcp_bridge.audit.jobs
-```
+## Security checklist
 
-### Non-blocking Adapter Calls
+- ✅ Require auth in production (`AUTH_ISSUER_URL`/`AUTH_AUDIENCE` or gateway enforcement); use `AUTH_DEV_SECRET` only for local work.
+- ✅ Critical tools enforce explicit confirmation and audit logging.
+- ✅ Idempotency keys deduplicate simulation submissions; job registry persists across restarts.
+- ✅ Limit model search paths (`MCP_MODEL_SEARCH_PATHS`) and memory-intensive backends when running on constrained hosts.
+- 🔲 Harden ingress (TLS, rate limits) and align RBAC with your deployment before exposing beyond localhost.
 
-Set `ADAPTER_TO_THREAD=true` (default) to offload adapter-bound work—such as `load_simulation` and
-parameter access—to background threads. This keeps the FastAPI event loop responsive under load
-while maintaining structured logging and correlation IDs. Disable the flag if you embed the server
-in an environment that manages dispatching differently.
+---
 
-### Distributed Job Backend (Celery)
+## Development notes
 
-Long-running simulation jobs can execute via Celery workers instead of the in-process thread pool.
-Switching is configuration-only:
+- `make lint` / `make type` / `make test` – fast quality gates; `make test-e2e` and `make parity` run heavier suites.
+- `make benchmark` – smoke benchmark (in-process) with optional profiling via `BENCH_PROFILE=1`.
+- `make goldset-eval` – validate literature extraction quality against the gold set.
+- `make build-image` / `make run-image` – container workflow; `docker-compose.celery.yml` spins up API + Redis + Celery stub.
+- Distributed execution: set `JOB_BACKEND=celery` or `JOB_BACKEND=hpc` (stub Slurm) and follow the runbooks in `docs/operations/`.
+- Agent scaffolds: `run_agent.py demo` exercises the confirm-before-execute loop using the in-memory adapter.
 
-```bash
-export JOB_BACKEND=celery
-export CELERY_BROKER_URL=redis://localhost:6379/0
-export CELERY_RESULT_BACKEND=redis://localhost:6379/1
-export CELERY_TASK_ALWAYS_EAGER=false
-```
+---
 
-Run the API as usual (for example with `uvicorn mcp_bridge.app:create_app --factory`) and start a
-worker in a separate shell:
+## Roadmap
 
-```bash
-make celery-worker
-```
+- Streaming progress updates for long-running simulations and population jobs.
+- Expanded parity/benchmark scenarios covering additional reference models and sensitivity profiles.
+- Optional SSE/WebSocket transport for MCP once the spec finalizes streaming semantics.
 
-For quick smoke testing without a dedicated worker you can enable eager mode:
-
-```bash
-export JOB_BACKEND=celery
-export CELERY_BROKER_URL=memory://
-export CELERY_RESULT_BACKEND=cache+memory://
-export CELERY_TASK_ALWAYS_EAGER=true  # tasks execute inline, no worker required
-```
-
-Celery job submissions are persisted to `JOB_REGISTRY_PATH` (default `var/jobs/registry.json`) so
-`/get_job_status` continues to work after API restarts. Clean up the file when resetting local state.
-
-For a turnkey local stack (API + worker + Redis) use:
-
-```bash
-docker compose -f docker-compose.celery.yml up --build
-```
-
-The compose file mounts `./var` so audit logs and the job registry survive container restarts.
-Detailed operational guidance lives in `docs/mcp-bridge/operations/celery-runbook.md`.
-
-See `docs/mcp-bridge/distributed-job-architecture.md` for a deeper dive into the queue topology,
-state transitions, and production considerations.
-
-### HPC Submission Stub (Slurm)
-
-The job service now ships with a mocked Slurm scheduler that exercises external job identifiers and
-queue delays without needing access to an HPC cluster:
-
-```bash
-export JOB_BACKEND=hpc
-export HPC_STUB_QUEUE_DELAY_SECONDS=0.1  # optional delay before dispatch
-uvicorn mcp_bridge.app:create_app --factory
-```
-
-Job status responses will include an `externalJobId` and the audit trail records
-`job.<type>.hpc_submitted` / `job.<type>.hpc_dispatched` events. A dedicated regression keeps the
-stub green:
-
-```bash
-make test-hpc
-```
-
-Design details and operational guidance live in `docs/operations/hpc.md`.
-
-### Operations Runbook
-
-Day-to-day procedures—startup, health checks, incident drills, and rollback—are
-documented in `docs/operations/runbook.md`. Review it before on-call rotations
-and update the drill log after mitigation exercises.
-
-For release governance, follow the [change management checklist](docs/mcp-bridge/operations/change-management.md)
-and ensure every PR includes smoke benchmark and alert verification evidence.
-
-## Testing & CI Gates
-
-- Run the full suite: `pytest`.
-- Security negatives (expired/replayed tokens, rate limits): `pytest tests/integration/test_auth_security.py`.
-- Performance thresholds: after generating a benchmark JSON (`make benchmark`), export
-  `MCP_BENCHMARK_RESULT` and execute `pytest tests/perf/test_benchmark_thresholds.py`.
-  The test skips automatically when the environment variables are absent, allowing fast local
-  iterations without the benchmark artefact.
-
-## Container Workflow
-
-```bash
-make build-image          # Build the runtime image
-make run-image            # Run locally (binds :8000)
-curl http://localhost:8000/health
-```
-
-The image runs as a non-root user and includes an embedded health check that polls `/health` every 30 seconds.
+---
 
 ## License
 
-This project is distributed under the [Apache License 2.0](LICENSE). Contributions are accepted under
-the same terms.
+This project is distributed under the [Apache License 2.0](LICENSE). Contributions are accepted under the same terms.

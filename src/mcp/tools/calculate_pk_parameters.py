@@ -8,7 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from mcp_bridge.adapter import AdapterError
 from mcp_bridge.adapter.interface import OspsuiteAdapter
-from mcp_bridge.adapter.schema import SimulationResultSeries
+from mcp_bridge.adapter.schema import SimulationResult, SimulationResultSeries
+from mcp_bridge.services.job_service import BaseJobService
 
 
 class CalculatePkParametersValidationError(ValueError):
@@ -50,12 +51,25 @@ class CalculatePkParametersResponse(BaseModel):
 
 def calculate_pk_parameters(
     adapter: OspsuiteAdapter,
+    job_service: BaseJobService,
     payload: CalculatePkParametersRequest,
 ) -> CalculatePkParametersResponse:
-    try:
-        result = adapter.get_results(payload.results_id)
-    except AdapterError as exc:
-        raise CalculatePkParametersValidationError(str(exc)) from exc
+    result = None
+    
+    # Try fetching from job registry first (persisted results)
+    stored_payload = job_service.get_stored_simulation_result(payload.results_id)
+    if stored_payload:
+        try:
+            result = SimulationResult.model_validate(stored_payload)
+        except ValueError:
+            pass # Malformed stored result, fallback to adapter
+
+    # Fallback to adapter memory/backend (e.g. inmemory backend or direct R bridge)
+    if result is None:
+        try:
+            result = adapter.get_results(payload.results_id)
+        except AdapterError as exc:
+            raise CalculatePkParametersValidationError(str(exc)) from exc
 
     series = _filter_series(result.series, payload.output_path)
     if not series:
