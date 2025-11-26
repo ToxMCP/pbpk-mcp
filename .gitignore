@@ -38,3 +38,19 @@ var/
 # Task files
 tasks.json
 tasks/ 
+
+# Tooling & Agent Artifacts
+.cursor/
+.gemini/
+.taskmaster/
+research*.md
+~
+
+# Temporary/Scratch files
+temp_epacomp_tox_README.md
+*.pkml
+*.json
+verify_physics.py
+brain_barrier_demo.py
+demo_workflow.py
+scripts/test_r.R
