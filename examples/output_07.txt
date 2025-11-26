@@ -1,0 +1,24 @@
+=== Use Case 7: Chlorpyrifos Risk Assessment (Proxy Method) ===
+
+Goal: Assess exposure risk for Chlorpyrifos using the PBPK engine.
+      (Using Acetaminophen model as a kinetic proxy for distribution)
+
+[1] Hazard Identification (EPA CompTox Data)
+    Chemical: Chlorpyrifos (DTXSID4020458)
+    Neurotoxicity Threshold (Plasma Css): 0.0161 mg/L
+
+[2] Loading Kinetic Model (Proxy)...
+
+[3] Configuring Vulnerable Subject (Liver Volume 0.75L)...
+
+[4] Running Exposure Simulation...
+
+[5] Risk Characterization
+    Simulated Plasma Cmax: 87.9349 mg/L
+    Safety Threshold:      0.0161 mg/L
+    Margin of Exposure (Ratio): 5461.8x Threshold
+
+    CONCLUSION: EXPOSURE EXCEEDS THRESHOLD. RISK INDICATED.
+
+    Brain Exposure: 28.1946 mg/L
+    (Significant brain penetration confirmed)

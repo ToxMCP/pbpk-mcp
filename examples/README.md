@@ -46,6 +46,13 @@ This directory contains comprehensive examples demonstrating the full capabiliti
 - Offloads the entire sweep to the server.
 - Returns a structured report and CSV data.
 
+### 7. Chlorpyrifos Risk Assessment (`07_chlorpyrifos_risk_assessment.py`)
+**Goal:** Assess neurotoxicity risk for a specific chemical using proxy kinetics.
+- Integrates external hazard data (EPA CompTox PoD).
+- Simulates a vulnerable subject (impaired clearance).
+- Calculates Plasma/Brain exposure and compares against safety thresholds.
+- **Outcome:** Determines if exposure exceeds the point of departure.
+
 ## Running
 
 ```bash
@@ -55,6 +62,7 @@ python3 examples/03_virtual_population_variability.py
 python3 examples/04_parameter_exploration.py
 python3 examples/05_job_control.py
 python3 examples/06_sensitivity_tool_demo.py
+python3 examples/07_chlorpyrifos_risk_assessment.py
 ```
 
 Outputs are saved to `examples/output_XX.txt`.
