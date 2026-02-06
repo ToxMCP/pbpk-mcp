@@ -70,7 +70,7 @@ All configuration for the MCP Bridge Server will be managed via environment vari
 
 Key variables for simulation tooling:
 
-- `MCP_MODEL_SEARCH_PATHS`: colon-separated directories that define where `.pkml`
+- `MCP_MODEL_SEARCH_PATHS`: colon-separated directories that define where `.pkml` or `.pksim5`
   files may be loaded from. Requests outside these roots are rejected before
   reaching the adapter.
 

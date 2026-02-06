@@ -71,8 +71,8 @@ def test_end_to_end_reference_midazolam(tmp_path):
             json={
                 "filePath": str(REFERENCE_MODEL),
                 "simulationId": simulation_id,
+                "confirm": True,
             },
-            headers={"X-MCP-Confirm": "true"},
         )
         assert resp.status_code == 201, resp.text
 
@@ -85,8 +85,8 @@ def test_end_to_end_reference_midazolam(tmp_path):
                 "value": 70.0,
                 "unit": "kg",
                 "comment": "E2E regression adjustment",
+                "confirm": True,
             },
-            headers={"X-MCP-Confirm": "true"},
         )
         assert resp.status_code == 200, resp.text
 
@@ -96,8 +96,8 @@ def test_end_to_end_reference_midazolam(tmp_path):
             json={
                 "simulationId": simulation_id,
                 "runId": "e2e-run",
+                "confirm": True,
             },
-            headers={"X-MCP-Confirm": "true"},
         )
         assert resp.status_code == 202, resp.text
         job_id = resp.json()["jobId"]

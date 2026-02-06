@@ -33,7 +33,6 @@ def test_metrics_endpoint_exposes_prometheus_series(tmp_path):
         tool_response = client.post(
             "/mcp/call_tool",
             json=payload,
-            headers={"X-MCP-Confirm": "true"},
         )
         assert tool_response.status_code == 200
 

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability report
+    url: https://github.com/senseibelbi/PBPK_MCP/security/advisories/new
+    about: Report security vulnerabilities privately via GitHub Security Advisories.

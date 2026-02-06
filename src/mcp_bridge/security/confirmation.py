@@ -19,13 +19,19 @@ def is_confirmed(request: Request) -> bool:
     return header_value.split(",")[0].strip().lower() in _TRUE_VALUES
 
 
-def require_confirmation(request: Request) -> None:
-    """Raise if the confirmation header is missing or falsey."""
+def require_confirmation(request: Request, *, confirmed: bool | None = None) -> None:
+    """Raise if neither in-band nor header-based confirmation is present."""
+
+    if confirmed:
+        return
 
     if not is_confirmed(request):
         raise http_error(
             status_code=status.HTTP_428_PRECONDITION_REQUIRED,
             message="Critical tool call requires explicit confirmation.",
             code=ErrorCode.CONFIRMATION_REQUIRED,
-            hint=f"Include '{CONFIRMATION_HEADER}: true' after obtaining user approval.",
+            hint=(
+                "Set 'confirm': true in the request payload or include "
+                f"the '{CONFIRMATION_HEADER}' header after obtaining user approval."
+            ),
         )

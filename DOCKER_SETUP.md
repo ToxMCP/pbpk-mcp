@@ -9,12 +9,14 @@
 ## Step 1: Build the Docker Image
 
 Run this command in your terminal (it will take 5-10 minutes). On Apple Silicon
-hosts, add `--platform=linux/amd64` so the image can install the x86_64-only
-ospsuite runtime:
+hosts, **build natively** unless you explicitly need the ospsuite backend. The
+native arm64 image boots quickly and defaults to the in-memory adapter, which is
+ideal for Codex/Gemini integration work. Only add `--platform=linux/amd64` when
+you want to exercise the full ospsuite stack under emulation.
 
 ```bash
 docker build --pull --tag mcp-bridge .
-# Apple Silicon (M-series):
+# Apple Silicon (M-series, ospsuite required):
 # docker build --pull --platform=linux/amd64 --tag mcp-bridge .
 ```
 
@@ -54,6 +56,17 @@ mcp-bridge    latest    <image-id>    <time>    <size>
 docker run --rm -p 8000:8000 mcp-bridge
 ```
 
+### Resource-safe test on Apple Silicon (recommended)
+```bash
+docker run --rm -p 8000:8000 \
+  -e ADAPTER_BACKEND=inmemory \
+  -e JOB_WORKER_THREADS=1 \
+  mcp-bridge
+```
+
+This keeps the container lightweight and avoids spawning multiple worker pools
+that duplicate memory usage.
+
 ### With Environment Variables
 ```bash
 docker run --rm -p 8000:8000 --env-file .env mcp-bridge
@@ -65,6 +78,22 @@ INFO:     Started server process [1]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000
+```
+
+### When you must run ospsuite under emulation
+
+If you need the real ospsuite backend on Apple silicon, cap the container's
+resources and pin concurrency to 1 to protect the host:
+
+```bash
+docker run --rm -p 8000:8000 \
+  --memory=6g --memory-swap=6g --cpus=4 \
+  -e JOB_BACKEND=thread \
+  -e JOB_WORKER_THREADS=1 \
+  -e UVICORN_NUM_WORKERS=1 \
+  -e DOTNET_GCHeapLimitPercent=50 \
+  -e R_MAX_VSIZE=2G \
+  mcp-bridge
 ```
 
 ## Step 4: Verify ospsuite is Working

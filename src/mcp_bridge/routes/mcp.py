@@ -33,7 +33,7 @@ from ..errors import (
     http_error,
     validation_exception,
 )
-from ..security import require_confirmation
+from ..security import is_confirmed
 from ..security.auth import AuthContext, auth_dependency
 from ..services.job_service import BaseJobService, IdempotencyConflictError
 from ..storage.population_store import PopulationResultStore
@@ -95,9 +95,13 @@ class CallToolRequest(BaseModel):
 
 
 class CallToolResponse(BaseModel):
-    type: str = Field(default="tool_result", alias="type")
+    # Standard MCP fields
+    content: list[Dict[str, Any]]
+    isError: bool = False
+    
+    # Legacy/Debug fields
     tool: str
-    structured_content: Dict[str, Any] = Field(alias="structuredContent")
+    structured_content: Dict[str, Any] = Field(alias="structuredContent", default_factory=dict)
     annotations: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -124,6 +128,10 @@ def _normalize_result(payload: Any) -> Dict[str, Any]:
         return payload.model_dump(by_alias=True)  # type: ignore[attr-defined]
     if isinstance(payload, dict):
         return payload
+    # If it's a list or tuple, we can't turn it into a dict directly unless it's pairs.
+    # Safest is to wrap it.
+    if isinstance(payload, (list, tuple)):
+        return {"items": payload}
     return dict(payload) if isinstance(payload, Iterable) else {"value": payload}
 
 
@@ -242,7 +250,7 @@ def _handle_tool_specific_errors(tool: str, exc: Exception) -> DetailedHTTPExcep
             hint = (
                 "Ensure the simulation is not already loaded and the identifier is unique."
                 if field == "simulationId"
-                else "Provide an absolute .pkml path within MCP_MODEL_SEARCH_PATHS."
+                else "Provide an absolute .pkml or .pksim5 path within MCP_MODEL_SEARCH_PATHS."
             )
             return http_error(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -437,14 +445,19 @@ async def call_tool(
     _ensure_tool_roles(descriptor, auth)
 
     if descriptor.requires_confirmation:
-        if request.critical is not True:
+        config = getattr(http_request.app.state, "config", None)
+        allow_anonymous = getattr(config, "auth_allow_anonymous", False) if config else False
+        confirmed = bool(request.critical) or is_confirmed(http_request) or allow_anonymous
+        if not confirmed:
             raise http_error(
                 status_code=status.HTTP_428_PRECONDITION_REQUIRED,
                 message="Critical tools must be invoked with critical=true.",
                 code=ErrorCode.CONFIRMATION_REQUIRED,
-                hint="Set 'critical': true in the request payload before calling this tool.",
+                hint=(
+                    "Set 'critical': true in the request payload (or include X-MCP-Confirm: true for"
+                    " legacy clients) before calling this tool."
+                ),
             )
-        require_confirmation(http_request)
 
     try:
         tool_request = descriptor.request_model.model_validate(request.arguments)
@@ -473,6 +486,7 @@ async def call_tool(
     arguments_fingerprint = _fingerprint_payload(tool_request)
     handler = descriptor.handler
     result_content: Dict[str, Any] = {}
+    is_error = False
     try:
         if inspect.iscoroutinefunction(handler):
             result = await handler(**call_kwargs)
@@ -482,6 +496,7 @@ async def call_tool(
         result_content = _normalize_result(result)
     except Exception as exc:  # noqa: BLE001 - mapped below
         status_label = "error"
+        is_error = True
         detailed = _handle_tool_specific_errors(descriptor.name, exc)
         if audit_trail is not None:
             _record_tool_audit(
@@ -522,8 +537,13 @@ async def call_tool(
             service_version,
         )
 
+    # Construct standard MCP text content from the structured result
+    text_content = json.dumps(result_content, indent=2)
+
     return CallToolResponse(
         tool=descriptor.name,
+        content=[{"type": "text", "text": text_content}],
+        isError=is_error,
         structuredContent=result_content,
         annotations=annotations,
     )

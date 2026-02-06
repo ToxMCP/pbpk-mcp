@@ -62,8 +62,9 @@ def test_viewer_token_allows_read_but_blocks_mutation() -> None:
             "simulationId": "sim",
             "parameterPath": "Organism|Weight",
             "value": 70.0,
+            "confirm": True,
         },
-        headers={**mutate_headers, "X-MCP-Confirm": "true"},
+        headers=mutate_headers,
     )
     assert mutate_resp.status_code == 403
 
@@ -79,8 +80,9 @@ def test_operator_token_allows_mutation_flow() -> None:
             "simulationId": "sim",
             "parameterPath": "Organism|Weight",
             "value": 70.0,
+            "confirm": True,
         },
-        headers={**headers, "X-MCP-Confirm": "true"},
+        headers=headers,
     )
     assert mutate_resp.status_code in {404, 400}
 
@@ -97,7 +99,8 @@ def test_tampered_token_returns_401() -> None:
             "simulationId": "sim",
             "parameterPath": "Organism|Weight",
             "value": 70.0,
+            "confirm": True,
         },
-        headers={**headers, "X-MCP-Confirm": "true"},
+        headers=headers,
     )
     assert resp.status_code == 401

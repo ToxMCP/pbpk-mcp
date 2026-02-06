@@ -32,12 +32,15 @@ Redocly or Stoplight.
 - Safety-critical tools (`load_simulation`, `set_parameter_value`, `run_simulation`,
   `run_population_simulation`, and `run_sensitivity_analysis`) require explicit
   confirmation.
-- REST calls to these endpoints must set the header `X-MCP-Confirm: true`; the
-  server rejects missing or falsey hints with HTTP `428` and the
-  `ConfirmationRequired` error code.
-- When invoking the same tools via `/mcp/call_tool`, include both
-  `"critical": true` in the JSON payload and the `X-MCP-Confirm: true` header to
-  indicate user approval.
+- REST calls to these endpoints should include `"confirm": true` in the JSON
+  body. Requests without any confirmation hint are rejected with HTTP `428`
+  (`ConfirmationRequired`). The legacy `X-MCP-Confirm: true` header remains
+  available for backwards compatibility but is no longer required when the
+  payload carries `"confirm": true`.
+- When invoking the same tools via `/mcp/call_tool`, include
+  `"critical": true` in the JSON payload. This serves as the in-band
+  confirmation signal for MCP clients. (The header can still be supplied for
+  older hosts.)
 
 ## Endpoint catalogue
 
@@ -68,20 +71,17 @@ Redocly or Stoplight.
 curl -s -X POST "$BASE_URL/load_simulation" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -H "X-MCP-Confirm: true" \
-  -d '{"filePath":"tests/fixtures/demo.pkml","simulationId":"api-ref"}'
+  -d '{"filePath":"tests/fixtures/demo.pkml","simulationId":"api-ref","confirm":true}'
 
 curl -s -X POST "$BASE_URL/set_parameter_value" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -H "X-MCP-Confirm: true" \
-  -d '{"simulationId":"api-ref","parameterPath":"Organism|Weight","value":70,"unit":"kg"}'
+  -d '{"simulationId":"api-ref","parameterPath":"Organism|Weight","value":70,"unit":"kg","confirm":true}'
 
 JOB_ID=$(curl -s -X POST "$BASE_URL/run_simulation" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -H "X-MCP-Confirm: true" \
-  -d '{"simulationId":"api-ref","runId":"api-ref-1"}' | jq -r '.jobId')
+  -d '{"simulationId":"api-ref","runId":"api-ref-1","confirm":true}' | jq -r '.jobId')
 ```
 
 ### Poll status and fetch results
@@ -106,12 +106,12 @@ curl -s -X POST "$BASE_URL/get_simulation_results" \
 POP_JOB=$(curl -s -X POST "$BASE_URL/run_population_simulation" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -H "X-MCP-Confirm: true" \
   -d '{
         "modelPath": "tests/fixtures/demo.pkml",
         "simulationId": "api-pop",
         "cohort": {"size": 200, "sampling": "latinHypercube", "seed": 42},
-        "outputs": {"aggregates": ["mean", "p95"]}
+        "outputs": {"aggregates": ["mean", "p95"]},
+        "confirm": true
       }' | jq -r '.jobId')
 
 RESULT=$(curl -s -X POST "$BASE_URL/get_population_results" \

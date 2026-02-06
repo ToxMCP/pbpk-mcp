@@ -201,22 +201,8 @@ handle_run_simulation_sync <- function(payload) {
   sim <- simulations[[sim_id]]
   if (is.null(sim)) stop(paste("Simulation not loaded:", sim_id))
   
-  # Ensure Brain and Blood are outputs
-  # We use 'Paracetamol' as the proxy molecule name found in the template
-  proxy_mol <- "Paracetamol"
-  
-  paths_to_add <- c(
-    paste0("Organism|Brain|Intracellular|", proxy_mol, "|Concentration"),
-    paste0("Organism|ArterialBlood|Plasma|", proxy_mol, "|Concentration")
-  )
-  
-  for (path in paths_to_add) {
-    # Try to find the quantity first to verify existence
-    q <- ospsuite::getQuantity(path, container = sim)
-    if (!is.null(q)) {
-      ospsuite::addOutputs(quantities = q, simulation = sim)
-    }
-  }
+  # Run the simulation without forcing specific outputs.
+  # We rely on the outputs already defined in the loaded PKML.
   
   results <- NULL
   junk <- capture.output({
@@ -227,19 +213,29 @@ handle_run_simulation_sync <- function(payload) {
   
   result_obj <- results[[1]]
   
-  # Extract the paths we explicitly added
   series_list <- list()
-  for (path in paths_to_add) {
-    vals <- ospsuite::getOutputValues(result_obj, quantitiesOrPaths = path)
+  
+  # Retrieve all configured outputs
+  vals <- NULL
+  tryCatch({
+    vals <- ospsuite::getOutputValues(result_obj)
+  }, error = function(e) {
+    # No outputs or error retrieving them; continue with empty series
+  })
+  
+  if (!is.null(vals) && !is.null(vals$data)) {
+    time_vec <- vals$data$Time
+    # Decimate points to keep payload small
+    indices <- seq(1, length(time_vec), length.out = min(length(time_vec), 50))
     
-    # vals$data is a data.frame with Time and the quantity columns
-    if (!is.null(vals$data)) {
-      time_vec <- vals$data$Time
+    # Identify value columns (all except Time)
+    data_cols <- setdiff(colnames(vals$data), "Time")
+    
+    for (path in data_cols) {
       val_vec <- vals$data[[path]]
       unit <- vals$metaData[[path]]$unit
+      if (is.null(unit)) unit <- "unknown"
       
-      # Decimate
-      indices <- seq(1, length(time_vec), length.out = min(length(time_vec), 50))
       points <- list()
       for (i in indices) {
         points[[length(points) + 1]] <- list(time = time_vec[i], value = val_vec[i])

@@ -105,10 +105,12 @@ Snapshots stored in `tests/data/agent_dialogues/` covering:
   `run_population_simulation`, or `run_sensitivity_analysis` with
   `critical = true` in the MCP plan payload.
 - When invoking `/mcp/call_tool`, hosts **must** include that `critical: true`
-  flag and send the HTTP header `X-MCP-Confirm: true` to attest the user has
-  explicitly approved the action.
-- Direct REST calls to the same tools (e.g. `/load_simulation`) require the
-  `X-MCP-Confirm: true` header as well. Requests without the confirmation hint
-  fail with `428 Precondition Required` and the `ConfirmationRequired` error
-  code.
+  flag to attest the user has explicitly approved the action. (Legacy clients
+  may still send the `X-MCP-Confirm: true` header, but it is no longer
+  required when `critical` is present.)
+- Direct REST calls to the same tools (e.g. `/load_simulation`) should include
+  a `"confirm": true` field in the JSON body. The `X-MCP-Confirm: true`
+  header remains available for backwards compatibility, but the request body
+  hint is the canonical approach. Requests without any confirmation hint fail
+  with `428 Precondition Required` and the `ConfirmationRequired` error code.
 ```

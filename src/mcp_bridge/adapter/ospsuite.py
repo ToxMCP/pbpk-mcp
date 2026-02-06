@@ -443,9 +443,16 @@ class SubprocessOspsuiteAdapter(OspsuiteAdapter):
 
         logger.info("adapter.resolved_candidate", candidate=str(candidate))
 
-        if candidate.suffix.lower() != ".pkml":
+        if candidate.suffix.lower() == ".pksim5":
             raise AdapterError(
-                AdapterErrorCode.INVALID_INPUT, "Simulation files must use the .pkml extension"
+                AdapterErrorCode.INVALID_INPUT,
+                "Direct loading of .pksim5 files is not supported by the backend. "
+                "Please export the simulation as a .pkml file using PK-Sim.",
+            )
+
+        if candidate.suffix.lower() not in {".pkml", ".pksim5"}:
+            raise AdapterError(
+                AdapterErrorCode.INVALID_INPUT, "Simulation files must use the .pkml or .pksim5 extension"
             )
         if not candidate.is_file():
             raise AdapterError(

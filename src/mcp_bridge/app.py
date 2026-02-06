@@ -41,6 +41,7 @@ from .errors import (
 )
 from .logging import DEFAULT_LOG_LEVEL, bind_context, clear_context, get_logger, setup_logging
 from .routes import audit as audit_routes
+from .routes import jsonrpc as jsonrpc_routes
 from .routes import mcp as mcp_routes
 from .routes import console as console_routes
 from .routes import resources as resource_routes
@@ -320,6 +321,7 @@ def create_app(config: AppConfig | None = None, log_level: str | None = None) ->
 
     app.include_router(router)
     app.include_router(mcp_routes.router)
+    app.include_router(jsonrpc_routes.router)
     app.include_router(resource_routes.router)
     app.include_router(simulation_routes.router)
     app.include_router(audit_routes.router)

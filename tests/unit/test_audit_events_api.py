@@ -23,7 +23,7 @@ def test_list_audit_events_returns_tool_entries(tmp_path):
             },
             "critical": True,
         }
-        client.post("/mcp/call_tool", json=payload, headers={"X-MCP-Confirm": "true"})
+        client.post("/mcp/call_tool", json=payload)
 
         run_payload = {
             "tool": "run_simulation",
@@ -34,7 +34,7 @@ def test_list_audit_events_returns_tool_entries(tmp_path):
             },
             "critical": True,
         }
-        client.post("/mcp/call_tool", json=run_payload, headers={"X-MCP-Confirm": "true"})
+        client.post("/mcp/call_tool", json=run_payload)
 
         response = client.get("/audit/events", params={"limit": 10})
         assert response.status_code == 200

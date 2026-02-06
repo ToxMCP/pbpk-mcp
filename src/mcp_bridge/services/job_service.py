@@ -20,15 +20,9 @@ if TYPE_CHECKING:  # pragma: no cover
 
 try:
     from celery.result import AsyncResult
-    from .celery_app import (
-        configure_celery,
-        run_population_simulation_task,
-        run_simulation_task,
-    )
     CELERY_AVAILABLE = True
 except ModuleNotFoundError:  # pragma: no cover - optional dependency
     AsyncResult = None  # type: ignore[assignment]
-    configure_celery = run_population_simulation_task = run_simulation_task = None  # type: ignore
     CELERY_AVAILABLE = False
 
 from ..config import AppConfig, ConfigError
@@ -983,6 +977,9 @@ class CeleryJobService:
     ) -> None:
         if not CELERY_AVAILABLE:
             raise ConfigError("Celery backend requested but celery is not installed")
+        
+        from .celery_app import configure_celery
+
         self._config = config
         self._audit = audit_trail
         self._celery_app = configure_celery(config)
@@ -1096,6 +1093,8 @@ class CeleryJobService:
                     reason=str(exc),
                 )
 
+        from .celery_app import run_simulation_task
+
         run_simulation_task.apply_async(  # type: ignore[arg-type]
             kwargs={
                 "config_data": self._config.model_dump(),
@@ -1147,6 +1146,8 @@ class CeleryJobService:
             self._jobs[job_id] = record
         _emit_job_event(self._audit, record, "job.population.queued")
         self._persist_record(record)
+
+        from .celery_app import run_population_simulation_task
 
         run_population_simulation_task.apply_async(  # type: ignore[arg-type]
             kwargs={

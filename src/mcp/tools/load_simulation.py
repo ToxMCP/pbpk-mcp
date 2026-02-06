@@ -14,7 +14,7 @@ from mcp_bridge.adapter.interface import OspsuiteAdapter
 
 from ..session_registry import SessionRegistry, SessionRegistryError, registry
 
-DEFAULT_EXTENSION = ".pkml"
+SUPPORTED_EXTENSIONS = {".pkml", ".pksim5"}
 MODEL_PATH_ENV = "MCP_MODEL_SEARCH_PATHS"
 DEFAULT_ALLOWED_ROOTS = [
     (Path.cwd() / "tests" / "fixtures").resolve(),
@@ -109,8 +109,8 @@ def resolve_model_path(file_path: str, *, allowed_roots: Optional[Iterable[Path]
     else:
         candidate = candidate.resolve()
 
-    if candidate.suffix.lower() != DEFAULT_EXTENSION:
-        raise LoadSimulationValidationError("Only .pkml files are supported")
+    if candidate.suffix.lower() not in SUPPORTED_EXTENSIONS:
+        raise LoadSimulationValidationError("Only .pkml and .pksim5 files are supported")
 
     if not candidate.is_file():
         raise LoadSimulationValidationError(f"Simulation file '{candidate}' does not exist")
@@ -187,7 +187,7 @@ def load_simulation(
 
 
 __all__ = [
-    "DEFAULT_EXTENSION",
+    "SUPPORTED_EXTENSIONS",
     "DuplicateSimulationError",
     "LoadSimulationRequest",
     "LoadSimulationResponse",

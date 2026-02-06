@@ -39,7 +39,6 @@ def test_list_tools_includes_core_tools(client: TestClient) -> None:
 def test_call_tool_load_and_list_parameters(client: TestClient) -> None:
     load_resp = client.post(
         "/mcp/call_tool",
-        headers={"X-MCP-Confirm": "true"},
         json={
             "tool": "load_simulation",
             "arguments": {
@@ -76,7 +75,6 @@ def test_call_tool_handles_validation_errors(client: TestClient) -> None:
             },
             "critical": True,
         },
-        headers={"X-MCP-Confirm": "true"},
     )
     assert response.status_code == 400
     payload = response.json()
@@ -168,7 +166,6 @@ def test_call_tool_returns_idempotency_annotation(client: TestClient) -> None:
             },
             "critical": True,
         },
-        headers={"X-MCP-Confirm": "true"},
     )
     assert load_resp.status_code == 200
 
@@ -195,25 +192,22 @@ def test_call_tool_requires_critical_hint(client: TestClient) -> None:
                 "simulationId": "missing-critical-hint",
             },
         },
-        headers={"X-MCP-Confirm": "true"},
     )
     assert response.status_code == 428
     payload = response.json()
     assert payload["error"]["code"] == "ConfirmationRequired"
 
 
-def test_call_tool_requires_confirmation_header(client: TestClient) -> None:
+def test_call_tool_accepts_legacy_confirmation_header(client: TestClient) -> None:
     response = client.post(
         "/mcp/call_tool",
         json={
             "tool": "load_simulation",
             "arguments": {
                 "filePath": "tests/fixtures/demo.pkml",
-                "simulationId": "missing-confirm-header",
+                "simulationId": "legacy-confirm-header",
             },
-            "critical": True,
         },
+        headers={"X-MCP-Confirm": "true"},
     )
-    assert response.status_code == 428
-    payload = response.json()
-    assert payload["error"]["code"] == "ConfirmationRequired"
+    assert response.status_code == 200

@@ -50,7 +50,7 @@ class AppConfig(BaseModel):
         default=None, description="Absolute path to ospsuite R libraries"
     )
     adapter_model_paths: Tuple[str, ...] = Field(
-        default=(), description="Allow-listed directories for simulation model files (.pkml)"
+        default=(), description="Allow-listed directories for simulation model files (.pkml, .pksim5)"
     )
     job_worker_threads: int = Field(
         default=2, ge=1, le=32, description="Number of in-process worker threads for async jobs"

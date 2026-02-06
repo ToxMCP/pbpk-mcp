@@ -48,8 +48,10 @@ research*.md
 
 # Temporary/Scratch files
 temp_epacomp_tox_README.md
-*.pkml
-*.json
+/Acetaminophen_Pregnancy.pkml
+/PassiveTransport_Pregnancy.pkml
+/full_params.json
+/params.json
 verify_physics.py
 brain_barrier_demo.py
 demo_workflow.py

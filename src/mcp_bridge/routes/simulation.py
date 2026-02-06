@@ -159,6 +159,7 @@ def _format_snapshot_metadata(record) -> SnapshotMetadataModel:
 class LoadSimulationRequest(CamelModel):
     file_path: str = Field(alias="filePath")
     simulation_id: Optional[str] = Field(default=None, alias="simulationId")
+    confirm: Optional[bool] = None
 
 
 class SimulationMetadata(CamelModel):
@@ -206,11 +207,13 @@ class SetParameterValueRequest(GetParameterValueRequest):
     unit: Optional[str] = None
     update_mode: Optional[str] = Field(default="absolute", alias="updateMode")
     comment: Optional[str] = None
+    confirm: Optional[bool] = None
 
 
 class RunSimulationRequest(CamelModel):
     simulation_id: str = Field(alias="simulationId")
     run_id: Optional[str] = Field(default=None, alias="runId")
+    confirm: Optional[bool] = None
 
 
 class RunSimulationResponse(CamelModel):
@@ -336,6 +339,7 @@ class RunPopulationSimulationRequest(CamelModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
     timeout_seconds: Optional[float] = Field(default=None, alias="timeoutSeconds", ge=1.0)
     max_retries: Optional[int] = Field(default=None, alias="maxRetries", ge=0)
+    confirm: Optional[bool] = None
 
 
 class RunPopulationSimulationResponse(CamelModel):
@@ -432,7 +436,7 @@ async def load_simulation(
     adapter: OspsuiteAdapter = Depends(get_adapter),
     _auth: AuthContext = Depends(require_roles("operator", "admin")),
 ) -> LoadSimulationResponse:
-    require_confirmation(request)
+    require_confirmation(request, confirmed=payload.confirm)
     try:
         tool_payload = ToolLoadSimulationRequest.model_validate(payload.model_dump(by_alias=True))
         session_store = request.app.state.session_registry
@@ -463,7 +467,7 @@ async def load_simulation(
         hint = (
             "Ensure the simulation is not already loaded and the identifier is unique."
             if field == "simulationId"
-            else "Provide an absolute .pkml path within MCP_MODEL_SEARCH_PATHS."
+            else "Provide an absolute .pkml or .pksim5 path within MCP_MODEL_SEARCH_PATHS."
         )
         logger.warning(
             "simulation.invalid",
@@ -649,7 +653,7 @@ async def set_parameter_value(
     adapter: OspsuiteAdapter = Depends(get_adapter),
     _auth: AuthContext = Depends(require_roles("operator", "admin")),
 ) -> ParameterValueResponse:
-    require_confirmation(request)
+    require_confirmation(request, confirmed=payload.confirm)
     try:
         tool_payload = ToolSetParameterValueRequest.model_validate(
             payload.model_dump(by_alias=True)
@@ -729,7 +733,7 @@ async def run_simulation(
     job_service: BaseJobService = Depends(get_job_service),
     _auth: AuthContext = Depends(require_roles("operator", "admin")),
 ) -> RunSimulationResponse:
-    require_confirmation(request)
+    require_confirmation(request, confirmed=payload.confirm)
     try:
         tool_payload = ToolRunSimulationRequest.model_validate(payload.model_dump(by_alias=True))
         job_response = await maybe_to_thread(
@@ -786,7 +790,7 @@ async def run_population_simulation(
     job_service: BaseJobService = Depends(get_job_service),
     _auth: AuthContext = Depends(require_roles("operator", "admin")),
 ) -> RunPopulationSimulationResponse:
-    require_confirmation(request)
+    require_confirmation(request, confirmed=payload.confirm)
     try:
         tool_payload = ToolRunPopulationSimulationRequest.model_validate(
             payload.model_dump(by_alias=True)

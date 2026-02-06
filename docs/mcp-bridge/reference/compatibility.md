@@ -33,4 +33,4 @@ job service smoke (`tests/unit/test_job_service.py`). For additional coverage:
 
 - [Configuration Reference](configuration.md)
 - [Service Runbook](../../operations/runbook.md)
-- [Change Management Checklist](../../operations/change-management.md)
+- [Change Management Checklist](../operations/change-management.md)

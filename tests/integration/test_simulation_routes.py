@@ -4,13 +4,18 @@ from __future__ import annotations
 
 import json
 import time
+from typing import Any, Dict
 
 import pytest
 from fastapi.testclient import TestClient
 
 from mcp_bridge.app import create_app
 
-CONFIRM_HEADERS = {"X-MCP-Confirm": "true"}
+
+def _confirmed(payload: Dict[str, Any]) -> Dict[str, Any]:
+    data = dict(payload)
+    data.setdefault("confirm", True)
+    return data
 
 
 pytestmark = pytest.mark.compliance
@@ -21,8 +26,11 @@ def test_load_and_mutate_parameter_flow() -> None:
 
     load_resp = client.post(
         "/load_simulation",
-        json={"filePath": "tests/fixtures/demo.pkml", "simulationId": "sim-route"},
-        headers=CONFIRM_HEADERS,
+        json={
+            "filePath": "tests/fixtures/demo.pkml",
+            "simulationId": "sim-route",
+            "confirm": True,
+        },
     )
     assert load_resp.status_code == 201
     load_payload = load_resp.json()
@@ -35,8 +43,8 @@ def test_load_and_mutate_parameter_flow() -> None:
             "parameterPath": "Organ.Liver.Weight",
             "value": 2.5,
             "unit": "kg",
+            "confirm": True,
         },
-        headers=CONFIRM_HEADERS,
     )
     assert set_resp.status_code == 200
 
@@ -53,8 +61,7 @@ def test_load_and_mutate_parameter_flow() -> None:
 
     run_resp = client.post(
         "/run_simulation",
-        json={"simulationId": "sim-route"},
-        headers=CONFIRM_HEADERS,
+        json={"simulationId": "sim-route", "confirm": True},
     )
     assert run_resp.status_code == 202
     job_id = run_resp.json()["jobId"]
@@ -85,21 +92,23 @@ def test_snapshot_and_restore_roundtrip() -> None:
 
     load_resp = client.post(
         "/load_simulation",
-        json={"filePath": "tests/fixtures/demo.pkml", "simulationId": "sim-snapshot"},
-        headers=CONFIRM_HEADERS,
+        json=_confirmed(
+            {"filePath": "tests/fixtures/demo.pkml", "simulationId": "sim-snapshot"}
+        ),
     )
     assert load_resp.status_code == 201
 
     baseline_value = 72.0
     set_resp = client.post(
         "/set_parameter_value",
-        json={
-            "simulationId": "sim-snapshot",
-            "parameterPath": "Organ.Liver.Weight",
-            "value": baseline_value,
-            "unit": "kg",
-        },
-        headers=CONFIRM_HEADERS,
+        json=_confirmed(
+            {
+                "simulationId": "sim-snapshot",
+                "parameterPath": "Organ.Liver.Weight",
+                "value": baseline_value,
+                "unit": "kg",
+            }
+        ),
     )
     assert set_resp.status_code == 200
 
@@ -114,13 +123,14 @@ def test_snapshot_and_restore_roundtrip() -> None:
 
     modified_resp = client.post(
         "/set_parameter_value",
-        json={
-            "simulationId": "sim-snapshot",
-            "parameterPath": "Organ.Liver.Weight",
-            "value": 90.0,
-            "unit": "kg",
-        },
-        headers=CONFIRM_HEADERS,
+        json=_confirmed(
+            {
+                "simulationId": "sim-snapshot",
+                "parameterPath": "Organ.Liver.Weight",
+                "value": 90.0,
+                "unit": "kg",
+            }
+        ),
     )
     assert modified_resp.status_code == 200
 
@@ -165,9 +175,9 @@ def test_missing_simulation_returns_not_found() -> None:
 
 def test_duplicate_simulation_returns_conflict() -> None:
     client = TestClient(create_app())
-    payload = {"filePath": "tests/fixtures/demo.pkml", "simulationId": "dup-route"}
-    assert client.post("/load_simulation", json=payload, headers=CONFIRM_HEADERS).status_code == 201
-    resp = client.post("/load_simulation", json=payload, headers=CONFIRM_HEADERS)
+    payload = _confirmed({"filePath": "tests/fixtures/demo.pkml", "simulationId": "dup-route"})
+    assert client.post("/load_simulation", json=payload).status_code == 201
+    resp = client.post("/load_simulation", json=payload)
     assert resp.status_code == 409
     body = resp.json()
     assert body["error"]["code"] == "Conflict"
@@ -178,8 +188,7 @@ def test_invalid_extension_returns_bad_request() -> None:
     client = TestClient(create_app())
     resp = client.post(
         "/load_simulation",
-        json={"filePath": "tests/fixtures/demo.txt", "simulationId": "bad-ext"},
-        headers=CONFIRM_HEADERS,
+        json=_confirmed({"filePath": "tests/fixtures/demo.txt", "simulationId": "bad-ext"}),
     )
     assert resp.status_code == 400
     payload = resp.json()
@@ -190,18 +199,19 @@ def test_invalid_extension_returns_bad_request() -> None:
 
 def test_list_parameters_route() -> None:
     client = TestClient(create_app())
-    load_payload = {"filePath": "tests/fixtures/demo.pkml", "simulationId": "sim-list"}
-    assert client.post("/load_simulation", json=load_payload, headers=CONFIRM_HEADERS).status_code == 201
+    load_payload = _confirmed({"filePath": "tests/fixtures/demo.pkml", "simulationId": "sim-list"})
+    assert client.post("/load_simulation", json=load_payload).status_code == 201
 
     client.post(
         "/set_parameter_value",
-        json={
-            "simulationId": "sim-list",
-            "parameterPath": "Organ.Liver.Weight",
-            "value": 2.0,
-            "unit": "kg",
-        },
-        headers=CONFIRM_HEADERS,
+        json=_confirmed(
+            {
+                "simulationId": "sim-list",
+                "parameterPath": "Organ.Liver.Weight",
+                "value": 2.0,
+                "unit": "kg",
+            }
+        ),
     )
     resp = client.post(
         "/list_parameters",
@@ -244,8 +254,7 @@ def test_population_simulation_endpoints() -> None:
 
     run_resp = client.post(
         "/run_population_simulation",
-        json=payload,
-        headers=CONFIRM_HEADERS,
+        json=_confirmed(payload),
     )
     assert run_resp.status_code == 202
     job_id = run_resp.json()["jobId"]
@@ -270,14 +279,13 @@ def test_population_simulation_endpoints() -> None:
     assert chunk_payload["chunkId"] == chunk["chunkId"]
 
 
-def test_run_simulation_requires_confirmation_header() -> None:
+def test_run_simulation_requires_confirmation_signal() -> None:
     client = TestClient(create_app())
     simulation_id = "no-confirm"
     assert (
         client.post(
             "/load_simulation",
-            json={"filePath": "tests/fixtures/demo.pkml", "simulationId": simulation_id},
-            headers=CONFIRM_HEADERS,
+            json=_confirmed({"filePath": "tests/fixtures/demo.pkml", "simulationId": simulation_id}),
         ).status_code
         == 201
     )
@@ -296,15 +304,13 @@ def test_job_event_stream() -> None:
 
     load_resp = client.post(
         "/load_simulation",
-        json={"filePath": "tests/fixtures/demo.pkml", "simulationId": "event-sim"},
-        headers=CONFIRM_HEADERS,
+        json=_confirmed({"filePath": "tests/fixtures/demo.pkml", "simulationId": "event-sim"}),
     )
     assert load_resp.status_code == 201
 
     run_resp = client.post(
         "/run_simulation",
-        json={"simulationId": "event-sim"},
-        headers=CONFIRM_HEADERS,
+        json=_confirmed({"simulationId": "event-sim"}),
     )
     assert run_resp.status_code == 202
     job_id = run_resp.json()["jobId"]

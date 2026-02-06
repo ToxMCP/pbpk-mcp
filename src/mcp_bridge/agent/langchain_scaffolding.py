@@ -133,14 +133,15 @@ def _wrap_langchain_tool(
 
 def create_tool_registry(
     *,
-    adapter: OspsuiteAdapter,
+    adapters: Dict[str, OspsuiteAdapter],
     job_service: BaseJobService,
 ) -> Dict[str, StructuredTool]:
     """Register MCP bridge tools as LangChain structured tools."""
 
+    # Define generic argument schemas for all tools
     class LoadSimulationArgs(BaseModel):
         filePath: str = Field(
-            ..., description="Absolute path to the simulation .pkml file."
+            ..., description="Absolute path to the simulation .pkml or .pksim5 file."
         )
         simulationId: Optional[str] = Field(
             default=None,
@@ -149,16 +150,6 @@ def create_tool_registry(
 
         class Config:
             allow_population_by_field_name = True
-
-    def _load_simulation(
-        *, filePath: str, simulationId: Optional[str] = None
-    ) -> Dict[str, Any]:
-        payload: Dict[str, Any] = {"filePath": filePath}
-        if simulationId is not None:
-            payload["simulationId"] = simulationId
-        request = LoadSimulationRequest.model_validate(payload)
-        response = load_simulation(adapter, request)
-        return response.model_dump(by_alias=True)
 
     class SetParameterArgs(BaseModel):
         simulationId: str = Field(
@@ -179,31 +170,6 @@ def create_tool_registry(
             default=None, description="Optional comment for the change."
         )
 
-    def _set_parameter_value(
-        *,
-        simulationId: str,
-        parameterPath: str,
-        value: float,
-        unit: Optional[str] = None,
-        updateMode: Optional[str] = None,
-        comment: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        raw_payload: Dict[str, Any] = {
-            "simulationId": simulationId,
-            "parameterPath": parameterPath,
-            "value": value,
-        }
-        if unit is not None:
-            raw_payload["unit"] = unit
-        if updateMode is not None:
-            raw_payload["updateMode"] = updateMode
-        if comment is not None:
-            raw_payload["comment"] = comment
-
-        payload = SetParameterValueRequest.model_validate(raw_payload)
-        response = set_parameter_value(adapter, payload)
-        return response.model_dump(by_alias=True)
-
     class ListParametersArgs(BaseModel):
         simulationId: str = Field(
             ..., description="Simulation identifier to query."
@@ -212,28 +178,9 @@ def create_tool_registry(
             default="*", description="Glob pattern for filtering parameters."
         )
 
-    def _list_parameters(
-        *, simulationId: str, searchPattern: Optional[str] = "*"
-    ) -> Dict[str, Any]:
-        raw_payload: Dict[str, Any] = {"simulationId": simulationId}
-        if searchPattern is not None:
-            raw_payload["searchPattern"] = searchPattern
-        payload = ListParametersRequest.model_validate(raw_payload)
-        response = list_parameters(adapter, payload)
-        return response.model_dump(by_alias=True)
-
     class GetParameterArgs(BaseModel):
         simulationId: str = Field(...)
         parameterPath: str = Field(...)
-
-    def _get_parameter_value(
-        *, simulationId: str, parameterPath: str
-    ) -> Dict[str, Any]:
-        payload = GetParameterValueRequest.model_validate(
-            {"simulationId": simulationId, "parameterPath": parameterPath}
-        )
-        response = get_parameter_value(adapter, payload)
-        return response.model_dump(by_alias=True)
 
     class SensitivityParameterArgs(BaseModel):
         path: str = Field(..., description="Parameter path to perturb.")
@@ -249,7 +196,7 @@ def create_tool_registry(
             allow_population_by_field_name = True
 
     class RunSensitivityArgs(BaseModel):
-        modelPath: str = Field(..., description="Absolute path to the baseline simulation .pkml file.")
+        modelPath: str = Field(..., description="Absolute path to the baseline simulation .pkml or .pksim5 file.")
         simulationId: str = Field(..., description="Base simulation identifier used for the sweep.")
         parameters: List[SensitivityParameterArgs] = Field(
             ..., description="Parameters to perturb during the sweep."
@@ -280,34 +227,8 @@ def create_tool_registry(
 
     RunSensitivityArgs.update_forward_refs(SensitivityParameterArgs=SensitivityParameterArgs)
 
-    def _run_sensitivity_analysis(
-        *,
-        modelPath: str,
-        simulationId: str,
-        parameters: List[Dict[str, Any]],
-        includeBaseline: bool = True,
-        pollIntervalSeconds: float = 0.25,
-        jobTimeoutSeconds: Optional[float] = None,
-    ) -> Dict[str, Any]:
-        from mcp.tools.run_sensitivity_analysis import (
-            RunSensitivityAnalysisRequest,
-            run_sensitivity_analysis_tool,
-        )
-
-        raw_payload: Dict[str, Any] = {
-            "modelPath": modelPath,
-            "simulationId": simulationId,
-            "parameters": parameters,
-            "includeBaseline": includeBaseline,
-            "pollIntervalSeconds": pollIntervalSeconds,
-            "jobTimeoutSeconds": jobTimeoutSeconds,
-        }
-        payload = RunSensitivityAnalysisRequest.model_validate(raw_payload)
-        response = run_sensitivity_analysis_tool(adapter, job_service, payload)
-        return response.model_dump(mode="json")
-
     class RunPopulationArgs(BaseModel):
-        modelPath: str = Field(..., description="Absolute path to the population simulation .pkml file.")
+        modelPath: str = Field(..., description="Absolute path to the population simulation .pkml or .pksim5 file.")
         simulationId: str = Field(..., description="Identifier assigned to the population run.")
         cohort: Dict[str, Any] = Field(..., description="Cohort configuration (size, sampling, optional seed).")
         outputs: Dict[str, Any] = Field(default_factory=dict, description="Requested output aggregates and time series.")
@@ -317,29 +238,6 @@ def create_tool_registry(
 
         class Config:
             allow_population_by_field_name = True
-
-    def _run_population_simulation(
-        *,
-        modelPath: str,
-        simulationId: str,
-        cohort: Dict[str, Any],
-        outputs: Dict[str, Any] | None = None,
-        metadata: Dict[str, Any] | None = None,
-        timeoutSeconds: Optional[float] = None,
-        maxRetries: Optional[int] = None,
-    ) -> Dict[str, Any]:
-        raw_payload: Dict[str, Any] = {
-            "modelPath": modelPath,
-            "simulationId": simulationId,
-            "cohort": cohort,
-            "outputs": outputs or {},
-            "metadata": metadata or {},
-            "timeoutSeconds": timeoutSeconds,
-            "maxRetries": maxRetries,
-        }
-        payload = RunPopulationSimulationRequest.model_validate(raw_payload)
-        response = run_population_simulation(adapter, job_service, payload)
-        return response.model_dump(by_alias=True)
 
     class RunSimulationArgs(BaseModel):
         simulationId: str = Field(...)
@@ -355,32 +253,8 @@ def create_tool_registry(
             description="Override for maximum job retries.",
         )
 
-    def _run_simulation(
-        *,
-        simulationId: str,
-        runId: Optional[str] = None,
-        timeoutSeconds: Optional[float] = None,
-        maxRetries: Optional[int] = None,
-    ) -> Dict[str, Any]:
-        raw_payload: Dict[str, Any] = {"simulationId": simulationId}
-        if runId is not None:
-            raw_payload["runId"] = runId
-        if timeoutSeconds is not None:
-            raw_payload["timeoutSeconds"] = timeoutSeconds
-        if maxRetries is not None:
-            raw_payload["maxRetries"] = maxRetries
-
-        payload = RunSimulationRequest.model_validate(raw_payload)
-        response = run_simulation(adapter, job_service, payload)
-        return response.model_dump(by_alias=True)
-
     class JobStatusArgs(BaseModel):
         jobId: str = Field(...)
-
-    def _get_job_status(*, jobId: str) -> Dict[str, Any]:
-        payload = GetJobStatusRequest.model_validate({"jobId": jobId})
-        response = get_job_status(job_service, payload)
-        return response.model_dump(by_alias=True)
 
     class PkParametersArgs(BaseModel):
         resultsId: str = Field(...)
@@ -389,77 +263,216 @@ def create_tool_registry(
             description="Optional parameter path to filter PK metrics.",
         )
 
-    def _calculate_pk_parameters(
-        *, resultsId: str, outputPath: Optional[str] = None
-    ) -> Dict[str, Any]:
-        raw_payload: Dict[str, Any] = {"resultsId": resultsId}
-        if outputPath is not None:
-            raw_payload["outputPath"] = outputPath
-        payload = CalculatePkParametersRequest.model_validate(raw_payload)
-        response = calculate_pk_parameters(adapter, payload)
-        return response.model_dump(by_alias=True)
+    full_registry = {}
+    for adapter_name, current_adapter in adapters.items():
+        current_registry = {}
 
-    registry = {
-        "load_simulation": _wrap_langchain_tool(
-            _load_simulation,
-            name="load_simulation",
+        def _load_simulation_bound(
+            *, filePath: str, simulationId: Optional[str] = None
+        ) -> Dict[str, Any]:
+            payload: Dict[str, Any] = {"filePath": filePath}
+            if simulationId is not None:
+                payload["simulationId"] = simulationId
+            request = LoadSimulationRequest.model_validate(payload)
+            response = load_simulation(current_adapter, request)
+            return response.model_dump(by_alias=True)
+
+        current_registry[f"{adapter_name}_load_simulation"] = _wrap_langchain_tool(
+            _load_simulation_bound,
+            name=f"{adapter_name}_load_simulation",
             args_schema=LoadSimulationArgs,
-            description="Load a PBPK simulation (.pkml) into the shared registry.",
-        ),
-        "set_parameter_value": _wrap_langchain_tool(
-            _set_parameter_value,
-            name="set_parameter_value",
-            args_schema=SetParameterArgs,
-            description="Update a parameter value for a loaded simulation.",
-        ),
-        "list_parameters": _wrap_langchain_tool(
-            _list_parameters,
-            name="list_parameters",
-            args_schema=ListParametersArgs,
-            description="List parameter paths in a loaded simulation (supports glob patterns).",
-        ),
-        "get_parameter_value": _wrap_langchain_tool(
-            _get_parameter_value,
-            name="get_parameter_value",
-            args_schema=GetParameterArgs,
-            description="Retrieve the value of a parameter for a simulation.",
-        ),
-        "run_sensitivity_analysis": _wrap_langchain_tool(
-            _run_sensitivity_analysis,
-            name="run_sensitivity_analysis",
-            args_schema=RunSensitivityArgs,
-            description="Execute a multi-parameter sensitivity sweep and return PK metric deltas.",
-        ),
-        "run_simulation": _wrap_langchain_tool(
-            _run_simulation,
-            name="run_simulation",
-            args_schema=RunSimulationArgs,
-            description="Submit a simulation job asynchronously and return job metadata.",
-        ),
-        "run_population_simulation": _wrap_langchain_tool(
-            _run_population_simulation,
-            name="run_population_simulation",
-            args_schema=RunPopulationArgs,
-            description="Submit a population simulation job asynchronously and return job metadata.",
-        ),
-        "get_job_status": _wrap_langchain_tool(
-            _get_job_status,
-            name="get_job_status",
-            args_schema=JobStatusArgs,
-            description="Fetch the status and metadata for a previously submitted job.",
-        ),
-        "calculate_pk_parameters": _wrap_langchain_tool(
-            _calculate_pk_parameters,
-            name="calculate_pk_parameters",
-            args_schema=PkParametersArgs,
-            description="Compute PK metrics (Cmax, Tmax, AUC) for simulation results.",
-        ),
-    }
+            description=f"Load a PBPK simulation (.pkml, .pksim5) into the {adapter_name} registry.",
+        )
 
-    for tool in registry.values():
+        def _set_parameter_value_bound(
+            *,
+            simulationId: str,
+            parameterPath: str,
+            value: float,
+            unit: Optional[str] = None,
+            updateMode: Optional[str] = None,
+            comment: Optional[str] = None,
+        ) -> Dict[str, Any]:
+            raw_payload: Dict[str, Any] = {
+                "simulationId": simulationId,
+                "parameterPath": parameterPath,
+                "value": value,
+            }
+            if unit is not None:
+                raw_payload["unit"] = unit
+            if updateMode is not None:
+                raw_payload["updateMode"] = updateMode
+            if comment is not None:
+                raw_payload["comment"] = comment
+
+            payload = SetParameterValueRequest.model_validate(raw_payload)
+            response = set_parameter_value(current_adapter, payload)
+            return response.model_dump(by_alias=True)
+
+        current_registry[f"{adapter_name}_set_parameter_value"] = _wrap_langchain_tool(
+            _set_parameter_value_bound,
+            name=f"{adapter_name}_set_parameter_value",
+            args_schema=SetParameterArgs,
+            description=f"Update a parameter value for a loaded simulation in the {adapter_name} registry.",
+        )
+
+        def _list_parameters_bound(
+            *, simulationId: str, searchPattern: Optional[str] = "*"
+        ) -> Dict[str, Any]:
+            raw_payload: Dict[str, Any] = {"simulationId": simulationId}
+            if searchPattern is not None:
+                raw_payload["searchPattern"] = searchPattern
+            payload = ListParametersRequest.model_validate(raw_payload)
+            response = list_parameters(current_adapter, payload)
+            return response.model_dump(by_alias=True)
+
+        current_registry[f"{adapter_name}_list_parameters"] = _wrap_langchain_tool(
+            _list_parameters_bound,
+            name=f"{adapter_name}_list_parameters",
+            args_schema=ListParametersArgs,
+            description=f"List parameter paths in a loaded simulation in the {adapter_name} registry (supports glob patterns).",
+        )
+
+        def _get_parameter_value_bound(
+            *, simulationId: str, parameterPath: str
+        ) -> Dict[str, Any]:
+            payload = GetParameterValueRequest.model_validate(
+                {"simulationId": simulationId, "parameterPath": parameterPath}
+            )
+            response = get_parameter_value(current_adapter, payload)
+            return response.model_dump(by_alias=True)
+
+        current_registry[f"{adapter_name}_get_parameter_value"] = _wrap_langchain_tool(
+            _get_parameter_value_bound,
+            name=f"{adapter_name}_get_parameter_value",
+            args_schema=GetParameterArgs,
+            description=f"Retrieve the value of a parameter for a simulation in the {adapter_name} registry.",
+        )
+
+        def _run_sensitivity_analysis_bound(
+            *,
+            modelPath: str,
+            simulationId: str,
+            parameters: List[Dict[str, Any]],
+            includeBaseline: bool = True,
+            pollIntervalSeconds: float = 0.25,
+            jobTimeoutSeconds: Optional[float] = None,
+        ) -> Dict[str, Any]:
+            from mcp.tools.run_sensitivity_analysis import (
+                RunSensitivityAnalysisRequest,
+                run_sensitivity_analysis_tool,
+            )
+
+            raw_payload: Dict[str, Any] = {
+                "modelPath": modelPath,
+                "simulationId": simulationId,
+                "parameters": parameters,
+                "includeBaseline": includeBaseline,
+                "pollIntervalSeconds": pollIntervalSeconds,
+                "jobTimeoutSeconds": jobTimeoutSeconds,
+            }
+            payload = RunSensitivityAnalysisRequest.model_validate(raw_payload)
+            response = run_sensitivity_analysis_tool(current_adapter, job_service, payload)
+            return response.model_dump(mode="json")
+
+        current_registry[f"{adapter_name}_run_sensitivity_analysis"] = _wrap_langchain_tool(
+            _run_sensitivity_analysis_bound,
+            name=f"{adapter_name}_run_sensitivity_analysis",
+            args_schema=RunSensitivityArgs,
+            description=f"Execute a multi-parameter sensitivity sweep and return PK metric deltas in the {adapter_name} registry.",
+        )
+
+        def _run_simulation_bound(
+            *,
+            simulationId: str,
+            runId: Optional[str] = None,
+            timeoutSeconds: Optional[float] = None,
+            maxRetries: Optional[int] = None,
+        ) -> Dict[str, Any]:
+            raw_payload: Dict[str, Any] = {"simulationId": simulationId}
+            if runId is not None:
+                raw_payload["runId"] = runId
+            if timeoutSeconds is not None:
+                raw_payload["timeoutSeconds"] = timeoutSeconds
+            if maxRetries is not None:
+                raw_payload["maxRetries"] = maxRetries
+
+            payload = RunSimulationRequest.model_validate(raw_payload)
+            response = run_simulation(current_adapter, payload)
+            return response.model_dump(by_alias=True)
+
+        current_registry[f"{adapter_name}_run_simulation"] = _wrap_langchain_tool(
+            _run_simulation_bound,
+            name=f"{adapter_name}_run_simulation",
+            args_schema=RunSimulationArgs,
+            description=f"Submit a simulation job asynchronously in the {adapter_name} registry and return job metadata.",
+        )
+
+        def _run_population_simulation_bound(
+            *,
+            modelPath: str,
+            simulationId: str,
+            cohort: Dict[str, Any],
+            outputs: Dict[str, Any] | None = None,
+            metadata: Dict[str, Any] | None = None,
+            timeoutSeconds: Optional[float] = None,
+            maxRetries: Optional[int] = None,
+        ) -> Dict[str, Any]:
+            raw_payload: Dict[str, Any] = {
+                "modelPath": modelPath,
+                "simulationId": simulationId,
+                "cohort": cohort,
+                "outputs": outputs or {},
+                "metadata": metadata or {},
+                "timeoutSeconds": timeoutSeconds,
+                "maxRetries": maxRetries,
+            }
+            payload = RunPopulationSimulationRequest.model_validate(raw_payload)
+            response = run_population_simulation(current_adapter, job_service, payload)
+            return response.model_dump(by_alias=True)
+
+        current_registry[f"{adapter_name}_run_population_simulation"] = _wrap_langchain_tool(
+            _run_population_simulation_bound,
+            name=f"{adapter_name}_run_population_simulation",
+            args_schema=RunPopulationArgs,
+            description=f"Submit a population simulation job asynchronously in the {adapter_name} registry and return job metadata.",
+        )
+
+        def _get_job_status_bound(*, jobId: str) -> Dict[str, Any]:
+            payload = GetJobStatusArgs.model_validate({"jobId": jobId})
+            response = get_job_status(job_service, payload)
+            return response.model_dump(by_alias=True)
+
+        current_registry[f"{adapter_name}_get_job_status"] = _wrap_langchain_tool(
+            _get_job_status_bound,
+            name=f"{adapter_name}_get_job_status",
+            args_schema=JobStatusArgs,
+            description=f"Fetch the status and metadata for a previously submitted job in the {adapter_name} registry.",
+        )
+
+        def _calculate_pk_parameters_bound(
+            *, resultsId: str, outputPath: Optional[str] = None
+        ) -> Dict[str, Any]:
+            raw_payload: Dict[str, Any] = {"resultsId": resultsId}
+            if outputPath is not None:
+                raw_payload["outputPath"] = outputPath
+            payload = CalculatePkParametersRequest.model_validate(raw_payload)
+            response = calculate_pk_parameters(current_adapter, payload)
+            return response.model_dump(by_alias=True)
+
+        current_registry[f"{adapter_name}_calculate_pk_parameters"] = _wrap_langchain_tool(
+            _calculate_pk_parameters_bound,
+            name=f"{adapter_name}_calculate_pk_parameters",
+            args_schema=PkParametersArgs,
+            description=f"Compute PK metrics (Cmax, Tmax, AUC) for simulation results in the {adapter_name} registry.",
+        )
+
+        full_registry.update(current_registry)
+
+    for tool in full_registry.values():
         convert_to_openai_function(tool)
 
-    return registry
+    return full_registry
 
 
 def route_after_selection(state: AgentState) -> str:
@@ -469,7 +482,14 @@ def route_after_selection(state: AgentState) -> str:
     next_step = plan.get("next_step") or {}
     tool_name = next_step.get("tool_name") or plan.get("tool_name")
 
-    if tool_name in CRITICAL_TOOLS:
+    is_critical = False
+    if tool_name:
+        for suffix in CRITICAL_TOOL_SUFFIXES:
+            if tool_name.endswith(suffix):
+                is_critical = True
+                break
+
+    if is_critical:
         return "Confirmation_Gate_Node"
     if tool_name:
         return "Tool_Execution_Node"
@@ -937,7 +957,7 @@ def _derive_plan(
     if simulation_context:
         sim_id = simulation_context.get("simulationId")
 
-    load_match = re.search(r"load\s+([^\s]+\.pkml)(?:\s+as\s+([\w\-]+))?", text, re.I)
+    load_match = re.search(r"load\s+([^\s]+\.(?:pkml|pksim5))(?:\s+as\s+([\w\-]+))?", text, re.I)
     if load_match:
         file_path = load_match.group(1)
         simulation_id = load_match.group(2) or (sim_id or "auto-sim")
@@ -949,7 +969,7 @@ def _derive_plan(
         }
 
     set_match = re.search(
-        r"set\s+([\w.|]+)\s+(?:to|=)\s+([0-9]+(?:\.[0-9]+)?)\s*([a-zA-Z/%]*)",
+        r"set\s+([\w.|]+)\s+(?:to|=)\s+([0-9]+(?:\\.[0-9]+)?)\s*([a-zA-Z/%]*)",
         text,
         re.I,
     )

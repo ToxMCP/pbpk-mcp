@@ -9,8 +9,7 @@ from mcp_bridge.config import AppConfig
 
 
 def _post_call_tool(client: TestClient, payload: dict) -> dict:
-    headers = {"X-MCP-Confirm": "true"} if payload.get("critical") else None
-    response = client.post("/mcp/call_tool", json=payload, headers=headers)
+    response = client.post("/mcp/call_tool", json=payload)
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -92,7 +91,6 @@ def test_run_simulation_idempotency_conflict(tmp_path):
         response = client.post(
             "/mcp/call_tool",
             json=conflict_payload,
-            headers={"X-MCP-Confirm": "true"},
         )
         assert response.status_code == 409
         assert "Idempotency" in response.json()["error"]["message"]

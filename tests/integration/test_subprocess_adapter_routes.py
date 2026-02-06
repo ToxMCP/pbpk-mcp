@@ -22,6 +22,12 @@ DEFAULT_PARAMS = {
     "Protein.Plasma.Albumin": {"value": 45.0, "unit": "g/L", "displayName": "Albumin"},
 }
 
+
+def _confirmed(payload: dict[str, Any]) -> dict[str, Any]:
+    data = dict(payload)
+    data.setdefault("confirm", True)
+    return data
+
 # Allow opt-in when the real R toolchain is available.
 _RUNS_R = os.getenv("MCP_RUN_R_TESTS", "0") == "1"
 pytestmark = pytest.mark.skipif(not _RUNS_R, reason="R-dependent tests disabled")
@@ -180,8 +186,7 @@ def test_missing_file_logs_redacted_message(
     with capture_logs() as logs:
         response = client.post(
             "/load_simulation",
-            json={"filePath": request_path, "simulationId": "missing"},
-            headers={"X-MCP-Confirm": "true"},
+            json=_confirmed({"filePath": request_path, "simulationId": "missing"}),
         )
 
     assert response.status_code == 400
@@ -204,8 +209,7 @@ def test_invalid_parameter_logs_context(
     assert (
         client.post(
             "/load_simulation",
-            json={"filePath": str(pkml), "simulationId": simulation_id},
-            headers={"X-MCP-Confirm": "true"},
+            json=_confirmed({"filePath": str(pkml), "simulationId": simulation_id}),
         ).status_code
         == 201
     )
@@ -231,8 +235,7 @@ def test_unit_mismatch_returns_bad_request(
     assert (
         client.post(
             "/load_simulation",
-            json={"filePath": str(pkml), "simulationId": simulation_id},
-            headers={"X-MCP-Confirm": "true"},
+            json=_confirmed({"filePath": str(pkml), "simulationId": simulation_id}),
         ).status_code
         == 201
     )
@@ -245,8 +248,8 @@ def test_unit_mismatch_returns_bad_request(
                 "parameterPath": "Organ.Liver.Volume",
                 "value": 2.0,
                 "unit": "mg",
+                "confirm": True,
             },
-            headers={"X-MCP-Confirm": "true"},
         )
 
     assert response.status_code == 400
@@ -262,16 +265,14 @@ def test_large_result_payload(
     assert (
         client.post(
             "/load_simulation",
-            json={"filePath": str(pkml), "simulationId": simulation_id},
-            headers={"X-MCP-Confirm": "true"},
+            json=_confirmed({"filePath": str(pkml), "simulationId": simulation_id}),
         ).status_code
         == 201
     )
 
     run_resp = client.post(
         "/run_simulation",
-        json={"simulationId": simulation_id},
-        headers={"X-MCP-Confirm": "true"},
+        json=_confirmed({"simulationId": simulation_id}),
     )
     assert run_resp.status_code == 202
     job_id = run_resp.json()["jobId"]

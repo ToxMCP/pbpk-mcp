@@ -44,6 +44,15 @@ jobs:
       - name: Run MCP compliance harness
         run: make compliance
 
+      - name: Run MCP HTTP smoke test
+        run: |
+          uvicorn mcp_bridge.app:create_app --factory --host 127.0.0.1 --port 8000 &
+          server_pid=$!
+          trap 'kill $server_pid' EXIT
+          sleep 5
+          PBPK_MCP_ENDPOINT=http://127.0.0.1:8000/mcp \
+            scripts/mcp_http_smoke.sh
+
       - name: Run smoke benchmark
         run: |
           make benchmark BENCH_PROFILE=1

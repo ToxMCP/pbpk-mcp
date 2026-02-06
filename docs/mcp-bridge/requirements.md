@@ -10,7 +10,7 @@ The MCP Bridge server must expose the core functionalities of the Open Systems P
 
 The server must implement the following tools:
 
-- **`load_simulation`**: Loads a PBPK model from a `.pkml` file.
+- **`load_simulation`**: Loads a PBPK model from a `.pkml` or `.pksim5` file.
 - **`list_parameters`**: Lists all parameters in a loaded simulation.
 - **`get_parameter_value`**: Retrieves the value of a specific parameter.
 - **`set_parameter_value`**: Modifies the value of a specific parameter.

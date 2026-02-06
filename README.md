@@ -5,7 +5,7 @@ Expose deterministic/population simulations, parameter edits, and PK analytics t
 
 ## Why this project exists
 
-PBPK workflows typically juggle `.pkml` models, ospsuite tooling, and ad-hoc scripts that are hard for coding agents to automate safely. The PBPK MCP server wraps those workflows in a **secure, programmable interface**:
+PBPK workflows typically juggle `.pkml` and `.pksim5` models, ospsuite tooling, and ad-hoc scripts that are hard for coding agents to automate safely. The PBPK MCP server wraps those workflows in a **secure, programmable interface**:
 
 - **Single MCP surface** for loading models, editing parameters, running simulations, and computing PK metrics.
 - **Adapter flexibility** – in-memory adapter for fast local work; subprocess adapter to call R/ospsuite when you need full fidelity.
@@ -18,7 +18,7 @@ PBPK workflows typically juggle `.pkml` models, ospsuite tooling, and ad-hoc scr
 
 | Capability | Description |
 | --- | --- |
-| 🧬 **PBPK simulation control** | Load `.pkml` models, list/edit parameters, and run deterministic or population simulations via MCP tools. |
+| 🧬 **PBPK simulation control** | Load `.pkml` and `.pksim5` models, list/edit parameters, and run deterministic or population simulations via MCP tools. |
 | 🧾 **PK analytics** | Compute Cmax/Tmax/AUC on completed runs; retrieve aggregated population results and chunk handles. |
 | 🔁 **Job orchestration & idempotency** | Async job service with idempotency keys, cancellation, and persistent registry (thread, Celery, or HPC stub backends). |
 | 🛡️ **Guardrails by default** | Critical tools require explicit confirmation; role annotations and JSON Schemas are returned in the tool catalog. |
@@ -52,7 +52,7 @@ git clone https://github.com/senseibelbi/PBPK_MCP.git
 cd PBPK_MCP
 
 # Create necessary directories
-mkdir -p var/jobs var/reports var/population-results
+mkdir -p var/jobs var/population-results
 
 # Copy example environment
 cp .env.example .env
@@ -63,7 +63,7 @@ docker compose -f docker-compose.celery.yml up -d --build
 
 - **API Endpoint:** `http://localhost:8000/mcp`
 - **Worker:** Handles simulation jobs using the installed R runtime.
-- **Models:** Place your `.pkml` files in `var/`. (Acetaminophen_Pregnancy.pkml is auto-downloaded in some setups).
+- **Models:** Place your `.pkml` or `.pksim5` files in `var/`. (Acetaminophen_Pregnancy.pkml is auto-downloaded in some setups).
 
 ## Real-World Examples
 
@@ -86,21 +86,34 @@ See `examples/README.md` for details.
 
 ---
 
+## Model Conversion (.pksim5 to .pkml)
+
+The MCP server natively loads `.pkml` simulation files. To use `.pksim5` PK-Sim projects:
+
+1.  **Manual Export:** Open the project in PK-Sim, right-click the simulation, and "Export to PKML...".
+2.  **Automated Conversion (Linux/Windows):** Use the included helper script in an environment with the `ospsuite` R package (e.g., the Docker container).
+
+```bash
+Rscript scripts/convert_pksim_to_pkml.R path/to/project.pksim5 output/directory
+```
+
+This pipeline converts the project to a JSON snapshot and then exports the `.pkml` simulation(s).
+
 ## Configuration
 
-Settings are loaded via `pydantic-settings` with `.env` support. Common knobs (see `docs/mcp-bridge/reference/configuration.md` for the full matrix):
+Settings are loaded via `pydantic` models plus `python-dotenv` `.env` loading. Common knobs (see `docs/mcp-bridge/reference/configuration.md` for the full matrix):
 
 | Variable | Required | Default | Description |
 | --- | --- | --- | --- |
 | `HOST` | Optional | `0.0.0.0` | Bind address for the FastAPI app. |
 | `PORT` | Optional | `8000` | HTTP port. |
 | `ADAPTER_BACKEND` | Optional | `inmemory` | Switch to `subprocess` to use R/ospsuite (Docker default). |
-| `MCP_MODEL_SEARCH_PATHS` | Optional | `tests/fixtures` | Colon-separated allow list of `.pkml` directories. |
+| `MCP_MODEL_SEARCH_PATHS` | Optional | `tests/fixtures` | Colon-separated allow list of model directories. |
 | `ADAPTER_TIMEOUT_MS` | Optional | `30000` | Adapter call timeout. |
-| `JOB_BACKEND` | Optional | `thread` | `thread`, `celery`, or `hpc` (stub) job runner. |
+| `JOB_BACKEND` | Optional | `thread` | `thread`, `celery`, or `hpc` (stub) for testing agent interactions with queued cluster jobs. |
 | `JOB_WORKER_THREADS` | Optional | `2` | In-process worker pool size. |
 | `JOB_TIMEOUT_SECONDS` | Optional | `300` | Per-job timeout for queued executions. |
-| `JOB_REGISTRY_PATH` | Optional | `var/jobs/registry.db` | Persistent job registry for status checks/idempotency. |
+| `JOB_REGISTRY_PATH` | Optional | `var/jobs/registry.json` | Persistent job registry for status checks/idempotency. |
 | `AUTH_DEV_SECRET` | Dev | – | HS256 secret for local tokens (set issuer/audience values for production JWT validation). |
 | `AUDIT_ENABLED` | Optional | `true` | Toggle immutable audit logging. |
 | `AUDIT_STORAGE_BACKEND` | Optional | `local` | `local` JSONL logs or `s3` with Object Lock (`AUDIT_S3_*`). |
@@ -113,7 +126,7 @@ Settings are loaded via `pydantic-settings` with `.env` support. Common knobs (s
 
 | Tool | Description |
 | --- | --- |
-| `load_simulation` | Load a PBPK `.pkml` file into the session registry (critical; requires confirmation). |
+| `load_simulation` | Load a PBPK `.pkml` or `.pksim5` file into the session registry (critical; requires confirmation). |
 | `list_parameters` | List parameter paths for a loaded simulation (supports glob filters). |
 | `get_parameter_value` | Retrieve the current value for a simulation parameter. |
 | `set_parameter_value` | Update a parameter with optional unit/comment (critical; requires confirmation). |
@@ -172,6 +185,7 @@ Use `scripts/mcp_http_smoke.sh` for a scripted handshake and CLI walkthroughs in
 
 - Add `http://localhost:8000/mcp` as an MCP provider (Codex CLI, Gemini CLI, Claude Code, or other hosts).
 - Include `Authorization: Bearer <token>` and set `critical: true` in payloads for critical tools (legacy `X-MCP-Confirm: true` is also honoured).
+- When an agent calls a critical tool, the server will respond with a `confirmationRequired` status. The agent must then re-submit the request with a confirmation token or signal.
 - Reference `docs/mcp-bridge/integration_guides/mcp_integration.md` for client-specific JSON snippets and binary payload handling.
 
 ---

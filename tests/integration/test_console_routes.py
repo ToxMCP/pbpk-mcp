@@ -43,8 +43,8 @@ def test_sample_suggestions_and_apply(tmp_path: Path) -> None:
         json={
             "filePath": str(model_path),
             "simulationId": "console-test-sim",
+            "confirm": True,
         },
-        headers={"X-MCP-Confirm": "true"},
     )
     assert load_resp.status_code == 201
 

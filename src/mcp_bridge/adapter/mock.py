@@ -65,7 +65,7 @@ class InMemoryAdapter(OspsuiteAdapter):
 
     def load_simulation(self, file_path: str, simulation_id: str | None = None) -> SimulationHandle:
         self._ensure_initialised()
-        if not file_path.endswith(".pkml"):
+        if not file_path.lower().endswith((".pkml", ".pksim5")):
             raise AdapterError(AdapterErrorCode.INVALID_INPUT, "Unsupported file type")
         sim_id = simulation_id or str(uuid.uuid4())
         handle = SimulationHandle(simulation_id=sim_id, file_path=file_path)

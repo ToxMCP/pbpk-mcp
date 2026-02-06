@@ -85,16 +85,20 @@ AUTH_HEADER="Authorization: Bearer $MCP_TOKEN"
 BASE_URL="http://127.0.0.1:8000"
 ```
 
+> Critical mutations (load/set/run/population) must include `"confirm": true`
+> in the JSON body. The legacy `X-MCP-Confirm` header is optional and no longer
+> required when the payload carries the confirmation hint.
+
 ## 4. Load a PBPK model
 
 ```bash
 curl -s -X POST "$BASE_URL/load_simulation" \
   -H "Content-Type: application/json" \
   -H "$AUTH_HEADER" \
-  -H "X-MCP-Confirm: true" \
   -d '{
         "filePath": "tests/fixtures/demo.pkml",
-        "simulationId": "cli-demo"
+        "simulationId": "cli-demo",
+        "confirm": true
       }' | jq
 ```
 
@@ -131,13 +135,13 @@ Update the weight to `72 kg`:
 curl -s -X POST "$BASE_URL/set_parameter_value" \
   -H "Content-Type: application/json" \
   -H "$AUTH_HEADER" \
-  -H "X-MCP-Confirm: true" \
   -d '{
         "simulationId": "cli-demo",
         "parameterPath": "Organism|Weight",
         "value": 72.0,
         "unit": "kg",
-        "comment": "CLI quickstart adjustment"
+        "comment": "CLI quickstart adjustment",
+        "confirm": true
       }' | jq '.parameter'
 ```
 
@@ -161,10 +165,10 @@ Submit the job:
 RUN_RESPONSE=$(curl -s -X POST "$BASE_URL/run_simulation" \
   -H "Content-Type: application/json" \
   -H "$AUTH_HEADER" \
-  -H "X-MCP-Confirm: true" \
   -d '{
         "simulationId": "cli-demo",
-        "runId": "cli-demo-run-1"
+        "runId": "cli-demo-run-1",
+        "confirm": true
       }')
 JOB_ID=$(echo "$RUN_RESPONSE" | jq -r '.jobId')
 echo "Job ID: $JOB_ID"
