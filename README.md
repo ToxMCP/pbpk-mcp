@@ -39,7 +39,8 @@ PBPK workflows typically juggle `.pkml` and `.pksim5` models, ospsuite tooling, 
 8. [Security checklist](#security-checklist)
 9. [Development notes](#development-notes)
 10. [Roadmap](#roadmap)
-11. [License](#license)
+11. [Citation](#citation)
+12. [License](#license)
 
 ---
 
@@ -225,6 +226,15 @@ Use `scripts/mcp_http_smoke.sh` for a scripted handshake and CLI walkthroughs in
 - Streaming progress updates for long-running simulations and population jobs.
 - Expanded parity/benchmark scenarios covering additional reference models and sensitivity profiles.
 - Optional SSE/WebSocket transport for MCP once the spec finalizes streaming semantics.
+
+---
+
+## Citation
+
+If you use **toxMCP / PBPK MCP** in your work, please cite the BioRxiv preprint:
+
+- Author: **Ivo Djidrovski**
+- Link: [https://www.biorxiv.org/content/10.64898/2026.02.06.703989v1](https://www.biorxiv.org/content/10.64898/2026.02.06.703989v1)
 
 ---
 
