@@ -81,7 +81,7 @@ cp .env.example .env
 docker compose -f docker-compose.celery.yml up -d --build
 ```
 
-- **API Endpoint:** `http://localhost:8000/mcp`
+- **API Endpoint:** `http://localhost:8002/mcp`
 - **Worker:** Handles simulation jobs using the installed R runtime.
 - **Models:** Place your `.pkml` or `.pksim5` files in `var/`. (Acetaminophen_Pregnancy.pkml is auto-downloaded in some setups).
 
@@ -125,10 +125,10 @@ Once the server is running:
 
 ```bash
 # health
-curl -s http://localhost:8000/health | jq .
+curl -s http://localhost:8002/health | jq .
 
 # list MCP tools
-curl -s http://localhost:8000/mcp \
+curl -s http://localhost:8002/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | jq .
 ```
@@ -191,7 +191,7 @@ uvicorn mcp_bridge.main:app --host 0.0.0.0 --port 8000 --reload
 ### Quick MCP smoke test
 
 ```bash
-BASE_URL=http://localhost:8000
+BASE_URL=http://localhost:8002
 AUTH_HEADER="Authorization: Bearer $(PYTHONPATH=src python - <<'PY'
 from mcp_bridge.security.simple_jwt import jwt
 print(jwt.encode({"sub": "smoke", "roles": ["admin"]}, "dev-secret", algorithm="HS256"))
@@ -217,7 +217,7 @@ Use `scripts/mcp_http_smoke.sh` for a scripted handshake and CLI walkthroughs in
 
 ## Integrating with coding agents
 
-- Add `http://localhost:8000/mcp` as an MCP provider (Codex CLI, Gemini CLI, Claude Code, or other hosts).
+- Add `http://localhost:8002/mcp` as an MCP provider (Codex CLI, Gemini CLI, Claude Code, or other hosts).
 - Include `Authorization: Bearer <token>` and set `critical: true` in payloads for critical tools (legacy `X-MCP-Confirm: true` is also honoured).
 - When an agent calls a critical tool, the server will respond with a `confirmationRequired` status. The agent must then re-submit the request with a confirmation token or signal.
 - Reference `docs/mcp-bridge/integration_guides/mcp_integration.md` for client-specific JSON snippets and binary payload handling.
