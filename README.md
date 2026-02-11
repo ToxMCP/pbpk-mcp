@@ -268,8 +268,20 @@ Funding: Dutch Research Council (NWO) — NWA.1292.19.272 (NWA programme)
 
 This suite integrates with third-party data sources and services (e.g., EPA CompTox, ADMETlab, AOP resources, OECD QSAR Toolbox, Open Systems Pharmacology). Those upstream resources are owned and governed by their respective providers; users are responsible for meeting any access, API key, rate limit, and license/EULA requirements described in each module.
 
-## Cite
+## ✅ Citation
 
-If you use ToxMCP in your work, please cite the preprint: https://doi.org/10.64898/2026.02.06.703989
+Djidrovski, I. **ToxMCP: Guardrailed, Auditable Agentic Workflows for Computational Toxicology via the Model Context Protocol.** bioRxiv (2026). https://doi.org/10.64898/2026.02.06.703989
 
-Citation metadata: [CITATION.cff](./CITATION.cff)
+```bibtex
+@article{djidrovski2026toxmcp,
+  title   = {ToxMCP: Guardrailed, Auditable Agentic Workflows for Computational Toxicology via the Model Context Protocol},
+  author  = {Djidrovski, Ivo},
+  journal = {bioRxiv},
+  year    = {2026},
+  doi     = {10.64898/2026.02.06.703989},
+  url     = {https://doi.org/10.64898/2026.02.06.703989}
+}
+```
+
+Citation metadata: [`CITATION.cff`](./CITATION.cff)
+
