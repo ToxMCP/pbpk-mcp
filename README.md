@@ -1,5 +1,8 @@
 # PBPK MCP Server
 
+> Part of **ToxMCP** Suite → https://github.com/ToxMCP/toxmcp
+
+
 **Public MCP endpoint for physiologically based pharmacokinetic (PBPK) modeling with Open Systems Pharmacology Suite.**  
 Expose deterministic/population simulations, parameter edits, and PK analytics to any MCP-aware agent (Codex CLI, Gemini CLI, Claude Code, etc.).
 
