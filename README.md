@@ -1,3 +1,7 @@
+[![CI](https://github.com/ToxMCP/pbpk-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/ToxMCP/pbpk-mcp/actions/workflows/ci.yml)
+[![DOI](https://img.shields.io/badge/DOI-10.64898%2F2026.02.06.703989-blue)](https://doi.org/10.64898/2026.02.06.703989)
+[![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](./LICENSE)
+
 # PBPK MCP Server
 
 > Part of **ToxMCP** Suite → https://github.com/ToxMCP/toxmcp
@@ -244,3 +248,6 @@ If you use **toxMCP / PBPK MCP** in your work, please cite the BioRxiv preprint:
 ## License
 
 This project is distributed under the [Apache License 2.0](LICENSE). Contributions are accepted under the same terms.
+## Acknowledgements / Origins
+
+This work was developed in the context of the **VHP4Safety** project and related efforts. It builds on upstream third-party data/services (see repository documentation for exact dependencies and access requirements).
