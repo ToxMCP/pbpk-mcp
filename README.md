@@ -119,6 +119,20 @@ Rscript scripts/convert_pksim_to_pkml.R path/to/project.pksim5 output/directory
 
 This pipeline converts the project to a JSON snapshot and then exports the `.pkml` simulation(s).
 
+## Verification (smoke test)
+
+Once the server is running:
+
+```bash
+# health
+curl -s http://localhost:8000/health | jq .
+
+# list MCP tools
+curl -s http://localhost:8000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | jq .
+```
+
 ## Configuration
 
 Settings are loaded via `pydantic` models plus `python-dotenv` `.env` loading. Common knobs (see `docs/mcp-bridge/reference/configuration.md` for the full matrix):
