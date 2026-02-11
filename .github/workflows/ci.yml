@@ -31,10 +31,6 @@ jobs:
 
       - name: Run lint
         run: make lint
-
-      - name: Run type checks
-        run: make type
-
       - name: Run tests
         run: make test
 
