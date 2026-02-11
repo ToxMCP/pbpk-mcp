@@ -70,7 +70,7 @@ target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
-ignore = ["B008", "UP006", "UP007", "UP035"]
+ignore = ["B008", "UP006", "UP007", "UP035", "E501", "I001", "UP037"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
