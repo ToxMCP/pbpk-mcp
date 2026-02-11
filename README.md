@@ -2,6 +2,11 @@
 
 ## Architecture
 
+![PBPK MCP architecture overview](./assets/pbpk-mcp-architecture-overview.jpg)
+
+
+**Confirmation/policy + async job flow (example):**
+
 ![PBPK MCP architecture](./assets/pbpk-mcp-architecture.jpg)
 
 [![DOI](https://img.shields.io/badge/DOI-10.64898%2F2026.02.06.703989-blue)](https://doi.org/10.64898/2026.02.06.703989)
