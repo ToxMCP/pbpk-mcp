@@ -490,4 +490,4 @@ class SubprocessOspsuiteAdapter(OspsuiteAdapter):
         return False
 
 
-__all__ = ["CommandResult", "CommandRunner", "SubprocessCommandRunner", "SubprocessOspsuiteAdapter"]
+__all__ = ["CommandResult", "CommandRunner", "SubprocessOspsuiteAdapter"]
