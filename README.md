@@ -253,3 +253,9 @@ This project is distributed under the [Apache License 2.0](LICENSE). Contributio
 ## Acknowledgements / Origins
 
 This work was developed in the context of the **VHP4Safety** project and related efforts. It builds on upstream third-party data/services (see repository documentation for exact dependencies and access requirements).
+
+## Cite
+
+If you use ToxMCP in your work, please cite the preprint: https://doi.org/10.64898/2026.02.06.703989
+
+Citation metadata: [CITATION.cff](./CITATION.cff)
