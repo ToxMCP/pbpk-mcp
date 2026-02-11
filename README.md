@@ -252,7 +252,9 @@ If you use **toxMCP / PBPK MCP** in your work, please cite the BioRxiv preprint:
 This project is distributed under the [Apache License 2.0](LICENSE). Contributions are accepted under the same terms.
 ## Acknowledgements / Origins
 
-This work was developed in the context of the **VHP4Safety** project and related efforts. It builds on upstream third-party data/services (see repository documentation for exact dependencies and access requirements).
+ToxMCP was developed in the context of the **VHP4Safety** project and related research/engineering efforts.
+
+This suite integrates with third-party data sources and services (e.g., EPA CompTox, ADMETlab, AOP resources, OECD QSAR Toolbox, Open Systems Pharmacology). Those upstream resources are owned and governed by their respective providers; users are responsible for meeting any access, API key, rate limit, and license/EULA requirements described in each module.
 
 ## Cite
 
