@@ -16,7 +16,7 @@
     {
       "type": "library",
       "name": "mcp-bridge",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "licenses": [
         {
           "license": {
@@ -1192,7 +1192,7 @@
     {
       "type": "library",
       "name": "google-auth-httplib2",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "licenses": [
         {
           "license": {
@@ -1960,7 +1960,7 @@
     {
       "type": "library",
       "name": "mcp-bridge",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "licenses": [
         {
           "license": {

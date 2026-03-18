@@ -2,6 +2,24 @@
 
 All notable changes to this project should be documented in this file.
 
+## v0.2.1 - 2026-03-18
+
+### Changed
+
+- restructured the GitHub README into a cleaner public-facing layout with clearer quick start, examples, limitations, and architecture sections
+- clarified that `rxode2` is a first-class execution engine alongside `ospsuite`, not only a conversion target
+- aligned support, security, package, compose, and environment metadata with the current `ToxMCP/pbpk-mcp` repository
+
+### Fixed
+
+- GitHub Mermaid rendering for the public architecture diagram
+- stale `0.1.0` and legacy repository references in package metadata and generated docs
+
+### Notes
+
+- `v0.2.1` is a documentation and release-metadata patch over `v0.2.0`
+- runtime behavior and MCP tool semantics are unchanged from the `v0.2.0` feature release
+
 ## v0.2.0 - 2026-03-18
 
 ### Added
