@@ -1,0 +1,75 @@
+{
+  "contextOfUse": {
+    "status": "declared-by-sidecar",
+    "scientificPurpose": "Illustrative maternal-fetal oral PBPK example using the generic molecule 'Test_Chemical' in a pregnant human physiology.",
+    "decisionContext": "Method-development, onboarding, and workflow verification for pregnancy-oriented PK-Sim transfer files.",
+    "regulatoryUse": "not-for-regulatory-use",
+    "acceptableUncertainty": "Not declared; this sidecar does not bundle a quantitative qualification package.",
+    "confidenceLevelRequired": "Fit-for-purpose example-model confidence only.",
+    "repurposingAllowed": false,
+    "supportedQuestions": [
+      "Can the MCP load and run a pregnancy-oriented PK-Sim transfer file with oral dosing?",
+      "Does the workspace expose pregnancy-specific applicability metadata for a maternal-fetal example model?"
+    ],
+    "unsupportedQuestions": [
+      "Substance-specific pregnancy risk or dosing recommendations.",
+      "Regulatory decision support or clinical use without additional qualification evidence."
+    ],
+    "sourceToolHint": "PK-Sim"
+  },
+  "applicabilityDomain": {
+    "type": "sidecar-declared",
+    "qualificationLevel": "illustrative-example",
+    "status": "minimally-characterized",
+    "sourceToolHint": "PK-Sim",
+    "compounds": [
+      "Test_Chemical"
+    ],
+    "species": [
+      "human"
+    ],
+    "lifeStage": [
+      "pregnant-adult",
+      "fetal"
+    ],
+    "routes": [
+      "oral"
+    ],
+    "summary": "Pregnancy-oriented PK-Sim transfer file with a pregnant-woman spatial structure, maternal-fetal compartments, and an oral application for a generic test chemical.",
+    "assumptions": [
+      "The transfer file uses a generic placeholder molecule rather than a declared therapeutic substance.",
+      "Pregnancy and maternal-fetal scope are inferred from the spatial structure and simulation naming."
+    ],
+    "exclusions": [
+      "Not a qualified substance-specific pregnancy model.",
+      "Not declared for regulatory, clinical, or label-supporting use."
+    ]
+  },
+  "uncertainty": {
+    "status": "not-encoded",
+    "summary": "No uncertainty or sensitivity dossier is bundled with this illustrative pregnancy example.",
+    "missingEvidence": [
+      "Model-specific calibration or validation dataset.",
+      "Formal sensitivity analysis.",
+      "Peer-reviewed qualification narrative."
+    ]
+  },
+  "implementationVerification": {
+    "status": "basic-internal-checks",
+    "runtime": "ospsuite",
+    "verifiedChecks": [
+      "Transfer file accepted by the OSPSuite runtime",
+      "Project sidecar profile parsed successfully",
+      "Deterministic simulation smoke test completed in the live worker"
+    ],
+    "missingChecks": [
+      "Model-specific uncertainty dossier",
+      "Formal qualification package",
+      "Peer-review and prior-use declarations"
+    ]
+  },
+  "peerReview": {
+    "status": "not-reported",
+    "summary": "No peer-review or prior-use declaration is encoded for this illustrative pregnancy example."
+  }
+}

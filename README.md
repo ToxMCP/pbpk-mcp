@@ -1,301 +1,296 @@
-[![CI](https://github.com/ToxMCP/pbpk-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/ToxMCP/pbpk-mcp/actions/workflows/ci.yml)
+# PBPK MCP
+
+Accessible PBPK workflows through one MCP interface, with explicit OECD-oriented qualification metadata for risk assessment.
+
+Current release: `v0.2.0`
+
+PBPK MCP exposes a single user-facing workflow while routing execution to the appropriate backend:
+
+- `ospsuite` for PK-Sim and MoBi simulation-transfer files (`.pkml`)
+- `rxode2` for MCP-ready custom and population-oriented R models (`.R`)
+
+`rxode2` is a native execution engine in this project. It is not limited to Berkeley Madonna conversions.
+
+The design goal is simple:
+
+- one PBPK MCP surface for users
+- automatic backend selection from model type
+- explicit model discovery and qualification metadata
+- clear separation between `runnable` and `scientifically qualified`
 
 ## Architecture
 
-![PBPK MCP architecture overview](./assets/pbpk-mcp-architecture-overview.jpg)
+```mermaid
+flowchart TD
+    user["User / Risk Assessor / Modeler"] --> api["PBPK MCP<br/>single user-facing API"]
 
+    api --> discover["discover_models<br/>/mcp/resources/models"]
+    api --> load["load_simulation"]
+    api --> validate["validate_simulation_request"]
+    api --> run["run_simulation / run_population_simulation"]
+    api --> results["get_job_status / get_results / get_population_results"]
 
-**Confirmation/policy + async job flow (example):**
+    discover --> registry["Filesystem-backed model registry<br/>MCP_MODEL_SEARCH_PATHS"]
+    load --> router["Model router<br/>backend selected from model type"]
 
-![PBPK MCP architecture](./assets/pbpk-mcp-architecture.jpg)
+    router --> ospsuite["OSPSuite backend<br/>PK-Sim / MoBi `.pkml`"]
+    router --> rxode2["rxode2 backend<br/>MCP-ready `.R`"]
 
-[![DOI](https://img.shields.io/badge/DOI-10.64898%2F2026.02.06.703989-blue)](https://doi.org/10.64898/2026.02.06.703989)
-[![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](./LICENSE)
-[![Release](https://img.shields.io/github/v/release/ToxMCP/pbpk-mcp?sort=semver)](https://github.com/ToxMCP/pbpk-mcp/releases)
-[![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+    ospsuite --> pkml["`.pkml` model files<br/>optional `.profile.json` sidecars"]
+    rxode2 --> rmodels["`.R` model modules<br/>optional profile + validation hooks"]
 
-# PBPK MCP Server
+    validate --> qualification["OECD-oriented qualification layer<br/>context of use / applicability domain / uncertainty / verification / review"]
+    qualification --> run
 
-> Part of **ToxMCP** Suite → https://github.com/ToxMCP/toxmcp
+    mmadonna["Berkeley Madonna `.mmd`"] --> convert["Conversion workflow"]
+    convert --> pkml
+    convert --> rmodels
 
-
-**Public MCP endpoint for physiologically based pharmacokinetic (PBPK) modeling with Open Systems Pharmacology Suite.**  
-Expose deterministic/population simulations, parameter edits, and PK analytics to any MCP-aware agent (Codex CLI, Gemini CLI, Claude Code, etc.).
-
-## Why this project exists
-
-PBPK workflows typically juggle `.pkml` and `.pksim5` models, ospsuite tooling, and ad-hoc scripts that are hard for coding agents to automate safely. The PBPK MCP server wraps those workflows in a **secure, programmable interface**:
-
-- **Single MCP surface** for loading models, editing parameters, running simulations, and computing PK metrics.
-- **Adapter flexibility** – in-memory adapter for fast local work; subprocess adapter to call R/ospsuite when you need full fidelity.
-- **Job safety** – confirmation gating for critical tools, idempotency keys for reruns, and persistent job registry with cancellation.
-- **Audit + observability** – immutable audit chain, Prometheus metrics, and parity/benchmark harnesses to guard regressions.
-
----
-
-## Feature snapshot
-
-| Capability | Description |
-| --- | --- |
-| 🧬 **PBPK simulation control** | Load `.pkml` and `.pksim5` models, list/edit parameters, and run deterministic or population simulations via MCP tools. |
-| 🧾 **PK analytics** | Compute Cmax/Tmax/AUC on completed runs; retrieve aggregated population results and chunk handles. |
-| 🔁 **Job orchestration & idempotency** | Async job service with idempotency keys, cancellation, and persistent registry (thread, Celery, or HPC stub backends). |
-| 🛡️ **Guardrails by default** | Critical tools require explicit confirmation; role annotations and JSON Schemas are returned in the tool catalog. |
-| 📈 **Observability** | Structured logs, audit bundles, `/metrics` (Prometheus), and benchmark/parity suites baked into the repo. |
-| 🤖 **Agent friendly** | MCP HTTP endpoints expose `list_tools`, `call_tool`, and capability data; smoke scripts and integration snippets are included. |
-
----
-
-## Table of contents
-
-1. [Quick start](#quick-start)
-2. [Real-World Examples](#real-world-examples)
-3. [Configuration](#configuration)
-4. [Tool catalog](#tool-catalog)
-5. [Running the server](#running-the-server)
-6. [Integrating with coding agents](#integrating-with-coding-agents)
-7. [Output artifacts](#output-artifacts)
-8. [Security checklist](#security-checklist)
-9. [Development notes](#development-notes)
-10. [Roadmap](#roadmap)
-11. [Citation](#citation)
-12. [License](#license)
-
----
-
-## Quick start (Docker)
-
-The easiest way to run the server with the **Real Physics Engine (OSPSuite/R)** is via Docker Compose.
-
-```bash
-git clone https://github.com/senseibelbi/PBPK_MCP.git
-cd PBPK_MCP
-
-# Create necessary directories
-mkdir -p var/jobs var/population-results
-
-# Copy example environment
-cp .env.example .env
-
-# Start the API and Worker with R support
-docker compose -f docker-compose.celery.yml up -d --build
+    run --> det["Deterministic results"]
+    run --> pop["Population results"]
+    det --> results
+    pop --> results
 ```
 
-- **API Endpoint:** `http://localhost:8002/mcp`
-- **Worker:** Handles simulation jobs using the installed R runtime.
-- **Models:** Place your `.pkml` or `.pksim5` files in `var/`. (Acetaminophen_Pregnancy.pkml is auto-downloaded in some setups).
+## What Changed In `v0.2.0`
 
-## Real-World Examples
+- added dual-backend routing for `.pkml` and MCP-ready `.R`
+- added generic model discovery from disk through `discover_models` and `/mcp/resources/models`
+- added OECD-style model `profile` metadata and preflight validation through `validate_simulation_request`
+- added sidecar-backed scientific metadata for OSPSuite `.pkml` models
+- added support for `rxode2` population simulations in the dedicated worker image
+- clarified `rxode2` as a direct PBPK execution backend for R-authored models
+- added a stable enhanced MCP response contract with `tool` and `contractVersion`
+- improved async result chaining with flattened `get_job_status` fields
 
-We provide a comprehensive suite of examples in the `examples/` directory demonstrating full workflows against the real engine:
+## Supported Model Types
 
-1.  **Brain Barrier Distribution:** Checks if a drug crosses the BBB by comparing Brain vs Blood AUC.
-2.  **Sensitivity Analysis:** Sweeps physiological parameters (e.g., Liver Volume) to assess impact on clearance.
-3.  **Virtual Population:** Simulates a cohort with varying physiology.
-4.  **Automated Sensitivity Tool:** Demonstrates the high-level `run_sensitivity_analysis` tool.
+Directly supported runtime formats:
 
-To run the examples (requires Python requests):
+- `.pkml` through `ospsuite`
+- `.R` through the PBPK R model-module contract
 
-```bash
-python3 examples/01_brain_barrier_distribution.py
-python3 examples/02_liver_volume_sensitivity.py
-python3 examples/06_sensitivity_tool_demo.py
-```
+Direct R support means you can author and run PBPK models directly against the `rxode2` backend without Berkeley Madonna in the loop.
 
-See `examples/README.md` for details.
+Conversion source only:
 
----
+- Berkeley Madonna `.mmd`
 
-## Model Conversion (.pksim5 to .pkml)
+Important boundary:
 
-The MCP server natively loads `.pkml` simulation files. To use `.pksim5` PK-Sim projects:
+- `.mmd` is not a runtime backend
+- the MCP does not execute Berkeley Madonna files directly
+- `.mmd` should be converted into `.pkml` or MCP-ready `.R`
 
-1.  **Manual Export:** Open the project in PK-Sim, right-click the simulation, and "Export to PKML...".
-2.  **Automated Conversion (Linux/Windows):** Use the included helper script in an environment with the `ospsuite` R package (e.g., the Docker container).
+## Core Workflow
 
-```bash
-Rscript scripts/convert_pksim_to_pkml.R path/to/project.pksim5 output/directory
-```
+The intended user workflow is:
 
-This pipeline converts the project to a JSON snapshot and then exports the `.pkml` simulation(s).
+1. discover a model
+2. load it
+3. validate the intended use
+4. run deterministic or population simulation
+5. retrieve results
 
-## Verification (smoke test)
+The main enhanced MCP surfaces are:
 
-Once the server is running:
+- `discover_models`
+- `load_simulation`
+- `validate_simulation_request`
+- `run_simulation`
+- `run_population_simulation`
+- `get_job_status`
+- `get_results`
+- `get_population_results`
 
-```bash
-# health
-curl -s http://localhost:8002/health | jq .
+The enhanced response contract currently uses:
 
-# list MCP tools
-curl -s http://localhost:8002/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | jq .
-```
+- `contractVersion = pbpk-mcp.v1`
 
-## Configuration
+## Model Discovery
 
-Settings are loaded via `pydantic` models plus `python-dotenv` `.env` loading. Common knobs (see `docs/mcp-bridge/reference/configuration.md` for the full matrix):
+PBPK MCP now separates:
 
-| Variable | Required | Default | Description |
-| --- | --- | --- | --- |
-| `HOST` | Optional | `0.0.0.0` | Bind address for the FastAPI app. |
-| `PORT` | Optional | `8000` | HTTP port. |
-| `ADAPTER_BACKEND` | Optional | `inmemory` | Switch to `subprocess` to use R/ospsuite (Docker default). |
-| `MCP_MODEL_SEARCH_PATHS` | Optional | `tests/fixtures` | Colon-separated allow list of model directories. |
-| `ADAPTER_TIMEOUT_MS` | Optional | `30000` | Adapter call timeout. |
-| `JOB_BACKEND` | Optional | `thread` | `thread`, `celery`, or `hpc` (stub) for testing agent interactions with queued cluster jobs. |
-| `JOB_WORKER_THREADS` | Optional | `2` | In-process worker pool size. |
-| `JOB_TIMEOUT_SECONDS` | Optional | `300` | Per-job timeout for queued executions. |
-| `JOB_REGISTRY_PATH` | Optional | `var/jobs/registry.json` | Persistent job registry for status checks/idempotency. |
-| `AUTH_DEV_SECRET` | Dev | – | HS256 secret for local tokens (set issuer/audience values for production JWT validation). |
-| `AUDIT_ENABLED` | Optional | `true` | Toggle immutable audit logging. |
-| `AUDIT_STORAGE_BACKEND` | Optional | `local` | `local` JSONL logs or `s3` with Object Lock (`AUDIT_S3_*`). |
-| `LOG_LEVEL` | Optional | `INFO` | Structured log verbosity. |
-| `ENVIRONMENT` | Optional | `development` | Environment banner used in `/health` and logs. |
+- loaded simulation sessions
+  - `/mcp/resources/simulations`
+- discoverable model files on disk
+  - `/mcp/resources/models`
+  - `discover_models`
 
----
+This means a model can exist in the workspace before it has been loaded into a live session.
 
-## Tool catalog
+Discovery is filesystem-backed and generic across `MCP_MODEL_SEARCH_PATHS`:
 
-| Tool | Description |
-| --- | --- |
-| `load_simulation` | Load a PBPK `.pkml` or `.pksim5` file into the session registry (critical; requires confirmation). |
-| `list_parameters` | List parameter paths for a loaded simulation (supports glob filters). |
-| `get_parameter_value` | Retrieve the current value for a simulation parameter. |
-| `set_parameter_value` | Update a parameter with optional unit/comment (critical; requires confirmation). |
-| `run_simulation` | Submit an asynchronous deterministic simulation and receive a job handle (supports `idempotencyKey`). |
-| `get_job_status` | Inspect the status/result of a submitted job. |
-| `calculate_pk_parameters` | Compute PK metrics (Cmax, Tmax, AUC) for a completed simulation result. |
-| `run_population_simulation` | Execute a population simulation asynchronously and return a job handle (supports `idempotencyKey`). |
-| `get_population_results` | Fetch aggregated results and chunk handles for a population run. |
-| `cancel_job` | Request cancellation of a queued or running job. |
-| `run_sensitivity_analysis` | Run a multi-parameter sensitivity analysis workflow and return PK deltas (critical; requires confirmation). |
+- supported `.pkml` and `.R` files are scanned from disk
+- newly added model files under `var/models` become discoverable automatically
+- discovery reports whether a model is `discovered` or already `loaded`
+- once loaded, discovery entries are enriched with metadata, capabilities, profile, and loaded simulation IDs
 
-Each tool in `list_tools` returns JSON Schemas plus annotations for `roles`, `critical`, and `requiresConfirmation` to help agents enforce guardrails client-side.
+## OECD-Oriented Qualification
 
----
+This MCP is designed to be usable for risk-assessment workflows, but it is explicit about qualification state.
 
-## Running the server
+The server distinguishes between:
 
-### Local development (Python only)
+- runtime guardrails
+  - parameter bounds and request-shape validation
+- scientific profile metadata
+  - context of use, applicability domain, uncertainty, implementation verification, peer review, and traceability
 
-```bash
-# in-memory adapter (no R), with development JWTs
-export AUTH_DEV_SECRET=dev-secret
-export ADAPTER_BACKEND=inmemory
-export MCP_MODEL_SEARCH_PATHS=$(pwd)/tests/fixtures
-uvicorn mcp_bridge.main:app --host 0.0.0.0 --port 8000 --reload
-```
+The main preflight surface is:
 
-### Quick MCP smoke test
+- `validate_simulation_request`
 
-```bash
-BASE_URL=http://localhost:8002
-AUTH_HEADER="Authorization: Bearer $(PYTHONPATH=src python - <<'PY'
-from mcp_bridge.security.simple_jwt import jwt
-print(jwt.encode({"sub": "smoke", "roles": ["admin"]}, "dev-secret", algorithm="HS256"))
-PY
-)"
+It returns:
 
-# Tool discovery
-curl -s "$BASE_URL/mcp/list_tools" -H "$AUTH_HEADER" | jq '.tools | length'
+- normalized errors and warnings
+- `validation.assessment`
+- readiness labels such as `runtime-only`, `illustrative-only`, or `research-use`
+- a structured `oecdChecklist`
+- an `oecdChecklistScore`
+- missing-evidence hints when a model is runnable but not well-qualified
 
-# Load demo model and run a deterministic simulation
-curl -s -X POST "$BASE_URL/mcp/call_tool" \
-  -H "Content-Type: application/json" -H "$AUTH_HEADER" \
-  -d '{"tool":"load_simulation","arguments":{"filePath":"tests/fixtures/demo.pkml","simulationId":"smoke"},"critical":true}' | jq '.structuredContent.simulationId'
+This is the key distinction for public positioning:
 
-curl -s -X POST "$BASE_URL/mcp/call_tool" \
-  -H "Content-Type: application/json" -H "$AUTH_HEADER" \
-  -d '{"tool":"run_simulation","arguments":{"simulationId":"smoke"},"critical":true,"idempotencyKey":"smoke-1"}' | jq '.structuredContent.jobId'
-```
+- executable does not mean qualified
+- in-bounds does not mean suitable for regulatory or risk-assessment use
 
-Use `scripts/mcp_http_smoke.sh` for a scripted handshake and CLI walkthroughs in `docs/mcp-bridge/getting-started/` for REST + agent flows.
+## What Counts As A Supported R Model
 
----
+An `.R` model is discoverable if it is placed under `MCP_MODEL_SEARCH_PATHS`, but it is only runnable if it follows the MCP R model contract.
 
-## Integrating with coding agents
+Typical hooks include:
 
-- Add `http://localhost:8002/mcp` as an MCP provider (Codex CLI, Gemini CLI, Claude Code, or other hosts).
-- Include `Authorization: Bearer <token>` and set `critical: true` in payloads for critical tools (legacy `X-MCP-Confirm: true` is also honoured).
-- When an agent calls a critical tool, the server will respond with a `confirmationRequired` status. The agent must then re-submit the request with a confirmation token or signal.
-- Reference `docs/mcp-bridge/integration_guides/mcp_integration.md` for client-specific JSON snippets and binary payload handling.
+- `pbpk_default_parameters()`
+- `pbpk_run_simulation(...)`
+- `pbpk_run_population(...)`
+- `pbpk_model_profile()`
+- `pbpk_validate_request(...)`
 
----
+The richer the hook set, the richer the discovery and qualification metadata.
 
-## Output artifacts
+## PK-Sim And MoBi Support
 
-- **Structured MCP payloads** – responses include `content` plus `structuredContent` with job handles, simulation IDs, PK metrics, and population result metadata.
-- **Audit + provenance** – critical tool invocations record digests, argument keys, and identities; optional S3 Object Lock storage keeps the chain immutable.
-- **Metrics** – `/metrics` exposes MCP tool latency/histograms and HTTP counters suitable for Prometheus/Grafana (see `docs/monitoring/`).
-- **Benchmarks** – smoke/parity benchmark JSON artefacts land in `var/benchmarks/` for regression checks.
+OSPSuite `.pkml` models are supported through the same user-facing MCP workflow.
 
----
+They can optionally declare OECD-style metadata through JSON sidecars:
 
-## Security checklist
+- `model.profile.json`
+- `model.pbpk.json`
 
-- ✅ Require auth in production (`AUTH_ISSUER_URL`/`AUTH_AUDIENCE` or gateway enforcement); use `AUTH_DEV_SECRET` only for local work.
-- ✅ Critical tools enforce explicit confirmation and audit logging.
-- ✅ Idempotency keys deduplicate simulation submissions; job registry persists across restarts.
-- ✅ Limit model search paths (`MCP_MODEL_SEARCH_PATHS`) and memory-intensive backends when running on constrained hosts.
-- 🔲 Harden ingress (TLS, rate limits) and align RBAC with your deployment before exposing beyond localhost.
+That allows PK-Sim and MoBi transfer files to remain first-class while still exposing context-of-use and applicability metadata.
 
----
+## Direct `rxode2` Use
 
-## Development notes
+`rxode2` is not only for converted models. Native PBPK models authored directly in R can be loaded and run through the MCP as long as they implement the PBPK R model contract.
 
-- `make lint` / `make type` / `make test` – fast quality gates; `make test-e2e` and `make parity` run heavier suites.
-- `make benchmark` – smoke benchmark (in-process) with optional profiling via `BENCH_PROFILE=1`.
-- `make goldset-eval` – validate literature extraction quality against the gold set.
-- `make build-image` / `make run-image` – container workflow; `docker-compose.celery.yml` spins up API + Redis + Celery stub.
-- Distributed execution: set `JOB_BACKEND=celery` or `JOB_BACKEND=hpc` (stub Slurm) and follow the runbooks in `docs/operations/`.
-- Agent scaffolds: `run_agent.py demo` exercises the confirm-before-execute loop using the in-memory adapter.
+Example `load_simulation` call for a native `rxode2` model:
 
----
-
-## Roadmap
-
-- Streaming progress updates for long-running simulations and population jobs.
-- Expanded parity/benchmark scenarios covering additional reference models and sensitivity profiles.
-- Optional SSE/WebSocket transport for MCP once the spec finalizes streaming semantics.
-
----
-
-## Citation
-
-If you use **toxMCP / PBPK MCP** in your work, please cite the BioRxiv preprint:
-
-- Author: **Ivo Djidrovski**
-- Link: [https://www.biorxiv.org/content/10.64898/2026.02.06.703989v1](https://www.biorxiv.org/content/10.64898/2026.02.06.703989v1)
-
----
-
-## License
-
-This project is distributed under the [Apache License 2.0](LICENSE). Contributions are accepted under the same terms.
-## Acknowledgements / Origins
-
-ToxMCP was developed in the context of the **VHP4Safety** project (see: https://github.com/VHP4Safety) and related research/engineering efforts.
-
-Funding: Dutch Research Council (NWO) — NWA.1292.19.272 (NWA programme)
-
-This suite integrates with third-party data sources and services (e.g., EPA CompTox, ADMETlab, AOP resources, OECD QSAR Toolbox, Open Systems Pharmacology). Those upstream resources are owned and governed by their respective providers; users are responsible for meeting any access, API key, rate limit, and license/EULA requirements described in each module.
-
-## ✅ Citation
-
-Djidrovski, I. **ToxMCP: Guardrailed, Auditable Agentic Workflows for Computational Toxicology via the Model Context Protocol.** bioRxiv (2026). https://doi.org/10.64898/2026.02.06.703989
-
-```bibtex
-@article{djidrovski2026toxmcp,
-  title   = {ToxMCP: Guardrailed, Auditable Agentic Workflows for Computational Toxicology via the Model Context Protocol},
-  author  = {Djidrovski, Ivo},
-  journal = {bioRxiv},
-  year    = {2026},
-  doi     = {10.64898/2026.02.06.703989},
-  url     = {https://doi.org/10.64898/2026.02.06.703989}
+```json
+{
+  "tool": "load_simulation",
+  "arguments": {
+    "filePath": "/app/var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R",
+    "simulationId": "cisplatin-rxode2"
+  }
 }
 ```
 
-Citation metadata: [`CITATION.cff`](./CITATION.cff)
+For the full adapter contract and example flows, see [`docs/integration_guides/rxode2_adapter.md`](docs/integration_guides/rxode2_adapter.md).
 
+## Quick Start
+
+Build the dedicated `rxode2` worker image:
+
+```bash
+./scripts/build_rxode2_worker_image.sh
+```
+
+Deploy the local Celery stack:
+
+```bash
+./scripts/deploy_rxode2_stack.sh
+```
+
+Check the host-exposed API:
+
+```bash
+curl -s http://127.0.0.1:8000/health
+```
+
+The local stack exposes:
+
+- `pbpk_mcp-api-1` on `http://127.0.0.1:8000`
+- `pbpk_mcp-worker-1` on the same worker image for execution
+- `pbpk_mcp-redis-1` for job brokering and result storage
+
+## Regression Tests
+
+Bridge and profile normalization tests:
+
+```bash
+python3 -m unittest -v tests/test_oecd_bridge.py
+```
+
+Live OECD smoke tests:
+
+```bash
+python3 -m unittest -v tests/test_oecd_live_stack.py
+```
+
+Live model discovery tests:
+
+```bash
+python3 -m unittest -v tests/test_model_discovery_live_stack.py
+```
+
+These checks cover:
+
+- cisplatin discoverability before preload
+- automatic discovery of newly added model files
+- enrichment of discovery entries after load
+- OECD-style validation for both `rxode2` and `ospsuite` flows
+
+## Limitations
+
+Current hard limitations:
+
+- raw Berkeley Madonna `.mmd` files are not directly executable
+- only `.pkml` and MCP-ready `.R` are supported runtime formats
+- an `.R` file can be discoverable without being runnable if it does not implement the required contract
+- not every model ships a complete scientific qualification package
+- many example sidecars are still illustrative rather than dossier-grade
+- backend capabilities are intentionally not identical across `ospsuite` and `rxode2`
+
+Current qualification limitations:
+
+- runtime guardrails are not the same as external scientific validation
+- `research-use` or `illustrative-example` models should not be represented as regulatory-ready
+- OECD-style metadata completeness can be high while scientific evidence is still incomplete
+
+Current operational limitations:
+
+- `rxode2` image builds are heavy and should be prebuilt rather than compiled in a capped runtime worker
+- runtime workers should stay conservatively capped, such as `4 GiB`
+- the durable `rxode2` image build can take a long time on laptop hardware because of C/C++ compilation
+
+## Repository Guide
+
+Key implementation points:
+
+- [`scripts/ospsuite_bridge.R`](scripts/ospsuite_bridge.R)
+- [`patches/mcp_bridge/model_catalog.py`](patches/mcp_bridge/model_catalog.py)
+- [`patches/mcp/tools/discover_models.py`](patches/mcp/tools/discover_models.py)
+- [`patches/mcp/tools/validate_simulation_request.py`](patches/mcp/tools/validate_simulation_request.py)
+- [`docker-compose.celery.yml`](docker-compose.celery.yml)
+
+Supporting docs:
+
+- [`docs/architecture/dual_backend_pbpk_mcp.md`](docs/architecture/dual_backend_pbpk_mcp.md)
+- [`docs/architecture/mcp_payload_conventions.md`](docs/architecture/mcp_payload_conventions.md)
+- [`docs/integration_guides/rxode2_adapter.md`](docs/integration_guides/rxode2_adapter.md)
+- [`docs/integration_guides/ospsuite_profile_sidecars.md`](docs/integration_guides/ospsuite_profile_sidecars.md)
+- [`docs/deployment/rxode2_worker_image.md`](docs/deployment/rxode2_worker_image.md)
+- [`CHANGELOG.md`](CHANGELOG.md)
+- [`docs/releases/v0.2.0.md`](docs/releases/v0.2.0.md)
+- [`docs/github_publication_checklist.md`](docs/github_publication_checklist.md)

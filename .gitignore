@@ -1,58 +1,33 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-dev-debug.log
-
-# Dependency directories
-node_modules/
+# Python caches
 __pycache__/
-.venv/
-.tox/
-.ruff_cache/
-.mypy_cache/
+*.py[cod]
 .pytest_cache/
-*.egg-info/
-dist/
-build/
-reports/
-var/
+.mypy_cache/
+.ruff_cache/
 
-# Environment variables
-.env
-
-# Editor directories and files
-.idea
-.vscode
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# OS specific
+# macOS
 .DS_Store
 
-# Task files
-tasks.json
-tasks/ 
+# Local env / editor
+.env
+.env.*
+.python-version
 
-# Tooling & Agent Artifacts
-.cursor/
-.gemini/
-.taskmaster/
-research*.md
-~
+# Temporary workspace artifacts
+tmp/
+OECD_PBPK_guidelines.pdf
 
-# Temporary/Scratch files
-temp_epacomp_tox_README.md
-/Acetaminophen_Pregnancy.pkml
-/PassiveTransport_Pregnancy.pkml
-/full_params.json
-/params.json
-verify_physics.py
-brain_barrier_demo.py
-demo_workflow.py
-scripts/test_r.R
+# Runtime state and generated outputs
+var/benchmarks/
+var/converted/
+var/converted_models/
+var/demos/
+var/audit/
+var/jobs/
+var/population-results/
+var/reports/
+var/snapshots/
+var/models/discovery-tests/
+
+# Local logs
+*.log

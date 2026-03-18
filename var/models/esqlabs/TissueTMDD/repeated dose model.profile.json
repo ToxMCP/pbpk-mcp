@@ -1,0 +1,69 @@
+{
+  "contextOfUse": {
+    "status": "declared-by-sidecar",
+    "scientificPurpose": "Illustrative repeated-dose tissue TMDD example for a generic monoclonal antibody and target system.",
+    "decisionContext": "Method-development and runtime verification for repeated-dose TMDD OSPSuite transfer files.",
+    "regulatoryUse": "not-for-regulatory-use",
+    "acceptableUncertainty": "Not declared; no quantitative TMDD qualification package is bundled in the sidecar.",
+    "confidenceLevelRequired": "Fit-for-purpose example-model confidence only.",
+    "repurposingAllowed": false,
+    "supportedQuestions": [
+      "Can the MCP load and execute a repeated-dose TMDD example with intravenous bolus applications?",
+      "Does the workspace surface TMDD-oriented applicability metadata for a generic mAb/target example?"
+    ],
+    "unsupportedQuestions": [
+      "Candidate-specific antibody dose selection or exposure-response claims.",
+      "Regulatory decision support or species-specific translation without additional qualification evidence."
+    ],
+    "sourceToolHint": "PK-Sim"
+  },
+  "applicabilityDomain": {
+    "type": "sidecar-declared",
+    "qualificationLevel": "illustrative-example",
+    "status": "minimally-characterized",
+    "sourceToolHint": "PK-Sim",
+    "compounds": [
+      "mAb"
+    ],
+    "routes": [
+      "intravenous-bolus",
+      "repeated-dose"
+    ],
+    "summary": "Repeated-dose TMDD transfer file with generic monoclonal antibody, target, FcRn, and complex species for workflow illustration.",
+    "assumptions": [
+      "The model uses generic molecule names and is treated as an illustrative TMDD topology rather than a product-specific platform model.",
+      "Repeated dosing is inferred from the transfer file application group and application schedule."
+    ],
+    "exclusions": [
+      "Species is not explicitly declared in this sidecar because it was not inferred with enough confidence from the example artifact alone.",
+      "Not declared for candidate-specific development or regulatory use."
+    ]
+  },
+  "uncertainty": {
+    "status": "not-encoded",
+    "summary": "No TMDD-specific uncertainty, sensitivity, or qualification dossier is bundled with this illustrative example.",
+    "missingEvidence": [
+      "Target turnover calibration evidence.",
+      "Sensitivity analysis for binding and recycling parameters.",
+      "Formal qualification package."
+    ]
+  },
+  "implementationVerification": {
+    "status": "basic-internal-checks",
+    "runtime": "ospsuite",
+    "verifiedChecks": [
+      "Transfer file accepted by the OSPSuite runtime",
+      "Project sidecar profile parsed successfully",
+      "Deterministic simulation smoke test completed in the live worker"
+    ],
+    "missingChecks": [
+      "Model-specific uncertainty dossier",
+      "Species qualification narrative",
+      "Peer-review and prior-use declarations"
+    ]
+  },
+  "peerReview": {
+    "status": "not-reported",
+    "summary": "No peer-review or prior-use declaration is encoded for this illustrative TMDD example."
+  }
+}

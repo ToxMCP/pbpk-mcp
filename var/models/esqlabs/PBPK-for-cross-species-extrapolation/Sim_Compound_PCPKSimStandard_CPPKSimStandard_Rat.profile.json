@@ -1,0 +1,75 @@
+{
+  "contextOfUse": {
+    "status": "declared-by-sidecar",
+    "scientificPurpose": "Illustrative rat PK-Sim cross-species extrapolation example for a generic compound with intravenous bolus administration.",
+    "decisionContext": "Method-development and workflow verification for cross-species transfer files and species-specific metadata.",
+    "regulatoryUse": "not-for-regulatory-use",
+    "acceptableUncertainty": "Not declared; the sidecar documents scope rather than a validated extrapolation error model.",
+    "confidenceLevelRequired": "Fit-for-purpose example-model confidence only.",
+    "repurposingAllowed": false,
+    "supportedQuestions": [
+      "Can the MCP load a rat variant of a cross-species PK-Sim example and report rat-specific applicability metadata?",
+      "Does the shared OSPSuite runtime execute this rat cross-species example when observer outputs are auto-seeded from the model quantities?"
+    ],
+    "unsupportedQuestions": [
+      "Chemical-specific interspecies extrapolation claims.",
+      "Regulatory decision support or species translation for a named substance."
+    ],
+    "sourceToolHint": "PK-Sim"
+  },
+  "applicabilityDomain": {
+    "type": "sidecar-declared",
+    "qualificationLevel": "illustrative-example",
+    "status": "minimally-characterized",
+    "sourceToolHint": "PK-Sim",
+    "compounds": [
+      "Compound"
+    ],
+    "species": [
+      "rat"
+    ],
+    "routes": [
+      "intravenous-bolus"
+    ],
+    "summary": "Rat-specific transfer file from the cross-species extrapolation example set, configured around a generic compound and intravenous bolus applications.",
+    "assumptions": [
+      "The transfer file represents a placeholder compound rather than a declared chemical entity.",
+      "Rat scope is inferred from the file identity and example set naming."
+    ],
+    "exclusions": [
+      "Not a qualified chemical-specific cross-species model.",
+      "Not declared for regulatory use or definitive interspecies extrapolation."
+    ]
+  },
+  "uncertainty": {
+    "status": "not-encoded",
+    "summary": "No quantitative uncertainty or extrapolation-performance dossier is bundled with this rat example.",
+    "missingEvidence": [
+      "Chemical-specific calibration data.",
+      "Cross-species validation statistics.",
+      "Formal sensitivity analysis."
+    ]
+  },
+  "implementationVerification": {
+    "status": "basic-internal-checks",
+    "runtime": "ospsuite",
+    "verifiedChecks": [
+      "Transfer file accepted by the OSPSuite runtime",
+      "Project sidecar profile parsed successfully",
+      "Deterministic simulation smoke test completed in the deployed API with bridge-managed observer output fallback"
+    ],
+    "missingChecks": [
+      "Chemical-specific uncertainty dossier",
+      "Formal qualification package",
+      "Peer-review and prior-use declarations"
+    ],
+    "notes": [
+      "The transfer file declares an empty OutputSelections block.",
+      "The current MCP bridge auto-selects observer quantities at runtime so the model remains executable through the shared OSPSuite backend."
+    ]
+  },
+  "peerReview": {
+    "status": "not-reported",
+    "summary": "No peer-review or prior-use declaration is encoded for this illustrative cross-species rat example."
+  }
+}

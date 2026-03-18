@@ -1,0 +1,105 @@
+[
+  {
+    "simulationId": "pregnant-pksim",
+    "jobId": "409d2db2-5a27-4590-b0e6-f28622dc8f03",
+    "status": "succeeded",
+    "durationSeconds": 6.088,
+    "resultId": "smoke-pregnant-pksim-1773064867",
+    "metricCount": 3,
+    "metricsPreview": [
+      {
+        "parameter": "Organism|PeripheralVenousBlood|Test_Chemical|Plasma (Peripheral Venous Blood)",
+        "unit": "\u00b5mol/l",
+        "cmax": 0.0472204498946667,
+        "tmax": 42.0,
+        "auc": 21.146987995016392
+      },
+      {
+        "parameter": "Organism|Fetus|Plasma|Test_Chemical|Concentration in container",
+        "unit": "\u00b5mol/l",
+        "cmax": 0.058832686394453,
+        "tmax": 84.0,
+        "auc": 21.558268993955153
+      },
+      {
+        "parameter": "Organism|Fetus|Test_Chemical|Tissue",
+        "unit": "\u00b5mol/l",
+        "cmax": 4.42900657653809,
+        "tmax": 84.0,
+        "auc": 1622.9227377113639
+      }
+    ]
+  },
+  {
+    "simulationId": "xspec-pcpksim-rat",
+    "jobId": "f7ebff4e-3643-4636-b45e-4ef7ebbeb275",
+    "status": "failed",
+    "durationSeconds": 6.058,
+    "resultId": null,
+    "error": {
+      "message": "some columns are not in the data.table: [Time]"
+    }
+  },
+  {
+    "simulationId": "tissuetmdd-repeated-dose",
+    "jobId": "a730bc82-570c-4ca9-b248-4afc0e545ef9",
+    "status": "succeeded",
+    "durationSeconds": 22.262,
+    "resultId": "smoke-tissuetmdd-repeated-dose-1773064879",
+    "metricCount": 9,
+    "metricsPreview": [
+      {
+        "parameter": "Organism|PeripheralVenousBlood|mAb|Plasma (Peripheral Venous Blood)",
+        "unit": "\u00b5mol/l",
+        "cmax": 0.254756271839142,
+        "tmax": 120975.0,
+        "auc": 15689.108570013195
+      },
+      {
+        "parameter": "Organism|Heart|Interstitial|Target|Concentration in container",
+        "unit": "\u00b5mol/l",
+        "cmax": 1.0,
+        "tmax": 0.0,
+        "auc": 130586.90624892712
+      },
+      {
+        "parameter": "Organism|Heart|Interstitial|Target|Total target concentration",
+        "unit": "\u00b5mol/l",
+        "cmax": 1.0,
+        "tmax": 0.0,
+        "auc": 131490.0
+      }
+    ]
+  },
+  {
+    "simulationId": "esqlabsr-simple",
+    "jobId": "4df26b12-ff0e-416c-8201-1027a2c84f18",
+    "status": "succeeded",
+    "durationSeconds": 4.043,
+    "resultId": "smoke-esqlabsr-simple-1773064901",
+    "metricCount": 4,
+    "metricsPreview": [
+      {
+        "parameter": "Organism|Liver|A",
+        "unit": "\u00b5mol",
+        "cmax": 30.0,
+        "tmax": 0.0,
+        "auc": 2857.5513929128642
+      },
+      {
+        "parameter": "Organism|Liver|B",
+        "unit": "\u00b5mol",
+        "cmax": 33.5021171569824,
+        "tmax": 300.0,
+        "auc": 7642.448587417604
+      },
+      {
+        "parameter": "Organism|A",
+        "unit": "\u00b5mol",
+        "cmax": 40.0,
+        "tmax": 0.0,
+        "auc": 3810.068539381027
+      }
+    ]
+  }
+]

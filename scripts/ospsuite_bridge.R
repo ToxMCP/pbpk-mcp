@@ -1,311 +1,1955 @@
-#!/usr/bin/env Rscript
+suppressPackageStartupMessages(library(jsonlite))
 
-# ospsuite_bridge.R
-# Robust version with targeted silencing
-
-# ------------------------------------------------------------------------------
-# 1. SETUP
-# ------------------------------------------------------------------------------
-# Silence startup messages
-suppressPackageStartupMessages({
-  if (!requireNamespace("jsonlite", quietly = TRUE)) {
-    cat('{"error": {"code": "environment_missing", "message": "R package jsonlite is missing"}}', "\n")
-    quit(status = 1)
+`%||%` <- function(lhs, rhs) {
+  if (is.null(lhs) || length(lhs) == 0) {
+    return(rhs)
   }
-  library(jsonlite)
-})
-
-has_ospsuite <- suppressPackageStartupMessages(requireNamespace("ospsuite", quietly = TRUE))
-if (has_ospsuite) {
-  suppressPackageStartupMessages(library(ospsuite))
-  # Silence init
-  invisible(capture.output({
-    tryCatch(ospsuite::initOSPSuite(), error = function(e) {})
-  }, type = "output"))
-  invisible(capture.output({
-    tryCatch(ospsuite::initOSPSuite(), error = function(e) {})
-  }, type = "message"))
+  lhs
 }
 
-# Global state
-simulations <- list()
-results_cache <- list()
+now_utc <- function() {
+  format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+}
 
-# ------------------------------------------------------------------------------
-# 2. HELPERS
-# ------------------------------------------------------------------------------
-write_response <- function(data) {
-  json_data <- jsonlite::toJSON(data, auto_unbox = TRUE, null = "null")
-  cat(json_data, "\n")
+safe_chr <- function(value, default = NULL) {
+  if (is.null(value) || length(value) == 0) {
+    return(default)
+  }
+  candidate <- as.character(value[[1]])
+  if (is.na(candidate) || identical(candidate, "NA")) {
+    return(default)
+  }
+  candidate
+}
+
+safe_num <- function(value, default = NULL) {
+  if (is.null(value) || length(value) == 0) {
+    return(default)
+  }
+  candidate <- suppressWarnings(as.numeric(value[[1]]))
+  if (is.na(candidate)) {
+    return(default)
+  }
+  candidate
+}
+
+safe_lgl <- function(value, default = FALSE) {
+  if (is.null(value) || length(value) == 0) {
+    return(default)
+  }
+  candidate <- suppressWarnings(as.logical(value[[1]]))
+  if (is.na(candidate)) {
+    return(default)
+  }
+  candidate
+}
+
+emit_json <- function(payload) {
+  cat(toJSON(payload, auto_unbox = TRUE, null = "null", digits = NA), "\n")
   flush(stdout())
 }
 
-run_silently <- function(expr) {
-  # Capture both output and messages to prevent pollution
-  # We use a temporary file or connection if needed, but capture.output is easiest
-  # Note: capture.output evaluates the expression in a context where output is diverted.
-  
-  # We return the result of the expression, not the captured text.
-  # But capture.output returns the text.
-  # So we need to wrap.
-  
-  res <- NULL
-  logs <- capture.output({
-    capture.output({
-      res <- withVisible(expr)
-    }, type = "message")
-  }, type = "output")
-  
-  if (res$visible) {
-    return(res$value)
-  } else {
-    return(invisible(res$value))
-  }
+emit_error <- function(code, message, details = NULL) {
+  emit_json(list(error = list(code = code, message = message, details = details)))
 }
 
-# ------------------------------------------------------------------------------
-# 3. HANDLERS
-# ------------------------------------------------------------------------------
+ensure_ospsuite <- local({
+  loaded <- FALSE
+  function() {
+    if (loaded) {
+      return(invisible(TRUE))
+    }
+    if (!requireNamespace("ospsuite", quietly = TRUE)) {
+      stop("The ospsuite package is required for .pkml simulations", call. = FALSE)
+    }
+    suppressPackageStartupMessages(library(ospsuite))
+    loaded <<- TRUE
+    invisible(TRUE)
+  }
+})
+
+simulations <- new.env(parent = emptyenv())
+results_store <- new.env(parent = emptyenv())
+population_results_store <- new.env(parent = emptyenv())
+
+simulation_record <- function(simulation_id) {
+  if (!exists(simulation_id, envir = simulations, inherits = FALSE)) {
+    stop(sprintf("Simulation '%s' not loaded", simulation_id), call. = FALSE)
+  }
+  get(simulation_id, envir = simulations, inherits = FALSE)
+}
+
+result_record <- function(results_id) {
+  if (!exists(results_id, envir = results_store, inherits = FALSE)) {
+    stop(sprintf("Results '%s' not found", results_id), call. = FALSE)
+  }
+  get(results_id, envir = results_store, inherits = FALSE)
+}
+
+population_result_record <- function(results_id) {
+  if (!exists(results_id, envir = population_results_store, inherits = FALSE)) {
+    stop(sprintf("Population results '%s' not found", results_id), call. = FALSE)
+  }
+  get(results_id, envir = population_results_store, inherits = FALSE)
+}
+
+parameter_payload <- function(parameter) {
+  list(
+    path = safe_chr(parameter$path),
+    value = safe_num(parameter$value, 0),
+    unit = safe_chr(parameter$displayUnit) %||% safe_chr(parameter$unit) %||% "unitless",
+    display_name = safe_chr(parameter$name),
+    last_updated_at = now_utc(),
+    source = "ospsuite"
+  )
+}
+
+parameter_summary_payload <- function(parameter) {
+  list(
+    path = safe_chr(parameter$path),
+    display_name = safe_chr(parameter$name),
+    unit = safe_chr(parameter$displayUnit) %||% safe_chr(parameter$unit),
+    category = NULL,
+    is_editable = TRUE
+  )
+}
+
+ospsuite_output_selection_count <- function(simulation) {
+  outputs <- tryCatch(
+    simulation$outputSelections$get("OutputsAsArray"),
+    error = function(...) list()
+  )
+  length(outputs %||% list())
+}
+
+ospsuite_output_priority <- function(path) {
+  normalized <- tolower(path %||% "")
+  patterns <- c(
+    "plasma (peripheral venous blood)",
+    "whole blood (peripheral venous blood)",
+    "plasma unbound (peripheral venous blood)",
+    "peripheralvenousblood",
+    "venousblood",
+    "arterialblood",
+    "plasma unbound",
+    "whole blood",
+    "blood cells",
+    "tissue",
+    "interstitial unbound",
+    "intracellular unbound",
+    "fraction excreted to urine",
+    "fraction excreted to bile",
+    "fraction excreted to feces"
+  )
+
+  for (index in seq_along(patterns)) {
+    if (grepl(patterns[[index]], normalized, fixed = TRUE)) {
+      return(index)
+    }
+  }
+
+  length(patterns) + 1
+}
+
+ospsuite_observer_output_candidates <- function(simulation) {
+  quantity_paths <- tryCatch(getAllQuantityPathsIn(simulation), error = function(...) character())
+  candidates <- character()
+
+  for (path in quantity_paths) {
+    quantity <- getQuantity(path, simulation, stopIfNotFound = FALSE)
+    if (is.null(quantity)) {
+      next
+    }
+
+    quantity_type <- safe_chr(quantity$quantityType) %||%
+      safe_chr(quantity$get("QuantityTypeAsString"), "")
+    if (!nzchar(quantity_type) || !grepl("Observer", quantity_type, fixed = TRUE)) {
+      next
+    }
+
+    candidates <- c(candidates, safe_chr(path))
+  }
+
+  unique(candidates[nzchar(candidates)])
+}
+
+ensure_ospsuite_output_selections <- function(simulation, max_outputs = 24L) {
+  existing_count <- ospsuite_output_selection_count(simulation)
+  if (existing_count > 0) {
+    return(list(
+      mode = "declared",
+      selectedCount = existing_count,
+      autoSelectedCount = 0L,
+      candidateCount = existing_count,
+      selectedPaths = list()
+    ))
+  }
+
+  observer_paths <- ospsuite_observer_output_candidates(simulation)
+  if (length(observer_paths) == 0) {
+    return(list(
+      mode = "empty",
+      selectedCount = 0L,
+      autoSelectedCount = 0L,
+      candidateCount = 0L,
+      selectedPaths = list()
+    ))
+  }
+
+  ranked_paths <- observer_paths[order(
+    vapply(observer_paths, ospsuite_output_priority, numeric(1)),
+    nchar(observer_paths),
+    observer_paths
+  )]
+  selected_paths <- utils::head(ranked_paths, max(1L, as.integer(max_outputs)))
+  added_paths <- list()
+
+  for (path in selected_paths) {
+    quantity <- getQuantity(path, simulation, stopIfNotFound = FALSE)
+    if (is.null(quantity)) {
+      next
+    }
+    simulation$outputSelections$addQuantity(quantity)
+    added_paths[[length(added_paths) + 1]] <- path
+  }
+
+  auto_selected_count <- length(added_paths)
+  if (auto_selected_count == 0) {
+    return(list(
+      mode = "empty",
+      selectedCount = 0L,
+      autoSelectedCount = 0L,
+      candidateCount = length(observer_paths),
+      selectedPaths = list()
+    ))
+  }
+
+  list(
+    mode = "observer-fallback",
+    selectedCount = ospsuite_output_selection_count(simulation),
+    autoSelectedCount = auto_selected_count,
+    candidateCount = length(observer_paths),
+    selectedPaths = added_paths
+  )
+}
+
+ospsuite_output_selection_warnings <- function(selection_info) {
+  mode <- safe_chr(selection_info$mode, "declared")
+  if (identical(mode, "observer-fallback")) {
+    return(list(list(
+      code = "ospsuite_auto_output_selection",
+      message = sprintf(
+        paste(
+          "Model declared no OutputSelections;",
+          "auto-selected %d observer quantities from %d candidates for runtime execution"
+        ),
+        safe_num(selection_info$autoSelectedCount, 0),
+        safe_num(selection_info$candidateCount, 0)
+      ),
+      field = "OutputSelections",
+      severity = "warning"
+    )))
+  }
+
+  if (identical(mode, "empty")) {
+    return(list(list(
+      code = "ospsuite_missing_output_selection",
+      message = paste(
+        "Model declared no OutputSelections and no observer-backed fallback",
+        "could be generated for runtime execution"
+      ),
+      field = "OutputSelections",
+      severity = "warning"
+    )))
+  }
+
+  list()
+}
+
+series_from_results <- function(simulation_results) {
+  result_type <- safe_chr(simulation_results$type)
+  result_count <- safe_num(simulation_results$count, 0)
+  if (result_count <= 0 || identical(result_type, "OSPSuite.Core.Domain.Data.NullSimulationResults")) {
+    stop(
+      paste(
+        "Simulation produced no results.",
+        "The model may require explicit output selections or may be incompatible with the current runtime."
+      ),
+      call. = FALSE
+    )
+  }
+
+  df <- simulationResultsToDataFrame(simulation_results)
+  paths <- unique(df$paths)
+  lapply(paths, function(path) {
+    rows <- df[df$paths == path, , drop = FALSE]
+    values <- lapply(seq_len(nrow(rows)), function(index) {
+      list(
+        time = as.numeric(rows$Time[[index]]),
+        value = as.numeric(rows$simulationValues[[index]])
+      )
+    })
+    list(
+      parameter = as.character(path),
+      unit = safe_chr(rows$unit, "dimensionless"),
+      values = values
+    )
+  })
+}
+
+detect_backend <- function(file_path) {
+  extension <- tolower(tools::file_ext(file_path))
+  if (extension == "pkml") {
+    return("ospsuite")
+  }
+  if (extension == "r") {
+    return("rxode2")
+  }
+  stop(
+    sprintf("Unsupported simulation extension '.%s'; expected .pkml or .R", extension),
+    call. = FALSE
+  )
+}
+
+normalize_parameter_catalog <- function(parameters, catalog) {
+  normalized <- list()
+  if (!is.null(catalog) && length(catalog) > 0) {
+    for (entry in catalog) {
+      path <- safe_chr(entry$path)
+      if (is.null(path) || !nzchar(path)) {
+        next
+      }
+      normalized[[path]] <- list(
+        path = path,
+        display_name = safe_chr(entry$display_name) %||% safe_chr(entry$displayName) %||% path,
+        unit = safe_chr(entry$unit, "unitless"),
+        category = safe_chr(entry$category),
+        is_editable = isTRUE(entry$is_editable %||% entry$isEditable %||% TRUE)
+      )
+    }
+  }
+
+  for (path in names(parameters)) {
+    if (is.null(normalized[[path]])) {
+      normalized[[path]] <- list(
+        path = path,
+        display_name = path,
+        unit = "unitless",
+        category = NULL,
+        is_editable = TRUE
+      )
+    }
+  }
+
+  normalized
+}
+
+normalize_validation_issues <- function(entries, default_severity) {
+  normalized <- list()
+  for (entry in entries %||% list()) {
+    if (is.character(entry) || is.numeric(entry) || is.logical(entry)) {
+      message <- safe_chr(entry)
+      if (is.null(message) || !nzchar(message)) {
+        next
+      }
+      normalized[[length(normalized) + 1]] <- list(
+        code = NULL,
+        message = message,
+        field = NULL,
+        severity = default_severity
+      )
+      next
+    }
+
+    if (!is.list(entry)) {
+      next
+    }
+
+    message <- safe_chr(entry$message) %||% safe_chr(entry$msg) %||% safe_chr(entry$text)
+    if (is.null(message) || !nzchar(message)) {
+      next
+    }
+
+    normalized[[length(normalized) + 1]] <- list(
+      code = safe_chr(entry$code),
+      message = message,
+      field = safe_chr(entry$field) %||% safe_chr(entry$path),
+      severity = safe_chr(entry$severity, default_severity)
+    )
+  }
+
+  normalized
+}
+
+normalize_validation_payload <- function(payload) {
+  if (is.null(payload)) {
+    return(list(ok = TRUE, summary = NULL, errors = list(), warnings = list(), domain = NULL, assessment = NULL))
+  }
+
+  if (!is.list(payload)) {
+    stop("Validation hooks must return a list payload", call. = FALSE)
+  }
+
+  errors <- normalize_validation_issues(payload$errors, "error")
+  warnings <- normalize_validation_issues(payload$warnings, "warning")
+  ok <- safe_lgl(payload$ok, length(errors) == 0)
+
+  list(
+    ok = isTRUE(ok) && length(errors) == 0,
+    summary = safe_chr(payload$summary),
+    errors = errors,
+    warnings = warnings,
+    domain = payload$domain %||% payload$applicabilityDomain %||% NULL,
+    assessment = if (is.null(payload$assessment)) NULL else payload$assessment
+  )
+}
+
+format_validation_messages <- function(validation) {
+  issues <- c(validation$errors %||% list(), validation$warnings %||% list())
+  messages <- vapply(issues, function(entry) {
+    field <- safe_chr(entry$field)
+    message <- safe_chr(entry$message, "validation issue")
+    if (is.null(field) || !nzchar(field)) {
+      return(message)
+    }
+    sprintf("%s: %s", field, message)
+  }, character(1))
+  messages[nzchar(messages)]
+}
+
+call_module_hook <- function(module_env, function_name, args = list()) {
+  if (!exists(function_name, envir = module_env, inherits = FALSE)) {
+    return(NULL)
+  }
+
+  hook <- get(function_name, envir = module_env, inherits = FALSE)
+  if (!is.function(hook)) {
+    stop(sprintf("Model hook '%s' must be a function", function_name), call. = FALSE)
+  }
+
+  formal_names <- names(formals(hook)) %||% character()
+  if (!("..." %in% formal_names)) {
+    args <- args[names(args) %in% formal_names]
+  }
+
+  do.call(hook, args)
+}
+
+default_model_profile <- function(backend, file_path, applicability_domain = NULL) {
+  model_name <- basename(file_path %||% backend)
+  list(
+    contextOfUse = list(
+      status = "unreported",
+      summary = sprintf("No context-of-use metadata is declared for '%s'", model_name)
+    ),
+    applicabilityDomain = applicability_domain %||% list(
+      type = "unreported",
+      summary = sprintf("No model-specific applicability domain is declared for '%s'", model_name)
+    ),
+    uncertainty = list(
+      status = "unreported",
+      summary = sprintf("No uncertainty or sensitivity metadata is declared for '%s'", model_name)
+    ),
+    implementationVerification = list(
+      status = "unreported",
+      summary = sprintf("No implementation-verification metadata is declared for '%s'", model_name)
+    ),
+    peerReview = list(
+      status = "unreported",
+      summary = sprintf("No peer-review or prior-use metadata is declared for '%s'", model_name)
+    ),
+    profileSource = list(
+      type = "unreported",
+      summary = sprintf("No profile-source metadata is declared for '%s'", model_name)
+    )
+  )
+}
+
+normalize_profile_section <- function(value, default, scalar_field = "summary") {
+  merged <- default %||% list()
+  if (is.null(value)) {
+    return(merged)
+  }
+
+  if (is.list(value)) {
+    for (name in names(value)) {
+      merged[[name]] <- value[[name]]
+    }
+    return(merged)
+  }
+
+  scalar <- safe_chr(value)
+  if (is.null(scalar) || !nzchar(scalar)) {
+    return(merged)
+  }
+  merged[[scalar_field]] <- scalar
+  merged
+}
+
+normalize_model_profile <- function(payload, backend, file_path, applicability_domain = NULL) {
+  defaults <- default_model_profile(backend, file_path, applicability_domain)
+  if (is.null(payload)) {
+    return(defaults)
+  }
+  if (!is.list(payload)) {
+    stop("pbpk_model_profile() must return a list", call. = FALSE)
+  }
+
+  merged <- defaults
+  normalized_sections <- c(
+    "contextOfUse",
+    "applicabilityDomain",
+    "uncertainty",
+    "implementationVerification",
+    "peerReview",
+    "profileSource"
+  )
+
+  for (name in setdiff(names(payload), normalized_sections)) {
+    merged[[name]] <- payload[[name]]
+  }
+
+  for (name in normalized_sections) {
+    merged[[name]] <- normalize_profile_section(payload[[name]], defaults[[name]])
+  }
+
+  merged
+}
+
+normalize_text_values <- function(value) {
+  if (is.null(value) || length(value) == 0) {
+    return(character())
+  }
+
+  if (is.list(value)) {
+    values <- unlist(lapply(value, normalize_text_values), use.names = FALSE)
+    values <- trimws(as.character(values %||% character()))
+    return(unique(values[nzchar(values)]))
+  }
+
+  candidate <- safe_chr(value)
+  if (is.null(candidate) || !nzchar(candidate)) {
+    return(character())
+  }
+
+  unique(trimws(candidate))
+}
+
+coerce_request_section <- function(value, scalar_key = NULL) {
+  if (is.null(value) || length(value) == 0) {
+    return(list())
+  }
+  if (is.list(value)) {
+    return(value)
+  }
+  if (is.null(scalar_key)) {
+    return(list())
+  }
+  stats::setNames(list(value), scalar_key)
+}
+
+normalize_context_token <- function(value) {
+  candidate <- safe_chr(value)
+  if (is.null(candidate) || !nzchar(candidate)) {
+    return(NULL)
+  }
+
+  normalized <- tolower(gsub("[^a-z0-9]+", "-", trimws(candidate)))
+  normalized <- gsub("(^-+|-+$)", "", normalized)
+  if (!nzchar(normalized)) {
+    return(NULL)
+  }
+  normalized
+}
+
+is_unreported_token <- function(value) {
+  token <- normalize_context_token(value)
+  if (is.null(token)) {
+    return(TRUE)
+  }
+
+  token %in% c(
+    "unreported",
+    "undeclared",
+    "undeclared-in-transfer-file",
+    "not-reported",
+    "unknown",
+    "unspecified",
+    "not-assessed"
+  )
+}
+
+merge_validation_issues <- function(existing, additions) {
+  merged <- existing %||% list()
+  seen <- character()
+
+  if (length(merged) > 0) {
+    seen <- vapply(merged, function(entry) {
+      paste(
+        safe_chr(entry$code, ""),
+        safe_chr(entry$field, ""),
+        safe_chr(entry$message, ""),
+        safe_chr(entry$severity, ""),
+        sep = "|"
+      )
+    }, character(1))
+  }
+
+  for (entry in additions %||% list()) {
+    key <- paste(
+      safe_chr(entry$code, ""),
+      safe_chr(entry$field, ""),
+      safe_chr(entry$message, ""),
+      safe_chr(entry$severity, ""),
+      sep = "|"
+    )
+    if (key %in% seen) {
+      next
+    }
+    merged[[length(merged) + 1]] <- entry
+    seen <- c(seen, key)
+  }
+
+  merged
+}
+
+append_missing_evidence <- function(target, entry) {
+  messages <- normalize_text_values(entry)
+  merged <- unique(c(normalize_text_values(target), messages))
+  as.list(merged)
+}
+
+oecd_dimension_status <- function(present_fields, missing_fields) {
+  present_count <- length(unique(normalize_text_values(present_fields)))
+  missing_count <- length(unique(normalize_text_values(missing_fields)))
+
+  if (present_count == 0) {
+    return("missing")
+  }
+  if (missing_count == 0) {
+    return("declared")
+  }
+  "partial"
+}
+
+oecd_dimension <- function(id, label, present_fields = character(), missing_fields = character(), summary = NULL) {
+  list(
+    id = id,
+    label = label,
+    status = oecd_dimension_status(present_fields, missing_fields),
+    declaredFields = as.list(unique(normalize_text_values(present_fields))),
+    missingFields = as.list(unique(normalize_text_values(missing_fields))),
+    summary = summary
+  )
+}
+
+profile_oecd_checklist <- function(profile, capabilities = list()) {
+  context <- profile$contextOfUse %||% list()
+  context_present <- character()
+  context_missing <- character()
+  for (field in c("scientificPurpose", "decisionContext", "regulatoryUse")) {
+    if (length(normalize_text_values(context[[field]])) > 0 && !is_unreported_token(context[[field]])) {
+      context_present <- c(context_present, field)
+    } else {
+      context_missing <- c(context_missing, field)
+    }
+  }
+
+  domain <- profile$applicabilityDomain %||% list()
+  domain_present <- character()
+  domain_missing <- character()
+  for (field in c("type", "qualificationLevel", "species", "routes")) {
+    if (length(normalize_text_values(domain[[field]])) > 0 && !is_unreported_token(domain[[field]])) {
+      domain_present <- c(domain_present, field)
+    } else {
+      domain_missing <- c(domain_missing, field)
+    }
+  }
+
+  uncertainty <- profile$uncertainty %||% list()
+  uncertainty_present <- character()
+  uncertainty_missing <- character()
+  if (!is_unreported_token(uncertainty$status)) {
+    uncertainty_present <- c(uncertainty_present, "status")
+  } else {
+    uncertainty_missing <- c(uncertainty_missing, "status")
+  }
+  sensitivity_status <- uncertainty$sensitivityAnalysis$status %||% NULL
+  if (!is_unreported_token(sensitivity_status) || length(normalize_text_values(uncertainty$variabilityApproach$method)) > 0) {
+    uncertainty_present <- c(uncertainty_present, "sensitivityAnalysis")
+  } else {
+    uncertainty_missing <- c(uncertainty_missing, "sensitivityAnalysis")
+  }
+  if (length(normalize_text_values(uncertainty$residualUncertainty)) > 0) {
+    uncertainty_present <- c(uncertainty_present, "residualUncertainty")
+  } else {
+    uncertainty_missing <- c(uncertainty_missing, "residualUncertainty")
+  }
+
+  verification <- profile$implementationVerification %||% list()
+  verification_present <- character()
+  verification_missing <- character()
+  if (!is_unreported_token(verification$status)) {
+    verification_present <- c(verification_present, "status")
+  } else {
+    verification_missing <- c(verification_missing, "status")
+  }
+  if (length(normalize_text_values(verification$verifiedChecks)) > 0) {
+    verification_present <- c(verification_present, "verifiedChecks")
+  } else {
+    verification_missing <- c(verification_missing, "verifiedChecks")
+  }
+  if (length(normalize_text_values(verification$solver)) > 0 || length(normalize_text_values(verification$runtime)) > 0) {
+    verification_present <- c(verification_present, "runtimeOrSolver")
+  } else {
+    verification_missing <- c(verification_missing, "runtimeOrSolver")
+  }
+
+  review <- profile$peerReview %||% list()
+  review_present <- character()
+  review_missing <- character()
+  if (!is_unreported_token(review$status)) {
+    review_present <- c(review_present, "status")
+  } else {
+    review_missing <- c(review_missing, "status")
+  }
+  if (!is.null(review$priorRegulatoryUse)) {
+    review_present <- c(review_present, "priorRegulatoryUse")
+  } else {
+    review_missing <- c(review_missing, "priorRegulatoryUse")
+  }
+  if (length(normalize_text_values(review$revisionStatus)) > 0) {
+    review_present <- c(review_present, "revisionStatus")
+  } else {
+    review_missing <- c(review_missing, "revisionStatus")
+  }
+
+  source <- profile$profileSource %||% list()
+  traceability_present <- character()
+  traceability_missing <- character()
+  if (isTRUE(capabilities$scientificProfile)) {
+    traceability_present <- c(traceability_present, "scientificProfile")
+  } else {
+    traceability_missing <- c(traceability_missing, "scientificProfile")
+  }
+  if (!is_unreported_token(source$type)) {
+    traceability_present <- c(traceability_present, "profileSource.type")
+  } else {
+    traceability_missing <- c(traceability_missing, "profileSource.type")
+  }
+  if (length(normalize_text_values(source$path)) > 0 ||
+      length(normalize_text_values(source$sourceToolHint)) > 0 ||
+      !identical(safe_chr(source$type), "bridge-default")) {
+    traceability_present <- c(traceability_present, "traceabilityDetail")
+  } else {
+    traceability_missing <- c(traceability_missing, "traceabilityDetail")
+  }
+
+  list(
+    contextOfUse = oecd_dimension(
+      "contextOfUse",
+      "Context of use",
+      present_fields = context_present,
+      missing_fields = context_missing,
+      summary = safe_chr(context$summary, "Problem formulation and intended use metadata")
+    ),
+    applicabilityDomain = oecd_dimension(
+      "applicabilityDomain",
+      "Applicability domain",
+      present_fields = domain_present,
+      missing_fields = domain_missing,
+      summary = safe_chr(domain$summary, "Declared domain, species, route, and qualification metadata")
+    ),
+    uncertaintyAndSensitivity = oecd_dimension(
+      "uncertaintyAndSensitivity",
+      "Uncertainty and sensitivity",
+      present_fields = uncertainty_present,
+      missing_fields = uncertainty_missing,
+      summary = safe_chr(uncertainty$summary, "Uncertainty, variability, and sensitivity characterization")
+    ),
+    implementationVerification = oecd_dimension(
+      "implementationVerification",
+      "Implementation verification",
+      present_fields = verification_present,
+      missing_fields = verification_missing,
+      summary = safe_chr(verification$summary, "Code, solver, and internal verification evidence")
+    ),
+    peerReviewAndPriorUse = oecd_dimension(
+      "peerReviewAndPriorUse",
+      "Peer review and prior use",
+      present_fields = review_present,
+      missing_fields = review_missing,
+      summary = safe_chr(review$summary, "External review, revision status, and prior-use traceability")
+    ),
+    reportingAndTraceability = oecd_dimension(
+      "reportingAndTraceability",
+      "Reporting and traceability",
+      present_fields = traceability_present,
+      missing_fields = traceability_missing,
+      summary = safe_chr(source$summary, "Profile source and traceability metadata")
+    )
+  )
+}
+
+profile_oecd_checklist_score <- function(checklist) {
+  entries <- checklist %||% list()
+  if (length(entries) == 0) {
+    return(0)
+  }
+
+  total <- 0
+  for (entry in entries) {
+    status <- safe_chr(entry$status, "missing")
+    total <- total + switch(
+      status,
+      declared = 1,
+      partial = 0.5,
+      missing = 0,
+      0
+    )
+  }
+  total / length(entries)
+}
+
+profile_missing_evidence <- function(profile, capabilities = list()) {
+  missing <- character()
+  append_missing <- function(message) {
+    if (!message %in% missing) {
+      missing <<- c(missing, message)
+    }
+  }
+
+  if (!isTRUE(capabilities$scientificProfile) ||
+      identical(safe_chr(profile$profileSource$type), "bridge-default")) {
+    append_missing("Model-specific scientific profile")
+  }
+
+  context <- profile$contextOfUse %||% list()
+  if (is_unreported_token(context$status) && is_unreported_token(context$regulatoryUse)) {
+    append_missing("Declared context of use")
+  }
+
+  domain <- profile$applicabilityDomain %||% list()
+  if (is_unreported_token(domain$type)) {
+    append_missing("Declared applicability domain")
+  }
+  if (is_unreported_token(domain$qualificationLevel)) {
+    append_missing("Qualification level for the declared domain")
+  }
+
+  uncertainty <- profile$uncertainty %||% list()
+  if (is_unreported_token(uncertainty$status)) {
+    append_missing("Uncertainty and sensitivity characterization")
+  }
+
+  verification <- profile$implementationVerification %||% list()
+  if (is_unreported_token(verification$status) ||
+      length(verification$verifiedChecks %||% list()) == 0) {
+    append_missing("Implementation verification evidence")
+  }
+  for (check in normalize_text_values(verification$missingChecks)) {
+    append_missing(check)
+  }
+
+  review <- profile$peerReview %||% list()
+  if (is_unreported_token(review$status)) {
+    append_missing("Peer review or prior use record")
+  }
+
+  unique(missing)
+}
+
+profile_oecd_readiness <- function(profile, capabilities = list()) {
+  qualification <- normalize_context_token(profile$applicabilityDomain$qualificationLevel)
+  profile_source <- safe_chr(profile$profileSource$type)
+
+  if (!isTRUE(capabilities$scientificProfile) || identical(profile_source, "bridge-default")) {
+    return(list(level = "runtime-only", confidence = "low"))
+  }
+
+  if (qualification %in% c("demo-only", "illustrative-example", "integration-example")) {
+    return(list(level = "illustrative-only", confidence = "low"))
+  }
+
+  if (qualification %in% c(
+    "research-use",
+    "research-only",
+    "runtime-guardrails",
+    "runtime-load-verified"
+  )) {
+    return(list(level = "research-use", confidence = "medium"))
+  }
+
+  if (qualification %in% c(
+    "fit-for-purpose",
+    "qualified",
+    "externally-qualified",
+    "regulatory-use",
+    "regulatory-qualified"
+  )) {
+    return(list(level = "fit-for-purpose", confidence = "high"))
+  }
+
+  list(level = "structured-but-unqualified", confidence = "low")
+}
+
+profile_assessment_warnings <- function(profile, capabilities = list()) {
+  warnings <- list()
+
+  if (!isTRUE(capabilities$scientificProfile) ||
+      identical(safe_chr(profile$profileSource$type), "bridge-default")) {
+    warnings[[length(warnings) + 1]] <- list(
+      code = "scientific_profile_missing",
+      message = paste(
+        "This model is runtime-supported, but it does not declare a model-specific",
+        "scientific profile with OECD-style context-of-use metadata."
+      ),
+      field = "profile",
+      severity = "warning"
+    )
+  }
+
+  if (is_unreported_token(profile$uncertainty$status)) {
+    warnings[[length(warnings) + 1]] <- list(
+      code = "uncertainty_metadata_missing",
+      message = "Uncertainty and sensitivity metadata are not declared for this model.",
+      field = "profile.uncertainty",
+      severity = "warning"
+    )
+  }
+
+  if (is_unreported_token(profile$peerReview$status)) {
+    warnings[[length(warnings) + 1]] <- list(
+      code = "peer_review_metadata_missing",
+      message = "Peer-review or prior-use metadata are not declared for this model.",
+      field = "profile.peerReview",
+      severity = "warning"
+    )
+  }
+
+  if (normalize_context_token(profile$applicabilityDomain$qualificationLevel) %in% c(
+    "demo-only",
+    "illustrative-example",
+    "integration-example"
+  )) {
+    warnings[[length(warnings) + 1]] <- list(
+      code = "qualification_limited",
+      message = paste(
+        "This model is qualified only as an example or integration fixture,",
+        "not as an externally qualified scientific dossier."
+      ),
+      field = "profile.applicabilityDomain.qualificationLevel",
+      severity = "warning"
+    )
+  }
+
+  warnings
+}
+
+with_profile_assessment <- function(validation, profile, capabilities = list()) {
+  normalized <- normalize_validation_payload(validation)
+  normalized$warnings <- merge_validation_issues(
+    normalized$warnings,
+    profile_assessment_warnings(profile, capabilities)
+  )
+  if (is.null(normalized$domain)) {
+    normalized$domain <- profile$applicabilityDomain %||% capabilities$applicabilityDomain %||% NULL
+  }
+
+  readiness <- profile_oecd_readiness(profile, capabilities)
+  checklist <- profile_oecd_checklist(profile, capabilities)
+  checklist_score <- profile_oecd_checklist_score(checklist)
+  missing_evidence <- profile_missing_evidence(profile, capabilities)
+  blocking_issues <- format_validation_messages(list(
+    errors = normalized$errors,
+    warnings = list()
+  ))
+
+  base_assessment <- list(
+    decision = if (length(normalized$errors) > 0) {
+      "outside-declared-profile"
+    } else if (identical(readiness$level, "runtime-only")) {
+      "runtime-compatible-only"
+    } else {
+      "within-declared-profile"
+    },
+    oecdReadiness = readiness$level,
+    confidence = readiness$confidence,
+    qualificationLevel = safe_chr(profile$applicabilityDomain$qualificationLevel, "unreported"),
+    declaredContextOfUse = safe_chr(profile$contextOfUse$regulatoryUse) %||%
+      safe_chr(profile$contextOfUse$status, "unreported"),
+    scientificProfile = isTRUE(capabilities$scientificProfile),
+    profileSource = safe_chr(profile$profileSource$type, "unreported"),
+    oecdChecklist = checklist,
+    oecdChecklistScore = checklist_score,
+    status = if (length(missing_evidence) == 0) {
+      "metadata-complete"
+    } else if (length(missing_evidence) <= 2) {
+      "metadata-partial"
+    } else {
+      "metadata-incomplete"
+    },
+    missingEvidence = as.list(missing_evidence),
+    blockingIssues = as.list(blocking_issues)
+  )
+
+  existing <- normalized$assessment %||% list()
+  merged_assessment <- base_assessment
+  for (name in names(existing)) {
+    merged_assessment[[name]] <- existing[[name]]
+  }
+  merged_assessment$missingEvidence <- append_missing_evidence(
+    base_assessment$missingEvidence,
+    existing$missingEvidence
+  )
+  merged_assessment$blockingIssues <- append_missing_evidence(
+    base_assessment$blockingIssues,
+    existing$blockingIssues
+  )
+
+  normalized$assessment <- merged_assessment
+  normalized
+}
+
+profile_request_mismatch_errors <- function(profile, request = list()) {
+  requested_domain <- coerce_request_section(
+    request$applicabilityDomain %||% request$applicability %||% request$domain
+  )
+  declared_domain <- profile$applicabilityDomain %||% list()
+  errors <- list()
+
+  add_error <- function(code, message, field = NULL) {
+    errors[[length(errors) + 1]] <<- list(
+      code = code,
+      message = message,
+      field = field,
+      severity = "error"
+    )
+  }
+
+  compare_values <- function(requested, declared, code, label, field) {
+    requested_values <- normalize_text_values(requested)
+    declared_values <- tolower(normalize_text_values(declared))
+    if (length(requested_values) == 0 || length(declared_values) == 0) {
+      return(invisible(NULL))
+    }
+
+    for (value in requested_values) {
+      if (!tolower(value) %in% declared_values) {
+        add_error(code, sprintf("%s '%s' is outside the declared applicability domain", label, value), field)
+      }
+    }
+  }
+
+  compare_values(
+    requested_domain$species %||% request$species,
+    declared_domain$species,
+    "unsupported_species",
+    "Species",
+    "species"
+  )
+  compare_values(
+    requested_domain$lifeStage %||% request$lifeStage %||% request$life_stage,
+    declared_domain$lifeStage,
+    "unsupported_life_stage",
+    "Life stage",
+    "lifeStage"
+  )
+  compare_values(
+    requested_domain$routes %||% requested_domain$route %||% request$routes %||% request$route,
+    declared_domain$routes,
+    "unsupported_route",
+    "Route",
+    "route"
+  )
+  compare_values(
+    requested_domain$compounds %||% requested_domain$compound %||% request$compound,
+    declared_domain$compounds,
+    "unsupported_compound",
+    "Compound",
+    "compound"
+  )
+
+  requested_context <- coerce_request_section(
+    request$contextOfUse %||% request$context_of_use,
+    scalar_key = "regulatoryUse"
+  )
+  requested_use <- normalize_context_token(
+    requested_context$regulatoryUse %||% requested_context$intendedUse %||%
+      request$regulatoryUse %||% request$intendedUse
+  )
+  declared_use <- normalize_context_token(profile$contextOfUse$regulatoryUse)
+  if (!is.null(requested_use) && !is.null(declared_use) && requested_use != declared_use) {
+    add_error(
+      "context_of_use_mismatch",
+      sprintf(
+        "Requested context of use '%s' is outside the declared model context '%s'",
+        requested_use,
+        declared_use
+      ),
+      "contextOfUse.regulatoryUse"
+    )
+  }
+
+  errors
+}
+
+ospsuite_capabilities <- function(file_path) {
+  list(
+    backend = "ospsuite",
+    deterministicSimulation = TRUE,
+    populationSimulation = FALSE,
+    parameterEditing = TRUE,
+    validationHook = FALSE,
+    scientificProfile = FALSE,
+    supportedRuntimeFormats = list("pkml"),
+    tags = list("ospsuite", "pkml"),
+    applicabilityDomain = list(
+      type = "unreported",
+      summary = sprintf("No model-specific applicability guardrails are declared for '%s'", basename(file_path))
+    )
+  )
+}
+
+infer_ospsuite_origin <- function(file_path) {
+  normalized <- tolower(basename(file_path %||% ""))
+  if (grepl("mobi", normalized)) {
+    return(list(code = "mobi", label = "MoBi"))
+  }
+  if (grepl("pk[-_ ]?sim", normalized)) {
+    return(list(code = "pksim", label = "PK-Sim"))
+  }
+  list(code = "ospsuite", label = "OSPSuite")
+}
+
+ospsuite_profile_sidecar_candidates <- function(file_path) {
+  stem <- tools::file_path_sans_ext(file_path)
+  unique(c(
+    paste0(stem, ".profile.json"),
+    paste0(stem, ".pbpk.json"),
+    paste0(file_path, ".profile.json")
+  ))
+}
+
+read_json_file <- function(file_path) {
+  tryCatch(
+    fromJSON(file_path, simplifyVector = FALSE),
+    error = function(exc) {
+      stop(
+        sprintf("Failed to parse JSON file '%s': %s", basename(file_path), exc$message),
+        call. = FALSE
+      )
+    }
+  )
+}
+
+ospsuite_profile_sidecar <- function(file_path) {
+  for (candidate in ospsuite_profile_sidecar_candidates(file_path)) {
+    if (!file.exists(candidate)) {
+      next
+    }
+
+    payload <- read_json_file(candidate)
+    if (!is.list(payload)) {
+      stop(
+        sprintf("OSPSuite profile sidecar '%s' must contain a JSON object", basename(candidate)),
+        call. = FALSE
+      )
+    }
+
+    profile_payload <- payload$profile %||% payload
+    if (!is.list(profile_payload)) {
+      stop(
+        sprintf("OSPSuite profile sidecar '%s' must provide a 'profile' object", basename(candidate)),
+        call. = FALSE
+      )
+    }
+
+    return(list(
+      path = candidate,
+      payload = profile_payload
+    ))
+  }
+
+  list(path = NULL, payload = NULL)
+}
+
+rxode_capabilities <- function(file_path, module_env, parameter_catalog = list()) {
+  defaults <- list(
+    backend = "rxode2",
+    deterministicSimulation = TRUE,
+    populationSimulation = exists("pbpk_run_population", envir = module_env, inherits = FALSE),
+    parameterEditing = TRUE,
+    validationHook = exists("pbpk_validate_request", envir = module_env, inherits = FALSE),
+    scientificProfile = exists("pbpk_model_profile", envir = module_env, inherits = FALSE),
+    supportedRuntimeFormats = list("r"),
+    supportedOutputs = NULL,
+    tags = list("rxode2", "custom"),
+    applicabilityDomain = NULL
+  )
+
+  hook_payload <- call_module_hook(
+    module_env,
+    "pbpk_capabilities",
+    list(file_path = file_path, parameter_catalog = parameter_catalog)
+  )
+
+  if (is.null(hook_payload)) {
+    return(defaults)
+  }
+  if (!is.list(hook_payload)) {
+    stop("pbpk_capabilities() must return a list", call. = FALSE)
+  }
+
+  merged <- defaults
+  for (name in names(hook_payload)) {
+    merged[[name]] <- hook_payload[[name]]
+  }
+  merged
+}
+
+ospsuite_profile <- function(file_path, capabilities = list()) {
+  origin <- infer_ospsuite_origin(file_path)
+  sidecar <- ospsuite_profile_sidecar(file_path)
+  base_payload <- list(
+    contextOfUse = list(
+      status = "undeclared-in-transfer-file",
+      sourceToolHint = origin$label,
+      summary = sprintf(
+        "The %s transfer file is executable through the MCP runtime, but no model-specific context-of-use metadata is currently attached.",
+        origin$label
+      )
+    ),
+    applicabilityDomain = list(
+      type = "pkml-runtime-supported",
+      qualificationLevel = "undeclared",
+      status = "format-supported",
+      sourceToolHint = origin$label,
+      summary = sprintf(
+        "Model '%s' is loadable as an OSPSuite transfer file, but scientific applicability metadata has not been declared in the current bridge.",
+        basename(file_path)
+      ),
+      notes = list(
+        "Runtime support confirms that the pkml file can be loaded by OSPSuite.",
+        "Scientific qualification, uncertainty, and peer-review metadata must be supplied separately for regulatory or research claims."
+      )
+    ),
+    uncertainty = list(
+      status = "undeclared-in-transfer-file",
+      summary = sprintf(
+        "No uncertainty or sensitivity metadata is extracted automatically from '%s'.",
+        basename(file_path)
+      )
+    ),
+    implementationVerification = list(
+      status = "runtime-load-verified",
+      runtime = "ospsuite",
+      sourceToolHint = origin$label,
+      verifiedChecks = list("Transfer file accepted by the OSPSuite runtime"),
+      missingChecks = list(
+        "Model-specific uncertainty metadata",
+        "Model-specific qualification dossier",
+        "Peer-review and prior-use declarations"
+      )
+    ),
+    peerReview = list(
+      status = "not-reported",
+      summary = sprintf(
+        "No peer-review or prior-use metadata is attached to '%s' in the current bridge.",
+        basename(file_path)
+      )
+    )
+  )
+
+  payload <- base_payload
+  if (!is.null(sidecar$payload)) {
+    for (name in names(sidecar$payload)) {
+      payload[[name]] <- sidecar$payload[[name]]
+    }
+  }
+
+  profile <- normalize_model_profile(
+    payload,
+    "ospsuite",
+    file_path,
+    capabilities$applicabilityDomain %||% NULL
+  )
+  profile$profileSource <- profile$profileSource %||% list(
+    type = if (is.null(sidecar$path)) "bridge-default" else "sidecar",
+    path = sidecar$path,
+    sourceToolHint = origin$label
+  )
+  profile
+}
+
+rxode_profile <- function(file_path, module_env, capabilities = list(), parameter_catalog = list()) {
+  hook_payload <- call_module_hook(
+    module_env,
+    "pbpk_model_profile",
+    list(file_path = file_path, parameter_catalog = parameter_catalog, capabilities = capabilities)
+  )
+  normalize_model_profile(hook_payload, "rxode2", file_path, capabilities$applicabilityDomain %||% NULL)
+}
+
+ospsuite_validate_record <- function(record, request = list(), stage = NULL) {
+  warnings <- list()
+  errors <- list()
+
+  add_warning <- function(code, message, field = NULL) {
+    warnings[[length(warnings) + 1]] <<- list(
+      code = code,
+      message = message,
+      field = field,
+      severity = "warning"
+    )
+  }
+
+  add_error <- function(code, message, field = NULL) {
+    errors[[length(errors) + 1]] <<- list(
+      code = code,
+      message = message,
+      field = field,
+      severity = "error"
+    )
+  }
+
+  output_mode <- safe_chr(record$capabilities$outputSelectionMode, "declared")
+  if (identical(output_mode, "observer-fallback")) {
+    add_warning(
+      "ospsuite_auto_output_selection",
+      sprintf(
+        paste(
+          "Model declared no OutputSelections;",
+          "runtime is using an observer-backed fallback with %d selected outputs"
+        ),
+        safe_num(record$capabilities$outputSelectionCount, 0)
+      ),
+      "OutputSelections"
+    )
+  }
+
+  if (identical(output_mode, "empty") && identical(stage, "run_simulation_sync")) {
+    add_error(
+      "ospsuite_missing_runtime_outputs",
+      paste(
+        "Model has no declared OutputSelections and no runtime fallback outputs;",
+        "simulation results are unlikely to be available"
+      ),
+      "OutputSelections"
+    )
+  }
+
+  errors <- merge_validation_issues(errors, profile_request_mismatch_errors(record$profile, request))
+  validation <- list(
+    ok = length(errors) == 0,
+    summary = if (length(errors) == 0) {
+      "Request is consistent with the declared profile and runtime configuration"
+    } else {
+      "Request is outside the declared profile or runtime configuration"
+    },
+    errors = errors,
+    warnings = warnings,
+    domain = record$profile$applicabilityDomain %||% record$capabilities$applicabilityDomain %||% NULL,
+    assessment = list(
+      decision = if (length(errors) == 0) "within-declared-profile" else "outside-declared-profile"
+    )
+  )
+  with_profile_assessment(validation, record$profile, record$capabilities)
+}
+
+rxode_validate_record <- function(record, request = list(), stage = NULL) {
+  if (!exists("pbpk_validate_request", envir = record$module_env, inherits = FALSE)) {
+    return(with_profile_assessment(list(
+      ok = TRUE,
+      summary = NULL,
+      errors = list(),
+      warnings = list(),
+      domain = record$profile$applicabilityDomain %||% record$capabilities$applicabilityDomain %||% NULL,
+      assessment = NULL
+    ), record$profile, record$capabilities))
+  }
+
+  raw <- call_module_hook(
+    record$module_env,
+    "pbpk_validate_request",
+    list(
+      request = request,
+      parameters = record$parameters,
+      simulation_id = record$simulation_id,
+      simulationId = record$simulation_id,
+      metadata = record$metadata,
+      parameter_catalog = record$parameter_catalog,
+      capabilities = record$capabilities %||% NULL,
+      profile = record$profile %||% NULL,
+      stage = stage,
+      file_path = record$file_path,
+      filePath = record$file_path
+    )
+  )
+  normalized <- normalize_validation_payload(raw)
+  if (is.null(normalized$domain)) {
+    normalized$domain <- record$profile$applicabilityDomain %||% record$capabilities$applicabilityDomain %||% NULL
+  }
+  with_profile_assessment(normalized, record$profile, record$capabilities)
+}
+
+enforce_validation <- function(validation, prefix = "Request rejected") {
+  if (isTRUE(validation$ok)) {
+    return(invisible(TRUE))
+  }
+
+  messages <- format_validation_messages(validation)
+  detail <- if (length(messages) > 0) {
+    paste(messages, collapse = "; ")
+  } else {
+    safe_chr(validation$summary, "request is outside the configured guardrails")
+  }
+  stop(sprintf("%s: %s", prefix, detail), call. = FALSE)
+}
+
+rxode_metadata <- function(file_path, module_env) {
+  if (exists("pbpk_model_metadata", envir = module_env, inherits = FALSE)) {
+    metadata <- module_env$pbpk_model_metadata()
+  } else {
+    metadata <- list()
+  }
+  list(
+    name = safe_chr(metadata$name, basename(file_path)),
+    modelVersion = safe_chr(metadata$modelVersion) %||% safe_chr(metadata$model_version),
+    createdBy = safe_chr(metadata$createdBy) %||% safe_chr(metadata$created_by) %||% "rxode2",
+    createdAt = safe_chr(metadata$createdAt) %||% now_utc(),
+    backend = "rxode2"
+  )
+}
+
+load_rxode_model <- function(file_path) {
+  # Use the regular search path so sourced model modules can resolve functions
+  # loaded with library()/require() inside their own script.
+  module_env <- new.env(parent = globalenv())
+  tryCatch(
+    sys.source(file_path, envir = module_env),
+    error = function(exc) {
+      stop(sprintf("Failed to source rxode2 model '%s': %s", basename(file_path), exc$message), call. = FALSE)
+    }
+  )
+
+  required_functions <- c("pbpk_default_parameters", "pbpk_run_simulation", "pbpk_run_population")
+  missing <- required_functions[!vapply(required_functions, exists, logical(1), envir = module_env, inherits = FALSE)]
+  if (length(missing) > 0) {
+    stop(
+      sprintf(
+        "rxode2 model '%s' is missing required functions: %s",
+        basename(file_path),
+        paste(missing, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  parameters <- as.list(module_env$pbpk_default_parameters())
+  if (length(parameters) == 0 || is.null(names(parameters)) || any(!nzchar(names(parameters)))) {
+    stop(
+      sprintf("rxode2 model '%s' must return a named parameter list", basename(file_path)),
+      call. = FALSE
+    )
+  }
+  parameters <- lapply(parameters, function(value) safe_num(value, 0))
+
+  catalog <- NULL
+  if (exists("pbpk_parameter_catalog", envir = module_env, inherits = FALSE)) {
+    catalog <- module_env$pbpk_parameter_catalog()
+  }
+
+  list(
+    module_env = module_env,
+    parameters = parameters,
+    parameter_catalog = normalize_parameter_catalog(parameters, catalog)
+  )
+}
+
+rxode_parameter_payload <- function(record, path) {
+  catalog_entry <- record$parameter_catalog[[path]] %||% list(
+    path = path,
+    display_name = path,
+    unit = "unitless"
+  )
+  list(
+    path = path,
+    value = safe_num(record$parameters[[path]], 0),
+    unit = safe_chr(catalog_entry$unit, "unitless"),
+    display_name = safe_chr(catalog_entry$display_name, path),
+    last_updated_at = now_utc(),
+    source = "rxode2"
+  )
+}
+
+normalize_series_payload <- function(series) {
+  normalized <- list()
+  for (entry in series %||% list()) {
+    parameter <- safe_chr(entry$parameter)
+    if (is.null(parameter) || !nzchar(parameter)) {
+      next
+    }
+    values <- list()
+    for (value_entry in entry$values %||% list()) {
+      values[[length(values) + 1]] <- list(
+        time = safe_num(value_entry$time, 0),
+        value = safe_num(value_entry$value, 0)
+      )
+    }
+    normalized[[length(normalized) + 1]] <- list(
+      parameter = parameter,
+      unit = safe_chr(entry$unit, "unitless"),
+      values = values
+    )
+  }
+  normalized
+}
+
+normalize_population_chunk <- function(entry, index) {
+  chunk_id <- safe_chr(entry$chunkId) %||% safe_chr(entry$chunk_id) %||% sprintf("chunk-%03d", index)
+  subject_range <- entry$subjectRange %||% entry$subject_range %||% NULL
+  time_range <- entry$timeRange %||% entry$time_range %||% NULL
+  list(
+    chunkId = chunk_id,
+    subjectRange = if (is.null(subject_range)) NULL else as.integer(unlist(subject_range)),
+    timeRange = if (is.null(time_range)) NULL else as.numeric(unlist(time_range)),
+    preview = entry$preview %||% NULL,
+    payload = entry$payload %||% list()
+  )
+}
 
 handle_load_simulation <- function(payload) {
-  if (!has_ospsuite) stop("ospsuite package not available")
-  
-  file_path <- payload$filePath
-  sim_id <- payload$simulationId
-  
-  if (is.null(file_path) || !file.exists(file_path)) {
-    stop(paste("Simulation file not found:", file_path))
+  file_path <- safe_chr(payload$filePath)
+  simulation_id <- safe_chr(payload$simulationId, tools::file_path_sans_ext(basename(file_path)))
+  backend <- detect_backend(file_path)
+
+  if (backend == "ospsuite") {
+    ensure_ospsuite()
+    capabilities <- ospsuite_capabilities(file_path)
+    profile <- ospsuite_profile(file_path, capabilities)
+    capabilities$scientificProfile <- identical(safe_chr(profile$profileSource$type), "sidecar")
+    capabilities$applicabilityDomain <- profile$applicabilityDomain
+    simulation <- loadSimulation(file_path)
+    output_selection <- ensure_ospsuite_output_selections(simulation)
+    capabilities$outputSelectionMode <- output_selection$mode
+    capabilities$outputSelectionCount <- output_selection$selectedCount
+    if (length(output_selection$selectedPaths) > 0) {
+      capabilities$runtimeOutputPreview <- utils::head(unlist(output_selection$selectedPaths), 5)
+    }
+    record <- list(
+      backend = backend,
+      simulation = simulation,
+      simulation_id = simulation_id,
+      file_path = file_path,
+      profile = profile,
+      capabilities = capabilities
+    )
+    validation <- ospsuite_validate_record(
+      record,
+      request = list(action = "load_simulation", simulationId = simulation_id, filePath = file_path),
+      stage = "load_simulation"
+    )
+    record$metadata <- list(
+      name = basename(file_path),
+      modelVersion = NULL,
+      createdBy = "ospsuite",
+      createdAt = now_utc(),
+      backend = "ospsuite",
+      capabilities = capabilities,
+      profile = profile,
+      validation = validation
+    )
+    assign(simulation_id, record, envir = simulations)
+    return(list(
+      handle = list(
+        simulation_id = simulation_id,
+        file_path = file_path,
+        metadata = record$metadata
+      ),
+      metadata = record$metadata,
+      parameters = list()
+    ))
   }
-  
-  # Load with silencing
-  sim <- NULL
-  # ospsuite::loadSimulation can be chatty
-  # We use a simple capture.output wrapper
-  junk <- capture.output({
-    junk2 <- capture.output({
-       sim <- ospsuite::loadSimulation(file_path)
-    }, type = "message")
-  }, type = "output")
-  
-  simulations[[sim_id]] <<- sim
-  
+
+  rxode_model <- load_rxode_model(file_path)
+  capabilities <- rxode_capabilities(file_path, rxode_model$module_env, rxode_model$parameter_catalog)
+  profile <- rxode_profile(file_path, rxode_model$module_env, capabilities, rxode_model$parameter_catalog)
+  capabilities$applicabilityDomain <- profile$applicabilityDomain
+  metadata <- rxode_metadata(file_path, rxode_model$module_env)
+  metadata$capabilities <- capabilities
+  metadata$profile <- profile
+  record <- list(
+    backend = backend,
+    simulation_id = simulation_id,
+    file_path = file_path,
+    metadata = metadata,
+    profile = profile,
+    capabilities = capabilities,
+    module_env = rxode_model$module_env,
+    parameters = rxode_model$parameters,
+    parameter_catalog = rxode_model$parameter_catalog
+  )
+  validation <- rxode_validate_record(
+    record,
+    request = list(action = "load_simulation", simulationId = simulation_id, filePath = file_path),
+    stage = "load_simulation"
+  )
+  metadata$validation <- validation
+  record$metadata <- metadata
+  enforce_validation(
+    validation,
+    sprintf("Default parameters rejected for '%s'", basename(file_path))
+  )
+  assign(simulation_id, record, envir = simulations)
+
+  parameter_values <- lapply(names(record$parameters), function(path) {
+    rxode_parameter_payload(record, path)
+  })
+
   list(
     handle = list(
-      simulation_id = sim_id,
-      file_path = file_path
+      simulation_id = simulation_id,
+      file_path = file_path,
+      metadata = metadata
     ),
-    metadata = list(
-      loadedAt = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ")
-    )
+    metadata = metadata,
+    parameters = parameter_values
   )
 }
 
 handle_list_parameters <- function(payload) {
-  if (!has_ospsuite) stop("ospsuite package not available")
-  sim_id <- payload$simulationId
-  pattern <- payload$pattern
-  sim <- simulations[[sim_id]]
-  if (is.null(sim)) stop(paste("Simulation not loaded:", sim_id))
-  
-  all_params <- NULL
-  junk <- capture.output({
-    all_params <- ospsuite::getAllParametersMatching(paths = "**", container = sim)
-  }, type = "output")
-  
-  params <- list()
-  count <- 0
-  if (!is.null(pattern) && pattern != "*") {
-    for (p in all_params) {
-      if (grepl(pattern, p$path, fixed = TRUE)) {
-        count <- count + 1
-        if (count > 2000) break
-        params[[length(params) + 1]] <- list(
-          path = p$path,
-          display_name = p$name,
-          unit = p$unit,
-          value = p$value,
-          is_editable = p$isEditable
-        )
-      }
+  record <- simulation_record(safe_chr(payload$simulationId))
+  if (identical(record$backend, "ospsuite")) {
+    ensure_ospsuite()
+    paths <- getAllParameterPathsIn(record$simulation)
+    pattern <- safe_chr(payload$pattern)
+    if (!is.null(pattern) && nzchar(pattern)) {
+      paths <- paths[grepl(glob2rx(pattern), paths)]
     }
-  } else {
-    for (p in all_params) {
-      count <- count + 1
-      if (count > 2000) break
-      params[[length(params) + 1]] <- list(
-        path = p$path,
-        display_name = p$name,
-        unit = p$unit,
-        value = p$value,
-        is_editable = p$isEditable
-      )
-    }
+    parameters <- lapply(paths, function(path) {
+      parameter_summary_payload(getParameter(path = path, container = record$simulation))
+    })
+    return(list(parameters = parameters))
   }
-  list(parameters = params)
+
+  pattern <- safe_chr(payload$pattern)
+  paths <- names(record$parameter_catalog)
+  if (!is.null(pattern) && nzchar(pattern)) {
+    paths <- paths[grepl(glob2rx(pattern), paths)]
+  }
+  parameters <- lapply(paths, function(path) {
+    entry <- record$parameter_catalog[[path]]
+    list(
+      path = path,
+      display_name = safe_chr(entry$display_name, path),
+      unit = safe_chr(entry$unit, "unitless"),
+      category = safe_chr(entry$category),
+      is_editable = isTRUE(entry$is_editable)
+    )
+  })
+  list(parameters = parameters)
 }
 
 handle_get_parameter_value <- function(payload) {
-  if (!has_ospsuite) stop("ospsuite package not available")
-  sim_id <- payload$simulationId
-  param_path <- payload$parameterPath
-  sim <- simulations[[sim_id]]
-  if (is.null(sim)) stop(paste("Simulation not loaded:", sim_id))
-  
-  param <- ospsuite::getParameter(path = param_path, container = sim)
-  if (is.null(param)) stop(paste("Parameter not found:", param_path))
-  
-  list(
-    parameter = list(
-      path = param$path,
-      value = param$value,
-      unit = param$unit,
-      display_name = param$name
+  record <- simulation_record(safe_chr(payload$simulationId))
+  if (identical(record$backend, "ospsuite")) {
+    ensure_ospsuite()
+    parameter <- getParameter(
+      path = safe_chr(payload$parameterPath),
+      container = record$simulation
     )
-  )
+    return(list(parameter = parameter_payload(parameter)))
+  }
+
+  path <- safe_chr(payload$parameterPath)
+  if (!path %in% names(record$parameters)) {
+    stop(sprintf("Parameter '%s' not found", path), call. = FALSE)
+  }
+  list(parameter = rxode_parameter_payload(record, path))
 }
 
 handle_set_parameter_value <- function(payload) {
-  if (!has_ospsuite) stop("ospsuite package not available")
-  sim_id <- payload$simulationId
-  param_path <- payload$parameterPath
-  new_value <- payload$value
-  new_unit <- payload$unit
-  sim <- simulations[[sim_id]]
-  if (is.null(sim)) stop(paste("Simulation not loaded:", sim_id))
-  
-  param <- ospsuite::getParameter(path = param_path, container = sim)
-  if (is.null(param)) stop(paste("Parameter not found:", param_path))
-  
-  junk <- capture.output({
-    ospsuite::setParameterValues(parameters = param, values = new_value, units = new_unit)
-  })
-  
-  list(
-    parameter = list(
-      path = param$path,
-      value = param$value,
-      unit = param$unit,
-      display_name = param$name
-    )
+  record <- simulation_record(safe_chr(payload$simulationId))
+  if (identical(record$backend, "ospsuite")) {
+    ensure_ospsuite()
+    path <- safe_chr(payload$parameterPath)
+    value <- safe_num(payload$value)
+    unit <- safe_chr(payload$unit)
+    if (is.null(unit)) {
+      setParameterValuesByPath(
+        parameterPaths = path,
+        values = value,
+        simulation = record$simulation
+      )
+    } else {
+      setParameterValuesByPath(
+        parameterPaths = path,
+        values = value,
+        units = unit,
+        simulation = record$simulation
+      )
+    }
+    parameter <- getParameter(path = path, container = record$simulation)
+    return(list(parameter = parameter_payload(parameter)))
+  }
+
+  path <- safe_chr(payload$parameterPath)
+  if (!path %in% names(record$parameters)) {
+    stop(sprintf("Parameter '%s' not found", path), call. = FALSE)
+  }
+  candidate_record <- record
+  candidate_record$parameters[[path]] <- safe_num(payload$value, record$parameters[[path]])
+  if (!is.null(payload$unit) && !is.null(candidate_record$parameter_catalog[[path]])) {
+    candidate_record$parameter_catalog[[path]]$unit <- safe_chr(payload$unit, candidate_record$parameter_catalog[[path]]$unit)
+  }
+  validation <- rxode_validate_record(
+    candidate_record,
+    request = list(
+      action = "set_parameter_value",
+      parameterPath = path,
+      value = candidate_record$parameters[[path]],
+      unit = safe_chr(payload$unit)
+    ),
+    stage = "set_parameter_value"
   )
+  enforce_validation(
+    validation,
+    sprintf("Parameter update rejected for '%s'", path)
+  )
+  candidate_record$metadata$validation <- validation
+  assign(candidate_record$simulation_id, candidate_record, envir = simulations)
+  list(parameter = rxode_parameter_payload(candidate_record, path))
 }
 
 handle_run_simulation_sync <- function(payload) {
-  if (!has_ospsuite) stop("ospsuite package not available")
-  sim_id <- payload$simulationId
-  run_id <- payload$runId
-  if (is.null(run_id)) {
-    run_id <- paste0(sim_id, "_", format(Sys.time(), "%s"))
-  }
-  
-  sim <- simulations[[sim_id]]
-  if (is.null(sim)) stop(paste("Simulation not loaded:", sim_id))
-  
-  # Run the simulation without forcing specific outputs.
-  # We rely on the outputs already defined in the loaded PKML.
-  
-  results <- NULL
-  junk <- capture.output({
-    junk2 <- capture.output({
-      results <- ospsuite::runSimulations(simulations = list(sim))
-    }, type = "message")
-  }, type = "output")
-  
-  result_obj <- results[[1]]
-  
-  series_list <- list()
-  
-  # Retrieve all configured outputs
-  vals <- NULL
-  tryCatch({
-    vals <- ospsuite::getOutputValues(result_obj)
-  }, error = function(e) {
-    # No outputs or error retrieving them; continue with empty series
-  })
-  
-  if (!is.null(vals) && !is.null(vals$data)) {
-    time_vec <- vals$data$Time
-    # Decimate points to keep payload small
-    indices <- seq(1, length(time_vec), length.out = min(length(time_vec), 50))
-    
-    # Identify value columns (all except Time)
-    data_cols <- setdiff(colnames(vals$data), "Time")
-    
-    for (path in data_cols) {
-      val_vec <- vals$data[[path]]
-      unit <- vals$metaData[[path]]$unit
-      if (is.null(unit)) unit <- "unknown"
-      
-      points <- list()
-      for (i in indices) {
-        points[[length(points) + 1]] <- list(time = time_vec[i], value = val_vec[i])
-      }
-      series_list[[length(series_list) + 1]] <- list(
-        parameter = path,
-        unit = unit,
-        values = points
+  record <- simulation_record(safe_chr(payload$simulationId))
+  results_id <- safe_chr(payload$runId, sprintf(
+    "%s-run-%s",
+    record$simulation_id,
+    as.integer(as.numeric(Sys.time()))
+  ))
+
+  if (identical(record$backend, "ospsuite")) {
+    ensure_ospsuite()
+    output_selection <- ensure_ospsuite_output_selections(record$simulation)
+    existing_output_mode <- safe_chr(record$capabilities$outputSelectionMode)
+    if (identical(existing_output_mode, "observer-fallback") && identical(output_selection$mode, "declared")) {
+      output_selection$mode <- "observer-fallback"
+      output_selection$autoSelectedCount <- safe_num(
+        record$capabilities$outputSelectionCount,
+        output_selection$selectedCount
       )
+      output_selection$candidateCount <- output_selection$candidateCount %||%
+        output_selection$selectedCount
+      output_selection$selectedPaths <- output_selection$selectedPaths %||%
+        (record$capabilities$runtimeOutputPreview %||% list())
     }
+    record$capabilities$outputSelectionMode <- output_selection$mode
+    record$capabilities$outputSelectionCount <- output_selection$selectedCount
+    if (length(output_selection$selectedPaths) > 0) {
+      record$capabilities$runtimeOutputPreview <- utils::head(unlist(output_selection$selectedPaths), 5)
+    }
+    record$metadata$capabilities <- record$capabilities
+    validation <- ospsuite_validate_record(
+      record,
+      request = payload,
+      stage = "run_simulation_sync"
+    )
+    enforce_validation(
+      validation,
+      sprintf("Simulation request rejected for '%s'", record$simulation_id)
+    )
+    record$metadata$validation <- validation
+    assign(record$simulation_id, record, envir = simulations)
+    simulation_results <- suppressWarnings(runSimulation(record$simulation))
+    result <- list(
+      results_id = results_id,
+      simulation_id = record$simulation_id,
+      generated_at = now_utc(),
+      metadata = list(
+        sourceModel = basename(record$file_path),
+        engine = "ospsuite",
+        outputSelectionMode = output_selection$mode,
+        outputSelectionCount = output_selection$selectedCount,
+        validation = validation
+      ),
+      series = series_from_results(simulation_results)
+    )
+    assign(results_id, result, envir = results_store)
+    return(list(result = result))
   }
-  
-  result_payload <- list(
-    results_id = run_id,
-    simulation_id = sim_id,
-    generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ"),
-    series = series_list
+
+  validation <- rxode_validate_record(
+    record,
+    request = payload,
+    stage = "run_simulation_sync"
   )
-  
-  results_cache[[run_id]] <<- result_payload
-  
-  list(result = result_payload)
+  enforce_validation(
+    validation,
+    sprintf("Simulation request rejected for '%s'", record$simulation_id)
+  )
+  record$metadata$validation <- validation
+  assign(record$simulation_id, record, envir = simulations)
+  raw <- record$module_env$pbpk_run_simulation(
+    parameters = record$parameters,
+    simulation_id = record$simulation_id,
+    run_id = results_id,
+    request = payload
+  )
+  result_metadata <- raw$metadata %||% list(sourceModel = basename(record$file_path), engine = "rxode2")
+  result_metadata$validation <- validation
+  result <- list(
+    results_id = results_id,
+    simulation_id = record$simulation_id,
+    generated_at = now_utc(),
+    metadata = result_metadata,
+    series = normalize_series_payload(raw$series)
+  )
+  assign(results_id, result, envir = results_store)
+  list(result = result)
 }
 
 handle_get_results <- function(payload) {
-  run_id <- payload$resultsId
-  if (is.null(results_cache[[run_id]])) {
-    stop(paste("Results not found:", run_id))
+  list(result = result_record(safe_chr(payload$resultsId)))
+}
+
+handle_validate_simulation_request <- function(payload) {
+  record <- simulation_record(safe_chr(payload$simulationId))
+  stage <- safe_chr(payload$stage)
+  request <- payload$request %||% list()
+
+  validation <- if (identical(record$backend, "ospsuite")) {
+    ospsuite_validate_record(record, request = request, stage = stage)
+  } else {
+    rxode_validate_record(record, request = request, stage = stage)
   }
-  list(result = results_cache[[run_id]])
+
+  record$metadata$validation <- validation
+  assign(record$simulation_id, record, envir = simulations)
+
+  list(
+    simulationId = record$simulation_id,
+    backend = record$backend,
+    validation = validation,
+    profile = record$profile,
+    capabilities = record$capabilities
+  )
 }
 
-handle_health <- function() {
-  list(status = "ok", environment = list(ospsuite = has_ospsuite))
-}
+handle_run_population_simulation_sync <- function(payload) {
+  record <- simulation_record(safe_chr(payload$simulationId))
+  if (!identical(record$backend, "rxode2")) {
+    stop("Population simulations are only implemented for rxode2 models", call. = FALSE)
+  }
 
-# ------------------------------------------------------------------------------
-# 4. MAIN LOOP
-# ------------------------------------------------------------------------------
-input <- file("stdin", "r")
-while (TRUE) {
-  line <- readLines(input, n = 1, warn = FALSE)
-  if (length(line) == 0) break
-  
-  req <- tryCatch(jsonlite::fromJSON(line), error = function(e) NULL)
-  if (is.null(req) || is.null(req$action)) next
-  
-  response <- tryCatch({
-    if (req$action == "load_simulation") {
-      handle_load_simulation(req$payload)
-    } else if (req$action == "list_parameters") {
-      handle_list_parameters(req$payload)
-    } else if (req$action == "get_parameter_value") {
-      handle_get_parameter_value(req$payload)
-    } else if (req$action == "set_parameter_value") {
-      handle_set_parameter_value(req$payload)
-    } else if (req$action == "run_simulation_sync") {
-      handle_run_simulation_sync(req$payload)
-    } else if (req$action == "get_results") {
-      handle_get_results(req$payload)
-    } else if (req$action == "health") {
-      handle_health()
-    } else {
-      stop(paste("Unknown action:", req$action))
+  results_id <- safe_chr(payload$resultsId, sprintf(
+    "%s-pop-%s",
+    record$simulation_id,
+    as.integer(as.numeric(Sys.time()))
+  ))
+  cohort <- payload$cohort %||% list()
+  outputs <- payload$outputs %||% list()
+  validation <- rxode_validate_record(
+    record,
+    request = payload,
+    stage = "run_population_simulation_sync"
+  )
+  enforce_validation(
+    validation,
+    sprintf("Population request rejected for '%s'", record$simulation_id)
+  )
+  record$metadata$validation <- validation
+  assign(record$simulation_id, record, envir = simulations)
+  raw <- record$module_env$pbpk_run_population(
+    parameters = record$parameters,
+    simulation_id = record$simulation_id,
+    cohort = cohort,
+    outputs = outputs,
+    request = payload
+  )
+
+  chunks <- list()
+  for (index in seq_along(raw$chunks %||% list())) {
+    chunks[[length(chunks) + 1]] <- normalize_population_chunk(raw$chunks[[index]], index)
+  }
+
+  result <- list(
+    results_id = results_id,
+    simulation_id = record$simulation_id,
+    generated_at = now_utc(),
+    cohort = list(
+      size = as.integer(cohort$size %||% 1),
+      sampling = safe_chr(cohort$sampling),
+      seed = if (is.null(cohort$seed)) NULL else as.integer(cohort$seed),
+      covariates = cohort$covariates %||% list()
+    ),
+    aggregates = raw$aggregates %||% list(),
+    chunk_handles = chunks,
+    metadata = {
+      result_metadata <- raw$metadata %||% list(sourceModel = basename(record$file_path), engine = "rxode2")
+      result_metadata$validation <- validation
+      result_metadata
     }
-  }, error = function(e) {
-    list(error = list(code = "execution_error", message = e$message))
-  })
-  
-  write_response(response)
+  )
+  assign(results_id, result, envir = population_results_store)
+  list(result = result)
 }
-close(input)
-quit(status = 0)
+
+handle_get_population_results <- function(payload) {
+  list(result = population_result_record(safe_chr(payload$resultsId)))
+}
+
+dispatch <- function(action, payload) {
+  switch(
+    action,
+    load_simulation = handle_load_simulation(payload),
+    list_parameters = handle_list_parameters(payload),
+    get_parameter_value = handle_get_parameter_value(payload),
+    set_parameter_value = handle_set_parameter_value(payload),
+    run_simulation_sync = handle_run_simulation_sync(payload),
+    get_results = handle_get_results(payload),
+    validate_simulation_request = handle_validate_simulation_request(payload),
+    run_population_simulation_sync = handle_run_population_simulation_sync(payload),
+    get_population_results = handle_get_population_results(payload),
+    stop(sprintf("Unsupported action '%s'", action), call. = FALSE)
+  )
+}
+
+stdin_stream <- file("stdin")
+repeat {
+  input <- readLines(stdin_stream, n = 1, warn = FALSE)
+  if (length(input) == 0) {
+    break
+  }
+  if (!nzchar(trimws(input))) {
+    next
+  }
+  request <- tryCatch(
+    fromJSON(input, simplifyVector = FALSE),
+    error = function(exc) {
+      emit_error("InvalidInput", sprintf("Failed to parse request JSON: %s", exc$message))
+      NULL
+    }
+  )
+  if (is.null(request)) {
+    next
+  }
+  action <- safe_chr(request$action)
+  payload <- request$payload %||% list()
+  response <- tryCatch(
+    dispatch(action, payload),
+    error = function(exc) {
+      message_text <- conditionMessage(exc)
+      if (grepl("not loaded|not found", message_text, ignore.case = TRUE)) {
+        emit_error("NotFound", message_text)
+      } else {
+        emit_error("InteropError", message_text)
+      }
+      NULL
+    }
+  )
+  if (!is.null(response)) {
+    emit_json(response)
+  }
+}

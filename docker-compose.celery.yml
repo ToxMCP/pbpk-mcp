@@ -1,63 +1,75 @@
 services:
   redis:
     image: redis:7-alpine
-    restart: unless-stopped
     command: ["redis-server", "--save", "", "--appendonly", "yes"]
-    ports:
-      - "6379:6379"
+    restart: unless-stopped
     volumes:
       - redis-data:/data
 
   api:
+    image: pbpk_mcp-worker-rxode2:latest
     platform: linux/amd64
-    build: .
-    depends_on:
-      - redis
-    env_file:
-      - .env
-    environment:
-      JOB_BACKEND: celery
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
-    volumes:
-      - ./var:/app/var
-      - ./scripts:/app/scripts
-      - ./src:/app/src
+    command: ["uvicorn", "mcp_bridge.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+    restart: unless-stopped
     ports:
       - "8000:8000"
-      - "8002:8000"
-    command: ["uvicorn", "mcp_bridge.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-    restart: unless-stopped
-
-  worker:
-    platform: linux/amd64
-    build: .
     depends_on:
-      - redis
-    env_file:
-      - .env
-    environment:
+      redis:
+        condition: service_started
+    environment: &pbpk-common-env
+      MCP_MODEL_SEARCH_PATHS: /app/var
+      R_PATH: /usr/bin/R
+      R_HOME: /usr/lib/R
+      OSPSUITE_VERSION: "12.3.2"
+      OSPSUITE_LIBS: /usr/local/lib/R/site-library
+      DOTNET_GCHeapLimitPercent: "60"
+      DOTNET_GCServer: "1"
+      MALLOC_ARENA_MAX: "2"
+      AUTH_ALLOW_ANONYMOUS: "true"
+      ENVIRONMENT: development
+      ADAPTER_BACKEND: subprocess
+      ADAPTER_TO_THREAD: "true"
+      AUDIT_TRAIL_ENABLED: "true"
       JOB_BACKEND: celery
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
-      JOB_REGISTRY_PATH: /app/var/jobs/registry.json
-      CELERY_TASK_ALWAYS_EAGER: "false"
+      ADAPTER_TIMEOUT_SECONDS: "10"
       PYTHONPATH: /app/src
-    command: ["celery", "-A", "mcp_bridge.services.celery_app.celery_app", "worker", "--loglevel=info", "--concurrency=1"]
-    deploy:
-      resources:
-        limits:
-          memory: 4G
+      R_MAX_VSIZE: 2G
+      SERVICE_VERSION: "0.2.0"
     volumes:
-      - ./var:/app/var
       - ./scripts:/app/scripts
       - ./src:/app/src
+      - ./var:/app/var
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  worker:
+    image: pbpk_mcp-worker-rxode2:latest
+    platform: linux/amd64
+    command: ["celery", "-A", "mcp_bridge.services.celery_app.celery_app", "worker", "--loglevel=info", "--concurrency=1"]
     restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_started
+    environment:
+      <<: *pbpk-common-env
+      JOB_REGISTRY_PATH: /app/var/jobs/registry.json
+    volumes:
+      - ./scripts:/app/scripts
+      - ./src:/app/src
+      - ./var:/app/var
+    mem_limit: 4g
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'celery.*worker' >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
 
 volumes:
   redis-data:
-

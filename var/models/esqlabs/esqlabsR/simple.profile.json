@@ -1,0 +1,66 @@
+{
+  "contextOfUse": {
+    "status": "declared-by-sidecar",
+    "scientificPurpose": "Minimal MoBi mechanistic transfer-file example used to verify MCP integration against a small custom topology.",
+    "decisionContext": "Integration testing, regression checks, and basic MoBi runtime validation.",
+    "regulatoryUse": "not-for-decision-support",
+    "acceptableUncertainty": "Not applicable; this sidecar describes an integration fixture rather than a qualified predictive model.",
+    "confidenceLevelRequired": "Sufficient for runtime and topology smoke testing only.",
+    "repurposingAllowed": false,
+    "supportedQuestions": [
+      "Can the MCP load and run a small MoBi transfer file end to end?",
+      "Are simple custom molecules and compartments exposed correctly through the shared OSPSuite runtime?"
+    ],
+    "unsupportedQuestions": [
+      "Any translational, clinical, or regulatory pharmacokinetic use.",
+      "Substance-specific prediction or risk assessment."
+    ],
+    "sourceToolHint": "MoBi"
+  },
+  "applicabilityDomain": {
+    "type": "sidecar-declared",
+    "qualificationLevel": "integration-example",
+    "status": "fixture-characterized",
+    "sourceToolHint": "MoBi",
+    "compounds": [
+      "A",
+      "B"
+    ],
+    "tissues": [
+      "organism",
+      "liver"
+    ],
+    "summary": "Small MoBi transfer file with a minimal organism-liver topology and generic molecules A and B for integration and regression testing.",
+    "assumptions": [
+      "No explicit dosing application is declared in the example transfer file.",
+      "This model is treated as a runtime fixture rather than a scientifically qualified PBPK model."
+    ],
+    "exclusions": [
+      "Not intended for scientific decision support.",
+      "Not a qualified exposure or PK prediction model."
+    ]
+  },
+  "uncertainty": {
+    "status": "not-applicable-to-fixture",
+    "summary": "No uncertainty package is expected for this integration fixture.",
+    "missingEvidence": [
+      "Predictive qualification is intentionally out of scope for this model."
+    ]
+  },
+  "implementationVerification": {
+    "status": "basic-internal-checks",
+    "runtime": "ospsuite",
+    "verifiedChecks": [
+      "Transfer file accepted by the OSPSuite runtime",
+      "Project sidecar profile parsed successfully",
+      "Deterministic simulation smoke test completed in the live worker"
+    ],
+    "missingChecks": [
+      "Extended regression suite for MoBi-specific fixtures"
+    ]
+  },
+  "peerReview": {
+    "status": "not-applicable-to-fixture",
+    "summary": "External peer review is not declared because this model is maintained as an integration fixture."
+  }
+}
