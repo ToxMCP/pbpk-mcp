@@ -33,16 +33,16 @@ flowchart TD
     discover --> registry["Filesystem-backed model registry<br/>MCP_MODEL_SEARCH_PATHS"]
     load --> router["Model router<br/>backend selected from model type"]
 
-    router --> ospsuite["OSPSuite backend<br/>PK-Sim / MoBi `.pkml`"]
-    router --> rxode2["rxode2 backend<br/>MCP-ready `.R`"]
+    router --> ospsuite["OSPSuite backend<br/>PK-Sim / MoBi (.pkml)"]
+    router --> rxode2["rxode2 backend<br/>MCP-ready R (.R)"]
 
-    ospsuite --> pkml["`.pkml` model files<br/>optional `.profile.json` sidecars"]
-    rxode2 --> rmodels["`.R` model modules<br/>optional profile + validation hooks"]
+    ospsuite --> pkml[".pkml model files<br/>optional .profile.json sidecars"]
+    rxode2 --> rmodels[".R model modules<br/>optional profile and validation hooks"]
 
     validate --> qualification["OECD-oriented qualification layer<br/>context of use / applicability domain / uncertainty / verification / review"]
     qualification --> run
 
-    mmadonna["Berkeley Madonna `.mmd`"] --> convert["Conversion workflow"]
+    mmadonna["Berkeley Madonna (.mmd)"] --> convert["Conversion workflow"]
     convert --> pkml
     convert --> rmodels
 

@@ -47,16 +47,16 @@ flowchart TD
     api --> results["get_job_status / get_results / get_population_results"]
 
     load --> router["Model Router<br/>select backend from model type"]
-    router --> ospsuite["OSPSuite Backend<br/>PK-Sim / MoBi `.pkml`"]
-    router --> rxode2["rxode2 Backend<br/>custom PBPK / population `.R`"]
+    router --> ospsuite["OSPSuite Backend<br/>PK-Sim / MoBi (.pkml)"]
+    router --> rxode2["rxode2 Backend<br/>custom PBPK / population R (.R)"]
 
-    ospsuite --> pkml["`.pkml` model files<br/>optional JSON profile sidecars"]
-    rxode2 --> rmodels["MCP-ready `.R` model modules<br/>self-declared model profile"]
+    ospsuite --> pkml[".pkml model files<br/>optional JSON profile sidecars"]
+    rxode2 --> rmodels["MCP-ready R model modules<br/>self-declared model profile"]
 
     validate --> profile["Scientific Qualification Layer<br/>context of use / applicability domain / uncertainty / verification / review"]
     profile --> run
 
-    mmadonna["Berkeley Madonna `.mmd`"] --> convert["Conversion Workflow"]
+    mmadonna["Berkeley Madonna (.mmd)"] --> convert["Conversion Workflow"]
     convert --> pkml
     convert --> rmodels
 
