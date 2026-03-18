@@ -10,7 +10,7 @@ Please do not open public issues for security vulnerabilities.
 
 Use GitHub Security Advisories to report issues privately:
 
-- https://github.com/senseibelbi/PBPK_MCP/security/advisories/new
+- https://github.com/ToxMCP/pbpk-mcp/security/advisories/new
 
 When reporting, include:
 
