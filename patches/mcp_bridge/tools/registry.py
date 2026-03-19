@@ -82,6 +82,11 @@ from mcp.tools.validate_simulation_request import (
     ValidateSimulationRequestResponse,
     validate_simulation_request,
 )
+from mcp.tools.validate_model_manifest import (
+    ValidateModelManifestRequest,
+    ValidateModelManifestResponse,
+    validate_model_manifest,
+)
 
 
 DependencyName = str
@@ -145,6 +150,15 @@ def get_tool_registry() -> Dict[str, ToolDescriptor]:
             response_model=ValidateSimulationRequestResponse,
             handler=validate_simulation_request,
             dependencies=("adapter",),
+            roles=_standard_roles("viewer", "operator", "admin"),
+        ),
+        "validate_model_manifest": ToolDescriptor(
+            name="validate_model_manifest",
+            description="Run a static manifest check for a supported model file before loading it, including qualification-state and metadata coverage hints.",
+            request_model=ValidateModelManifestRequest,
+            response_model=ValidateModelManifestResponse,
+            handler=validate_model_manifest,
+            dependencies=(),
             roles=_standard_roles("viewer", "operator", "admin"),
         ),
         "export_oecd_report": ToolDescriptor(

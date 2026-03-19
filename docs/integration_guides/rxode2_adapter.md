@@ -71,15 +71,18 @@ Current convention:
 - `capabilities` reports operational MCP behavior
 - `profile` reports scientific/context-of-use metadata
 - `validation.assessment` explains whether the request is only inside runtime guardrails or actually backed by stronger qualification evidence
+- `validation.assessment.qualificationState` derives an explicit qualification label such as `exploratory`, `research-use`, `regulatory-candidate`, or `qualified-within-context`
 
 Current MCP surfaces that use this data:
 
+- `validate_model_manifest`
+  - runs a static pre-load manifest inspection for a supported `.R` file
 - `load_simulation`
   - returns `capabilities`, `profile`, and the default `validation` payload for the loaded model
 - `validate_simulation_request`
   - runs preflight validation without triggering execution
 - `export_oecd_report`
-  - returns a structured dossier/report with `profile`, `validation`, `oecdChecklist`, `performanceEvidence`, and an optional parameter table
+  - returns a structured dossier/report with `qualificationState`, `profile`, `validation`, `oecdChecklist`, `performanceEvidence`, and an optional parameter table
 - `run_simulation` / `get_results`
   - preserve the validation assessment on deterministic result metadata
 
@@ -177,6 +180,8 @@ Example shape of the enriched load response:
 
 The `validation.assessment` payload now also includes:
 
+- `qualificationState`
+  - derived qualification label and readiness summary
 - `oecdChecklist`
   - structured per-dimension OECD-style metadata coverage
 - `oecdChecklistScore`

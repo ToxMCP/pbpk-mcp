@@ -26,6 +26,7 @@ flowchart LR
 
     subgraph workflow["User-facing workflow"]
         discover["discover_models<br/>/mcp/resources/models"]
+        manifest["validate_model_manifest"]
         load["load_simulation"]
         validate["validate_simulation_request"]
         report["export_oecd_report"]
@@ -34,6 +35,7 @@ flowchart LR
     end
 
     api --> discover
+    api --> manifest
     api --> load
     api --> validate
     api --> report
@@ -41,6 +43,7 @@ flowchart LR
     api --> results
 
     discover --> registry["Filesystem-backed model registry<br/>MCP_MODEL_SEARCH_PATHS"]
+    manifest --> registry
     load --> router["Model router<br/>backend selected from model type"]
 
     subgraph backends["Execution backends"]
@@ -80,7 +83,9 @@ For the runtime/deployment view behind this diagram, see [`docs/architecture/dua
 
 - added dual-backend routing for `.pkml` and MCP-ready `.R`
 - added generic model discovery from disk through `discover_models` and `/mcp/resources/models`
+- added `validate_model_manifest` for static manifest checks before load
 - added OECD-style model `profile` metadata and preflight validation through `validate_simulation_request`
+- added explicit derived `qualificationState` labels such as `exploratory`, `research-use`, `regulatory-candidate`, and `qualified-within-context`
 - added explicit OECD-style `modelPerformance` and `parameterProvenance` profile sections
 - added `export_oecd_report` for structured dossier/report export across supported backends
 - added sidecar-backed scientific metadata for OSPSuite `.pkml` models
@@ -113,14 +118,16 @@ Important boundary:
 The intended user workflow is:
 
 1. discover a model
-2. load it
-3. validate the intended use
-4. run deterministic or population simulation
-5. retrieve results
+2. validate the model manifest
+3. load it
+4. validate the intended use
+5. run deterministic or population simulation
+6. retrieve results
 
 The main enhanced MCP surfaces are:
 
 - `discover_models`
+- `validate_model_manifest`
 - `load_simulation`
 - `validate_simulation_request`
 - `run_simulation`
@@ -166,12 +173,14 @@ The server distinguishes between:
 
 The main preflight surface is:
 
+- `validate_model_manifest`
 - `validate_simulation_request`
 - `export_oecd_report`
 
 It returns:
 
 - normalized errors and warnings
+- `qualificationState` summaries such as `exploratory`, `illustrative-example`, `research-use`, `regulatory-candidate`, and `qualified-within-context`
 - `validation.assessment`
 - readiness labels such as `runtime-only`, `illustrative-only`, or `research-use`
 - a structured `oecdChecklist`
@@ -183,6 +192,28 @@ This is the key distinction for public positioning:
 
 - executable does not mean qualified
 - in-bounds does not mean suitable for regulatory or risk-assessment use
+
+## Manifest Validation
+
+PBPK MCP now distinguishes between:
+
+- static manifest validation before load
+  - `validate_model_manifest`
+- runtime request validation after load
+  - `validate_simulation_request`
+
+`validate_model_manifest` is intended for curation and release gating. It inspects:
+
+- whether a `.pkml` model has a sidecar-backed scientific profile
+- whether an `.R` model exposes the expected PBPK hooks
+- whether key OECD-oriented profile sections are declared
+- an explicit derived `qualificationState`
+
+For local static checks, use:
+
+```bash
+python3 scripts/validate_model_manifests.py --path var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R
+```
 
 ## What Counts As A Supported R Model
 
@@ -289,6 +320,12 @@ Bridge and profile normalization tests:
 python3 -m unittest -v tests/test_oecd_bridge.py
 ```
 
+Static manifest-validation tests:
+
+```bash
+python3 -m unittest -v tests/test_model_manifest.py
+```
+
 Live OECD smoke tests:
 
 ```bash
@@ -299,6 +336,12 @@ Release-readiness check against the running local stack:
 
 ```bash
 python3 scripts/release_readiness_check.py
+```
+
+Static manifest scan for targeted models:
+
+```bash
+python3 scripts/validate_model_manifests.py --path var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R --path var/models/esqlabs/pregnancy-neonates-batch-run/Pregnant_simulation_PKSim.pkml
 ```
 
 Live model discovery tests:
@@ -322,6 +365,7 @@ Current hard limitations:
 - only `.pkml` and MCP-ready `.R` are supported runtime formats
 - PK-Sim / MoBi project files such as `.pksim5` are not loaded directly and should be exported to `.pkml`
 - an `.R` file can be discoverable without being runnable if it does not implement the required contract
+- `validate_model_manifest` is a static pre-load check and does not by itself prove executable correctness or scientific validity
 - not every model ships a complete scientific qualification package
 - many example sidecars are still illustrative rather than dossier-grade
 - backend capabilities are intentionally not identical across `ospsuite` and `rxode2`
@@ -347,8 +391,11 @@ Key implementation points:
 
 - [`scripts/ospsuite_bridge.R`](scripts/ospsuite_bridge.R)
 - [`patches/mcp_bridge/model_catalog.py`](patches/mcp_bridge/model_catalog.py)
+- [`patches/mcp_bridge/model_manifest.py`](patches/mcp_bridge/model_manifest.py)
 - [`patches/mcp/tools/discover_models.py`](patches/mcp/tools/discover_models.py)
+- [`patches/mcp/tools/validate_model_manifest.py`](patches/mcp/tools/validate_model_manifest.py)
 - [`patches/mcp/tools/validate_simulation_request.py`](patches/mcp/tools/validate_simulation_request.py)
+- [`scripts/validate_model_manifests.py`](scripts/validate_model_manifests.py)
 - [`docker-compose.celery.yml`](docker-compose.celery.yml)
 
 Supporting docs:

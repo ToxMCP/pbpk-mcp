@@ -66,6 +66,11 @@ def run_bridge_tests() -> None:
         cwd=WORKSPACE_ROOT,
         check=True,
     )
+    subprocess.run(
+        ["python3", "-m", "unittest", "-v", "tests/test_model_manifest.py"],
+        cwd=WORKSPACE_ROOT,
+        check=True,
+    )
 
 
 def assert_true(condition: bool, message: str) -> None:
@@ -92,6 +97,21 @@ def run_release_check(base_url: str, *, skip_unit_tests: bool = False) -> dict:
         "cisplatinMatches": len(cisplatin_matches),
         "firstBackend": cisplatin_matches[0]["backend"],
     }
+
+    manifest_check = call_tool(
+        base_url,
+        "validate_model_manifest",
+        {"filePath": CISPLATIN_MODEL},
+        timeout=60,
+    )
+    assert_true(
+        manifest_check["manifest"]["qualificationState"]["state"] == "research-use",
+        f"Unexpected cisplatin manifest qualification state: {manifest_check}",
+    )
+    assert_true(
+        manifest_check["manifest"]["manifestStatus"] in {"valid", "partial"},
+        f"Cisplatin manifest should be statically inspectable: {manifest_check}",
+    )
 
     cis_id = f"release-cis-{uuid4().hex[:8]}"
     cis_load = call_tool(
@@ -164,6 +184,7 @@ def run_release_check(base_url: str, *, skip_unit_tests: bool = False) -> dict:
 
     summary["cisplatin"] = {
         "simulationId": cis_id,
+        "manifestState": manifest_check["manifest"]["qualificationState"]["state"],
         "validationDecision": cis_validation["validation"]["assessment"]["decision"],
         "reportChecklistScore": cis_report_payload["oecdChecklistScore"],
         "performanceChecklistStatus": cis_report_payload["oecdChecklist"]["modelPerformanceAndPredictivity"]["status"],

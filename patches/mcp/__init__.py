@@ -47,6 +47,11 @@ from .tools.validate_simulation_request import (
     ValidateSimulationRequestResponse,
     validate_simulation_request,
 )
+from .tools.validate_model_manifest import (
+    ValidateModelManifestRequest,
+    ValidateModelManifestResponse,
+    validate_model_manifest,
+)
 
 __all__ = [
     "SessionRegistry",
@@ -90,4 +95,7 @@ __all__ = [
     "ValidateSimulationRequestRequest",
     "ValidateSimulationRequestResponse",
     "validate_simulation_request",
+    "ValidateModelManifestRequest",
+    "ValidateModelManifestResponse",
+    "validate_model_manifest",
 ]

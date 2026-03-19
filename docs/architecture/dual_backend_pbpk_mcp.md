@@ -19,6 +19,7 @@ PBPK MCP should remain one user-facing MCP product.
 Users should think in terms of:
 
 - discover a model
+- validate the model manifest
 - load it
 - validate the intended use
 - run the model
@@ -42,6 +43,7 @@ flowchart LR
 
     subgraph workflow["User-facing workflow"]
         discover["discover_models<br/>/mcp/resources/models"]
+        manifest["validate_model_manifest"]
         load["load_simulation"]
         validate["validate_simulation_request"]
         report["export_oecd_report"]
@@ -50,6 +52,7 @@ flowchart LR
     end
 
     api --> discover
+    api --> manifest
     api --> load
     api --> validate
     api --> report
@@ -57,6 +60,7 @@ flowchart LR
     api --> results
 
     discover --> registry["Filesystem-backed model registry<br/>MCP_MODEL_SEARCH_PATHS"]
+    manifest --> registry
     load --> router["Model router<br/>backend selected from model type"]
 
     subgraph backends["Execution backends"]
@@ -194,6 +198,7 @@ Qualification-oriented metadata such as:
 - `implementationVerification`
 - `peerReview`
 - `profileSource`
+- `qualificationState`
 
 ### Validation assessment
 
@@ -249,6 +254,7 @@ These are intended to remain shared across both backends:
 | Tool | Purpose | `ospsuite` | `rxode2` |
 | --- | --- | --- | --- |
 | `discover_models` | Discover supported model files on disk | Yes | Yes |
+| `validate_model_manifest` | Run a static model-manifest check before load | Yes | Yes |
 | `load_simulation` | Load a model by file path | Yes | Yes |
 | `list_parameters` | Enumerate parameters | Yes | Yes |
 | `get_parameter_value` | Read one parameter | Yes | Yes |
@@ -363,8 +369,17 @@ It aims to support:
 
 Current MCP surfaces for this layer:
 
+- `validate_model_manifest`
 - `validate_simulation_request`
 - `export_oecd_report`
+
+The qualification layer now also derives an explicit `qualificationState`, such as:
+
+- `exploratory`
+- `illustrative-example`
+- `research-use`
+- `regulatory-candidate`
+- `qualified-within-context`
 
 The important boundary remains:
 
@@ -384,6 +399,7 @@ The important boundary remains:
 - population simulation is currently implemented for `rxode2`, not generic OSPSuite `.pkml`
 - backend capability sets are intentionally not identical
 - some OSPSuite transfer files still rely on runtime output-selection fallbacks
+- static manifest validation for `.R` models is text and hook based before load, not a semantic proof of execution correctness
 
 ### Qualification limitations
 

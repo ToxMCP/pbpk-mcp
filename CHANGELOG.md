@@ -4,7 +4,16 @@ All notable changes to this project should be documented in this file.
 
 ## Unreleased
 
-- No unreleased changes documented yet.
+### Added
+
+- `validate_model_manifest` for static pre-load qualification and completeness checks on supported `.pkml` and MCP-ready `.R` models
+- explicit `qualificationState` classification in validation responses and OECD dossier exports
+- `scripts/validate_model_manifests.py` for release-gating and batch manifest checks across model inventories
+
+### Changed
+
+- extended the OECD-oriented bridge layer to derive reusable qualification-state labels instead of only checklist and readiness summaries
+- tightened publication and release-readiness guidance around model manifest completeness and qualification metadata coverage
 
 ## v0.2.3 - 2026-03-19
 

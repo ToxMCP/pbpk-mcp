@@ -9,6 +9,7 @@ Current contract version:
 Applied tools:
 
 - `discover_models`
+- `validate_model_manifest`
 - `load_simulation`
 - `validate_simulation_request`
 - `export_oecd_report`
@@ -32,14 +33,17 @@ Model-bound enhanced responses also flatten backend information when available:
 ## Tool-Specific Notes
 
 - `load_simulation`
-  - returns `simulationId`, `backend`, `metadata`, `capabilities`, `profile`, `validation`, and `warnings`
+  - returns `simulationId`, `backend`, `metadata`, `capabilities`, `profile`, `validation`, `qualificationState`, and `warnings`
 - `discover_models`
   - returns paginated discoverable model entries from disk, including `filePath`, `backend`, `discoveryState`, and `loadedSimulationIds`
+- `validate_model_manifest`
+  - returns `filePath`, `backend`, `runtimeFormat`, and `manifest`
+  - `manifest` includes `manifestStatus`, `qualificationState`, section coverage, and static issues
 - `validate_simulation_request`
-  - returns `simulationId`, `backend`, `validation`, `profile`, `capabilities`, and `warnings`
+  - returns `simulationId`, `backend`, `validation`, `profile`, `capabilities`, `qualificationState`, and `warnings`
 - `export_oecd_report`
-  - returns `simulationId`, `backend`, `generatedAt`, and `report`
-  - `report` includes `profile`, `validation`, `oecdChecklist`, `oecdChecklistScore`, `missingEvidence`, `performanceEvidence`, and an optional `parameterTable`
+  - returns `simulationId`, `backend`, `generatedAt`, `qualificationState`, and `report`
+  - `report` includes `qualificationState`, `profile`, `validation`, `oecdChecklist`, `oecdChecklistScore`, `missingEvidence`, `performanceEvidence`, and an optional `parameterTable`
 - `get_job_status`
   - returns top-level `jobId`, `status`, `resultId`, and `resultHandle.resultsId`
   - still includes nested `job` for backward compatibility

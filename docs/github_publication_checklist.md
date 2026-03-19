@@ -8,6 +8,8 @@
 - confirm example models included in the repo are intended for public distribution
 - confirm no credentials, tokens, or machine-specific paths remain in docs or scripts
 - run `python3 -m unittest -v tests/test_oecd_bridge.py`
+- run `python3 -m unittest -v tests/test_model_manifest.py`
+- run `python3 scripts/validate_model_manifests.py --path var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R --path var/models/esqlabs/pregnancy-neonates-batch-run/Pregnant_simulation_PKSim.pkml`
 - run `python3 scripts/release_readiness_check.py`
 
 ## Public Positioning

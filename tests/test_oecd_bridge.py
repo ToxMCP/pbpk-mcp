@@ -190,6 +190,8 @@ class OecdBridgeTests(unittest.TestCase):
         self.assertEqual(checklist["implementationVerification"]["status"], "declared")
         self.assertEqual(checklist["peerReviewAndPriorUse"]["status"], "missing")
         self.assertEqual(checklist["reportingAndTraceability"]["status"], "declared")
+        self.assertEqual(assessment["qualificationState"]["state"], "research-use")
+        self.assertFalse(assessment["qualificationState"]["riskAssessmentReady"])
 
     def test_normalize_parameter_catalog_preserves_provenance_fields(self) -> None:
         payload = run_r_json(
@@ -236,6 +238,7 @@ class OecdBridgeTests(unittest.TestCase):
 
         checklist = payload["assessment"]["oecdChecklist"]
         self.assertEqual(checklist["parameterizationAndProvenance"]["status"], "missing")
+        self.assertEqual(payload["assessment"]["qualificationState"]["state"], "exploratory")
 
     def test_ospsuite_profile_marks_sidecar_source(self) -> None:
         example_model = (
@@ -365,6 +368,7 @@ class OecdBridgeTests(unittest.TestCase):
 
         self.assertEqual(payload["reportVersion"], "pbpk-oecd-report.v1")
         self.assertEqual(payload["oecdChecklist"]["modelPerformanceAndPredictivity"]["status"], "partial")
+        self.assertEqual(payload["qualificationState"]["state"], "research-use")
         self.assertEqual(payload["performanceEvidence"]["included"], True)
         self.assertEqual(payload["performanceEvidence"]["returnedRows"], 0)
         self.assertEqual(payload["parameterTable"]["source"], "parameter_catalog")

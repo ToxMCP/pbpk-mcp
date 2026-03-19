@@ -46,6 +46,7 @@ class ValidateSimulationRequestResponse(BaseModel):
     validation: dict[str, Any] = Field(default_factory=dict)
     profile: dict[str, Any] = Field(default_factory=dict)
     capabilities: dict[str, Any] = Field(default_factory=dict)
+    qualification_state: dict[str, Any] | None = Field(default=None, alias="qualificationState")
     warnings: list[str] = Field(default_factory=list)
 
     @classmethod
@@ -58,6 +59,12 @@ class ValidateSimulationRequestResponse(BaseModel):
         profile_payload = dict(profile) if isinstance(profile, Mapping) else {}
         capabilities = payload.get("capabilities")
         capabilities_payload = dict(capabilities) if isinstance(capabilities, Mapping) else {}
+        assessment = validation_payload.get("assessment") if isinstance(validation_payload, Mapping) else None
+        qualification_state = (
+            dict(assessment.get("qualificationState"))
+            if isinstance(assessment, Mapping) and isinstance(assessment.get("qualificationState"), Mapping)
+            else None
+        )
         return cls(
             tool=TOOL_NAME,
             contractVersion=CONTRACT_VERSION,
@@ -66,6 +73,7 @@ class ValidateSimulationRequestResponse(BaseModel):
             validation=validation_payload,
             profile=profile_payload,
             capabilities=capabilities_payload,
+            qualificationState=qualification_state,
             warnings=_validation_warnings(validation_payload),
         )
 

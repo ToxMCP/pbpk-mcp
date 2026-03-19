@@ -90,6 +90,7 @@ class LoadSimulationResponse(BaseModel):
     capabilities: dict[str, object] = Field(default_factory=dict)
     profile: dict[str, object] = Field(default_factory=dict)
     validation: dict[str, object] | None = None
+    qualification_state: dict[str, object] | None = Field(default=None, alias="qualificationState")
     warnings: list[str] = Field(default_factory=list)
 
     @classmethod
@@ -106,6 +107,12 @@ class LoadSimulationResponse(BaseModel):
         capability_payload = dict(capabilities) if isinstance(capabilities, Mapping) else {}
         profile_payload = dict(profile) if isinstance(profile, Mapping) else {}
         validation_payload = dict(validation) if isinstance(validation, Mapping) else None
+        assessment = validation_payload.get("assessment") if isinstance(validation_payload, Mapping) else None
+        qualification_state = (
+            dict(assessment.get("qualificationState"))
+            if isinstance(assessment, Mapping) and isinstance(assessment.get("qualificationState"), Mapping)
+            else None
+        )
         warning_messages = list(warnings or [])
         warning_messages.extend(_validation_warnings(validation_payload))
         return cls(
@@ -117,6 +124,7 @@ class LoadSimulationResponse(BaseModel):
             capabilities=capability_payload,
             profile=profile_payload,
             validation=validation_payload,
+            qualificationState=qualification_state,
             warnings=warning_messages,
         )
 

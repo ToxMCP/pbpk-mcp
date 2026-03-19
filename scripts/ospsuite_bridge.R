@@ -1144,6 +1144,122 @@ profile_oecd_readiness <- function(profile, capabilities = list()) {
   list(level = "structured-but-unqualified", confidence = "low")
 }
 
+derive_qualification_state <- function(profile, capabilities = list(), assessment = list()) {
+  qualification <- normalize_context_token(profile$applicabilityDomain$qualificationLevel)
+  profile_source <- safe_chr(profile$profileSource$type)
+  scientific_profile <- isTRUE(capabilities$scientificProfile) &&
+    !identical(profile_source, "bridge-default")
+  checklist <- assessment$oecdChecklist %||% profile_oecd_checklist(profile, capabilities)
+  checklist_score <- safe_num(
+    assessment$oecdChecklistScore,
+    profile_oecd_checklist_score(checklist)
+  )
+  missing_evidence <- normalize_text_values(
+    assessment$missingEvidence %||% profile_missing_evidence(profile, capabilities)
+  )
+  missing_count <- length(missing_evidence)
+  within_declared_context <- !identical(
+    safe_chr(assessment$decision),
+    "outside-declared-profile"
+  )
+
+  evidence_status <- if (missing_count == 0 && checklist_score >= 1) {
+    "complete"
+  } else if (missing_count <= 2 && checklist_score >= 0.75) {
+    "substantial"
+  } else if (checklist_score >= 0.5) {
+    "partial"
+  } else {
+    "minimal"
+  }
+
+  if (!scientific_profile) {
+    state <- "exploratory"
+    label <- "Exploratory"
+    summary <- paste(
+      "Runtime support is available, but no model-specific scientific profile is declared."
+    )
+    risk_ready <- FALSE
+  } else if (!is.null(qualification) && qualification %in% c(
+    "demo-only",
+    "illustrative-example",
+    "integration-example"
+  )) {
+    state <- "illustrative-example"
+    label <- "Illustrative example"
+    summary <- paste(
+      "The model is positioned as an example or integration fixture rather than a qualified dossier."
+    )
+    risk_ready <- FALSE
+  } else if (!is.null(qualification) && qualification %in% c(
+    "research-use",
+    "research-only",
+    "runtime-guardrails",
+    "runtime-load-verified"
+  )) {
+    state <- "research-use"
+    label <- "Research use"
+    summary <- paste(
+      "The model declares a research-oriented context of use and should not be treated as regulatory-ready."
+    )
+    risk_ready <- FALSE
+  } else if (!is.null(qualification) && qualification %in% c(
+    "fit-for-purpose",
+    "qualified",
+    "externally-qualified",
+    "regulatory-use",
+    "regulatory-qualified"
+  )) {
+    if (within_declared_context && checklist_score >= 0.85 && missing_count <= 1) {
+      state <- "qualified-within-context"
+      label <- "Qualified within context"
+      summary <- paste(
+        "The model declares a qualification-oriented context and the attached metadata are",
+        "substantially complete for that declared context."
+      )
+      risk_ready <- TRUE
+    } else {
+      state <- "regulatory-candidate"
+      label <- "Regulatory candidate"
+      summary <- paste(
+        "The model targets qualification-oriented use, but metadata completeness or request alignment",
+        "remain insufficient for a stronger claim."
+      )
+      risk_ready <- FALSE
+    }
+  } else if (checklist_score >= 0.75 && scientific_profile) {
+    state <- "regulatory-candidate"
+    label <- "Regulatory candidate"
+    summary <- paste(
+      "The model profile is structured enough to mature toward qualification, but the declared",
+      "qualification state remains incomplete."
+    )
+    risk_ready <- FALSE
+  } else {
+    state <- "research-use"
+    label <- "Research use"
+    summary <- paste(
+      "The model has a scientific profile, but its current declared metadata do not support stronger",
+      "qualification claims."
+    )
+    risk_ready <- FALSE
+  }
+
+  list(
+    state = state,
+    label = label,
+    summary = summary,
+    qualificationLevel = safe_chr(profile$applicabilityDomain$qualificationLevel, "unreported"),
+    profileSource = safe_chr(profile$profileSource$type, "unreported"),
+    withinDeclaredContext = within_declared_context,
+    scientificProfile = scientific_profile,
+    riskAssessmentReady = risk_ready,
+    checklistScore = checklist_score,
+    missingEvidenceCount = missing_count,
+    evidenceStatus = evidence_status
+  )
+}
+
 profile_assessment_warnings <- function(profile, capabilities = list()) {
   warnings <- list()
   qualification_token <- normalize_context_token(profile$applicabilityDomain$qualificationLevel)
@@ -1289,6 +1405,11 @@ with_profile_assessment <- function(validation, profile, capabilities = list()) 
   merged_assessment$blockingIssues <- append_missing_evidence(
     base_assessment$blockingIssues,
     existing$blockingIssues
+  )
+  merged_assessment$qualificationState <- derive_qualification_state(
+    profile,
+    capabilities,
+    merged_assessment
   )
 
   normalized$assessment <- merged_assessment
@@ -2053,6 +2174,8 @@ build_oecd_report <- function(
     generatedAt = now_utc(),
     simulationId = record$simulation_id,
     backend = record$backend,
+    qualificationState = assessment$qualificationState %||%
+      derive_qualification_state(record$profile, record$capabilities, assessment),
     model = list(
       name = safe_chr(record$metadata$name, basename(record$file_path)),
       filePath = record$file_path,

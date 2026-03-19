@@ -54,12 +54,14 @@ Unspecified sections fall back to the bridge defaults for OSPSuite `.pkml` model
 
 When a sidecar is found:
 
+- `validate_model_manifest` can inspect the sidecar statically before the model is loaded
 - `load_simulation` returns the merged `profile`
 - `capabilities.scientificProfile` becomes `true`
 - `capabilities.applicabilityDomain` mirrors the merged profile domain
 - `profile.profileSource.type` is set to `sidecar`
 - `validate_simulation_request` can compare a requested context of use or domain hint against the declared sidecar metadata before execution
 - `export_oecd_report` can bundle the merged sidecar profile with a live validation assessment and runtime-derived parameter table
+- `qualificationState` is derived from the declared qualification level plus dossier-section coverage
 - `validation.assessment.oecdChecklist` reports per-dimension OECD-style metadata coverage
 - `validation.assessment.oecdChecklistScore` summarizes that coverage numerically
 
@@ -72,6 +74,7 @@ When a `.pkml` file declares an empty `OutputSelections` block:
 
 When no sidecar is found:
 
+- `validate_model_manifest` reports the transfer file as `exploratory`
 - the bridge returns the OSPSuite default profile
 - `capabilities.scientificProfile` remains `false`
 - `profile.profileSource.type` is `bridge-default`

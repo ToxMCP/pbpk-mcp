@@ -22,6 +22,10 @@ PATCH_FILES = (
         "/usr/local/lib/python3.11/site-packages/mcp_bridge/model_catalog.py",
     ),
     (
+        WORKSPACE_ROOT / "patches" / "mcp_bridge" / "model_manifest.py",
+        "/usr/local/lib/python3.11/site-packages/mcp_bridge/model_manifest.py",
+    ),
+    (
         WORKSPACE_ROOT / "patches" / "mcp_bridge" / "routes" / "resources.py",
         "/usr/local/lib/python3.11/site-packages/mcp_bridge/routes/resources.py",
     ),
@@ -44,6 +48,10 @@ PATCH_FILES = (
     (
         WORKSPACE_ROOT / "patches" / "mcp" / "tools" / "export_oecd_report.py",
         "/usr/local/lib/python3.11/site-packages/mcp/tools/export_oecd_report.py",
+    ),
+    (
+        WORKSPACE_ROOT / "patches" / "mcp" / "tools" / "validate_model_manifest.py",
+        "/usr/local/lib/python3.11/site-packages/mcp/tools/validate_model_manifest.py",
     ),
     (
         WORKSPACE_ROOT / "patches" / "mcp" / "tools" / "get_results.py",
@@ -112,12 +120,14 @@ def verify_python(container: str) -> None:
                 "'/usr/local/lib/python3.11/site-packages/mcp/__init__.py', "
                 "'/usr/local/lib/python3.11/site-packages/mcp_bridge/adapter/ospsuite.py', "
                 "'/usr/local/lib/python3.11/site-packages/mcp_bridge/model_catalog.py', "
+                "'/usr/local/lib/python3.11/site-packages/mcp_bridge/model_manifest.py', "
                 "'/usr/local/lib/python3.11/site-packages/mcp_bridge/routes/resources.py', "
                 "'/usr/local/lib/python3.11/site-packages/mcp_bridge/tools/registry.py', "
                 "'/usr/local/lib/python3.11/site-packages/mcp/tools/load_simulation.py', "
                 "'/usr/local/lib/python3.11/site-packages/mcp/tools/get_job_status.py', "
                 "'/usr/local/lib/python3.11/site-packages/mcp/tools/discover_models.py', "
                 "'/usr/local/lib/python3.11/site-packages/mcp/tools/export_oecd_report.py', "
+                "'/usr/local/lib/python3.11/site-packages/mcp/tools/validate_model_manifest.py', "
                 "'/usr/local/lib/python3.11/site-packages/mcp/tools/get_results.py', "
                 "'/usr/local/lib/python3.11/site-packages/mcp/tools/validate_simulation_request.py'"
                 "]; "

@@ -96,6 +96,7 @@ class OecdLiveStackTests(unittest.TestCase):
         self.assertEqual(validation_payload["tool"], "validate_simulation_request")
         self.assertEqual(validation_payload["contractVersion"], CONTRACT_VERSION)
         self.assertEqual(validation_payload["backend"], "rxode2")
+        self.assertEqual(validation_payload["qualificationState"]["state"], "research-use")
         validation = validation_payload["validation"]
         self.assertTrue(validation["ok"])
         self.assertEqual(validation["assessment"]["decision"], "within-declared-guardrails")
@@ -168,9 +169,11 @@ class OecdLiveStackTests(unittest.TestCase):
         self.assertEqual(report_payload["tool"], "export_oecd_report")
         self.assertEqual(report_payload["contractVersion"], CONTRACT_VERSION)
         self.assertEqual(report_payload["backend"], "rxode2")
+        self.assertEqual(report_payload["qualificationState"]["state"], "research-use")
         report = report_payload["report"]
         self.assertEqual(report["reportVersion"], "pbpk-oecd-report.v1")
         self.assertEqual(report["validation"]["assessment"]["decision"], "within-declared-guardrails")
+        self.assertEqual(report["qualificationState"]["state"], "research-use")
         self.assertIn("modelPerformanceAndPredictivity", report["oecdChecklist"])
         self.assertEqual(report["oecdChecklist"]["modelPerformanceAndPredictivity"]["status"], "partial")
         self.assertEqual(report["performanceEvidence"]["included"], True)
@@ -178,6 +181,25 @@ class OecdLiveStackTests(unittest.TestCase):
         self.assertEqual(report["parameterTable"]["included"], True)
         self.assertLessEqual(report["parameterTable"]["returnedRows"], 5)
         self.assertGreater(report["parameterTable"]["matchedRows"], 0)
+
+    def test_validate_model_manifest_reports_static_manifest_state(self) -> None:
+        response = call_tool(
+            {
+                "tool": "validate_model_manifest",
+                "arguments": {
+                    "filePath": "/app/var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R",
+                },
+            }
+        )
+        self.assertEqual(response["status"], 200)
+        payload = response["body"]["structuredContent"]
+        self.assertEqual(payload["tool"], "validate_model_manifest")
+        self.assertEqual(payload["contractVersion"], CONTRACT_VERSION)
+        self.assertEqual(payload["backend"], "rxode2")
+        manifest = payload["manifest"]
+        self.assertEqual(manifest["validationMode"], "static-manifest-inspection")
+        self.assertEqual(manifest["qualificationState"]["state"], "research-use")
+        self.assertTrue(manifest["hooks"]["modelProfile"])
 
     def test_async_results_preserve_oecd_validation_metadata(self) -> None:
         simulation_id = f"oecd-live-run-{uuid4().hex[:8]}"
