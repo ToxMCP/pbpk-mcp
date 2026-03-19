@@ -4,6 +4,10 @@ All notable changes to this project should be documented in this file.
 
 ## Unreleased
 
+- No unreleased changes documented yet.
+
+## v0.2.4 - 2026-03-19
+
 ### Added
 
 - `validate_model_manifest` for static pre-load qualification and completeness checks on supported `.pkml` and MCP-ready `.R` models
@@ -14,6 +18,10 @@ All notable changes to this project should be documented in this file.
 
 - extended the OECD-oriented bridge layer to derive reusable qualification-state labels instead of only checklist and readiness summaries
 - tightened publication and release-readiness guidance around model manifest completeness and qualification metadata coverage
+
+### Notes
+
+- `v0.2.4` extends the OECD-oriented qualification workflow with reusable qualification states and pre-load manifest validation
 
 ## v0.2.3 - 2026-03-19
 

@@ -2,7 +2,7 @@
 
 Accessible PBPK workflows through one MCP interface, with explicit OECD-oriented qualification metadata for risk assessment.
 
-Current release: `v0.2.3`
+Current release: `v0.2.4`
 
 PBPK MCP exposes a single user-facing workflow while routing execution to the appropriate backend:
 
