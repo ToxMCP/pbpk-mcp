@@ -3,10 +3,12 @@
 ## Before Push
 
 - confirm the README reflects the intended public positioning
-- confirm the release version is `v0.2.0`
+- confirm the release version and docs are aligned
 - confirm no local runtime artifacts are being committed
 - confirm example models included in the repo are intended for public distribution
 - confirm no credentials, tokens, or machine-specific paths remain in docs or scripts
+- run `python3 -m unittest -v tests/test_oecd_bridge.py`
+- run `python3 scripts/release_readiness_check.py`
 
 ## Public Positioning
 
@@ -20,15 +22,15 @@
 
 - `README.md`
 - `CHANGELOG.md`
-- `docs/releases/v0.2.0.md`
+- current release notes under `docs/releases/`
 - `docs/architecture/dual_backend_pbpk_mcp.md`
 - `docs/integration_guides/rxode2_adapter.md`
 - `.gitignore`
 
 ## Post-Push
 
-- create GitHub release `v0.2.0`
-- use `docs/releases/v0.2.0.md` as the draft release body
+- create the GitHub release matching the current tag
+- use the matching file under `docs/releases/` as the draft release body
 - verify Mermaid rendering on GitHub
 - verify relative links in `README.md`
 - verify the repository description and topics match the README positioning

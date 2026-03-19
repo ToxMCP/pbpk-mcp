@@ -2,23 +2,42 @@
 
 All notable changes to this project should be documented in this file.
 
-## v0.2.1 - 2026-03-18
+## Unreleased
+
+### Added
+
+- `export_oecd_report` for structured OECD-style dossier export across supported backends
+- `modelPerformance`, `parameterProvenance`, and `performanceEvidence` support in the qualification/reporting layer
+- `pbpk_parameter_table(...)` and `pbpk_performance_evidence(...)` support in the R model-module contract
+- `scripts/release_readiness_check.py` for pre-release validation against the running local stack
+- expanded architecture documentation with logical and runtime Mermaid diagrams
 
 ### Changed
 
-- restructured the GitHub README into a cleaner public-facing layout with clearer quick start, examples, limitations, and architecture sections
-- clarified that `rxode2` is a first-class execution engine alongside `ospsuite`, not only a conversion target
-- aligned support, security, package, compose, and environment metadata with the current `ToxMCP/pbpk-mcp` repository
+- made the architecture documentation reflect the current implemented dual-backend design rather than a purely proposed target
+- tightened qualification wording so runtime or smoke evidence is not presented as full predictivity evidence
+- expanded public limitations documentation around format support, qualification boundaries, and worker/runtime constraints
 
 ### Fixed
 
-- GitHub Mermaid rendering for the public architecture diagram
-- stale `0.1.0` and legacy repository references in package metadata and generated docs
+- preserved sidecar-backed profile provenance cleanly in exported OECD reports
+- aligned release documentation with the current OECD reporting and performance-evidence surfaces
+
+## v0.2.1 - 2026-03-19
+
+### Added
+
+- cleaner GitHub-facing README structure with a repaired Mermaid architecture diagram
+- refreshed public release notes and publication-oriented documentation surfaces
+
+### Changed
+
+- aligned package, compose, and metadata surfaces to `v0.2.1`
+- clarified project positioning around accessibility, OECD orientation, and direct `rxode2` execution
 
 ### Notes
 
-- `v0.2.1` is a documentation and release-metadata patch over `v0.2.0`
-- runtime behavior and MCP tool semantics are unchanged from the `v0.2.0` feature release
+- `v0.2.1` was primarily a documentation and release-surface cleanup over `v0.2.0`
 
 ## v0.2.0 - 2026-03-18
 

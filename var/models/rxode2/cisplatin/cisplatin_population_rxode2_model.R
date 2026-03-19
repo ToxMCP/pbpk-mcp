@@ -60,8 +60,75 @@ pbpk_model_metadata <- function() {
   )
 }
 
+.parameter_provenance_for_category <- function(category) {
+  switch(
+    as.character(category %||% ""),
+    Physiology = list(
+      provenance_status = "partially-declared",
+      sourceTable = "pbpk_parameter_catalog",
+      sourceType = "adult-human-physiology-default",
+      source = "Workspace adult physiology defaults for MCP demonstration",
+      evidenceType = "literature-informed default",
+      rationale = "Provides the adult baseline physiology used for deterministic and bounded population simulations.",
+      notes = "Specific literature citations are not yet bundled in this example module."
+    ),
+    Binding = list(
+      provenance_status = "partially-declared",
+      sourceTable = "pbpk_parameter_catalog",
+      sourceType = "compound-property-default",
+      source = "Workspace cisplatin binding defaults",
+      evidenceType = "literature-informed default",
+      rationale = "Represents example cisplatin blood and plasma binding assumptions for research-use scenarios."
+    ),
+    Renal = list(
+      provenance_status = "partially-declared",
+      sourceTable = "pbpk_parameter_catalog",
+      sourceType = "renal-physiology-default",
+      source = "Workspace renal physiology defaults",
+      evidenceType = "literature-informed default",
+      rationale = "Captures the renal filtration and urine-flow settings exposed through the MCP contract."
+    ),
+    Transport = list(
+      provenance_status = "partially-declared",
+      sourceTable = "pbpk_parameter_catalog",
+      sourceType = "transport-calibration-parameter",
+      source = "Workspace cisplatin transporter calibration defaults",
+      evidenceType = "mechanistic calibration default",
+      rationale = "Represents OCT2 and MATE transport parameters exposed for exploratory mechanistic studies."
+    ),
+    Partition = list(
+      provenance_status = "partially-declared",
+      sourceTable = "pbpk_parameter_catalog",
+      sourceType = "partition-coefficient-default",
+      source = "Workspace tissue partition defaults",
+      evidenceType = "model-assumption default",
+      rationale = "Provides the tissue partition parameters exposed by the example MCP model."
+    ),
+    Dose = list(
+      provenance_status = "declared",
+      sourceTable = "pbpk_parameter_catalog",
+      sourceType = "study-design-input",
+      source = "User-editable dosing inputs",
+      evidenceType = "scenario definition",
+      rationale = "Defines the dosing scenario rather than an estimated physiological property."
+    ),
+    Simulation = list(
+      provenance_status = "declared",
+      sourceTable = "pbpk_parameter_catalog",
+      sourceType = "runtime-configuration",
+      source = "User-editable simulation controls",
+      evidenceType = "execution setting",
+      rationale = "Controls solver horizon and output sampling for the MCP execution path."
+    ),
+    list(
+      provenance_status = "unreported",
+      sourceTable = "pbpk_parameter_catalog"
+    )
+  )
+}
+
 pbpk_parameter_catalog <- function() {
-  list(
+  base_catalog <- list(
     list(path = "Physiology|BodyWeight", display_name = "Body weight", unit = "kg", category = "Physiology", is_editable = TRUE),
     list(path = "Binding|UnboundFractionPlasma", display_name = "Unbound fraction in plasma", unit = "unitless", category = "Binding", is_editable = TRUE),
     list(path = "Binding|BloodPlasmaRatio", display_name = "Blood to plasma ratio", unit = "unitless", category = "Binding", is_editable = TRUE),
@@ -82,6 +149,10 @@ pbpk_parameter_catalog <- function() {
     list(path = "Simulation|EndTime", display_name = "Simulation end time", unit = "h", category = "Simulation", is_editable = TRUE),
     list(path = "Simulation|SamplingStep", display_name = "Sampling step", unit = "h", category = "Simulation", is_editable = TRUE)
   )
+
+  lapply(base_catalog, function(entry) {
+    utils::modifyList(entry, .parameter_provenance_for_category(entry$category))
+  })
 }
 
 pbpk_default_parameters <- function() {
@@ -105,6 +176,58 @@ pbpk_default_parameters <- function() {
     "Dose|InfusionDuration" = 1,
     "Simulation|EndTime" = 48,
     "Simulation|SamplingStep" = 0.1
+  )
+}
+
+pbpk_parameter_table <- function(parameters = NULL, parameter_catalog = NULL, ...) {
+  defaults <- pbpk_default_parameters()
+  resolved_parameters <- .coerce_parameters(parameters %||% defaults)
+  catalog <- parameter_catalog %||% pbpk_parameter_catalog()
+  bounds <- .validation_parameter_bounds()
+
+  rows <- lapply(catalog, function(entry) {
+    path <- .scalar_text(entry$path)
+    if (is.null(path) || !nzchar(path)) {
+      return(NULL)
+    }
+    bound <- bounds[[path]]
+    utils::modifyList(
+      entry,
+      list(
+        value = as.numeric(resolved_parameters[[path]] %||% defaults[[path]] %||% NA_real_),
+        default_value = as.numeric(defaults[[path]] %||% NA_real_),
+        runtime_bound_lower = if (is.null(bound)) NULL else bound$lower,
+        runtime_bound_upper = if (is.null(bound)) NULL else bound$upper,
+        runtime_bound_unit = if (is.null(bound)) NULL else bound$unit
+      )
+    )
+  })
+
+  Filter(Negate(is.null), rows)
+}
+
+pbpk_performance_evidence <- function(...) {
+  list(
+    list(
+      id = "deterministic-runtime-smoke",
+      kind = "runtime-smoke-test",
+      status = "passed",
+      targetOutput = "Plasma|Cisplatin|Concentration",
+      dataset = "embedded-runtime-smoke",
+      acceptanceCriterion = "Deterministic simulation executes and returns finite concentration-time output.",
+      evidenceLevel = "runtime-only",
+      notes = "Confirms executable integrity only; does not constitute external predictive validation."
+    ),
+    list(
+      id = "population-runtime-smoke",
+      kind = "runtime-smoke-test",
+      status = "passed",
+      targetOutput = "Plasma|Cisplatin|Concentration",
+      dataset = "embedded-runtime-smoke",
+      acceptanceCriterion = "Population simulation executes and returns bounded aggregate outputs.",
+      evidenceLevel = "runtime-only",
+      notes = "Supports workflow robustness, not regulatory-grade predictivity."
+    )
   )
 }
 
@@ -442,6 +565,46 @@ pbpk_model_profile <- function() {
       summary = paste(
         "Adult human cisplatin kidney PBPK model for intravenous infusion scenarios,",
         "with MCP-enforced runtime guardrails and research-use qualification only."
+      )
+    ),
+    modelPerformance = list(
+      status = "limited-internal-evaluation",
+      targetOutputs = pbpk_supported_outputs(),
+      goodnessOfFit = list(
+        status = "not-bundled",
+        summary = "No bundled observed-versus-predicted dataset or formal goodness-of-fit metrics are attached to this MCP example."
+      ),
+      predictiveChecks = list(
+        status = "face-validity-and-smoke-tests-only",
+        summary = "Current evidence is limited to runtime smoke tests and qualitative plausibility checks within the declared adult IV cisplatin scope."
+      ),
+      evaluationData = list(
+        status = "not-bundled",
+        summary = "No external calibration or verification datasets are packaged in the current MCP example."
+      ),
+      missingEvidence = c(
+        "Observed-versus-predicted comparisons for key plasma and kidney outputs",
+        "Formal goodness-of-fit metrics and acceptance criteria",
+        "External or prospective predictive evaluation datasets"
+      ),
+      summary = paste(
+        "The model is executable and bounded for research use,",
+        "but it does not yet carry a formal predictive-performance dossier suitable for regulatory reliance."
+      )
+    ),
+    parameterProvenance = list(
+      status = "partially-declared",
+      sourceTable = "pbpk_parameter_catalog / pbpk_parameter_table",
+      coverage = "Named runtime parameters exposed through the MCP contract",
+      declaredParameterCount = length(pbpk_default_parameters()),
+      provenanceMethod = "Category-level provenance annotations with current values, defaults, and runtime bounds",
+      missingEvidence = c(
+        "Parameter-by-parameter literature citations and study conditions",
+        "Formal parameter-identifiability analysis"
+      ),
+      summary = paste(
+        "The MCP contract exposes a structured parameter table with current values, defaults, runtime bounds,",
+        "and category-level provenance annotations for each exposed parameter."
       )
     ),
     uncertainty = list(

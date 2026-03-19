@@ -139,6 +139,46 @@ class OecdLiveStackTests(unittest.TestCase):
         error_codes = {entry["code"] for entry in validation["errors"]}
         self.assertIn("context_of_use_mismatch", error_codes)
 
+    def test_export_oecd_report_returns_profile_and_parameter_table(self) -> None:
+        simulation_id = f"oecd-live-report-{uuid4().hex[:8]}"
+        load_response = call_tool(
+            {
+                "tool": "load_simulation",
+                "critical": True,
+                "arguments": {
+                    "filePath": "/app/var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R",
+                    "simulationId": simulation_id,
+                },
+            }
+        )
+        self.assertEqual(load_response["status"], 200)
+
+        report_response = call_tool(
+            {
+                "tool": "export_oecd_report",
+                "arguments": {
+                    "simulationId": simulation_id,
+                    "request": {"route": "iv-infusion", "contextOfUse": "research-only"},
+                    "parameterLimit": 5,
+                },
+            }
+        )
+        self.assertEqual(report_response["status"], 200)
+        report_payload = report_response["body"]["structuredContent"]
+        self.assertEqual(report_payload["tool"], "export_oecd_report")
+        self.assertEqual(report_payload["contractVersion"], CONTRACT_VERSION)
+        self.assertEqual(report_payload["backend"], "rxode2")
+        report = report_payload["report"]
+        self.assertEqual(report["reportVersion"], "pbpk-oecd-report.v1")
+        self.assertEqual(report["validation"]["assessment"]["decision"], "within-declared-guardrails")
+        self.assertIn("modelPerformanceAndPredictivity", report["oecdChecklist"])
+        self.assertEqual(report["oecdChecklist"]["modelPerformanceAndPredictivity"]["status"], "partial")
+        self.assertEqual(report["performanceEvidence"]["included"], True)
+        self.assertGreaterEqual(report["performanceEvidence"]["returnedRows"], 1)
+        self.assertEqual(report["parameterTable"]["included"], True)
+        self.assertLessEqual(report["parameterTable"]["returnedRows"], 5)
+        self.assertGreater(report["parameterTable"]["matchedRows"], 0)
+
     def test_async_results_preserve_oecd_validation_metadata(self) -> None:
         simulation_id = f"oecd-live-run-{uuid4().hex[:8]}"
         run_id = f"{simulation_id}-result"

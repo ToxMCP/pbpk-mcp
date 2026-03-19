@@ -35,9 +35,18 @@ Supported sections mirror the current MCP scientific profile structure:
 
 - `contextOfUse`
 - `applicabilityDomain`
+- `modelPerformance`
+- `parameterProvenance`
 - `uncertainty`
 - `implementationVerification`
 - `peerReview`
+
+For richer performance reporting, `modelPerformance` may also include structured fields such as:
+
+- `goodnessOfFit.metrics`
+- `goodnessOfFit.datasets`
+- `predictiveChecks.datasets`
+- `evidence`
 
 Unspecified sections fall back to the bridge defaults for OSPSuite `.pkml` models.
 
@@ -50,6 +59,7 @@ When a sidecar is found:
 - `capabilities.applicabilityDomain` mirrors the merged profile domain
 - `profile.profileSource.type` is set to `sidecar`
 - `validate_simulation_request` can compare a requested context of use or domain hint against the declared sidecar metadata before execution
+- `export_oecd_report` can bundle the merged sidecar profile with a live validation assessment and runtime-derived parameter table
 - `validation.assessment.oecdChecklist` reports per-dimension OECD-style metadata coverage
 - `validation.assessment.oecdChecklistScore` summarizes that coverage numerically
 

@@ -11,6 +11,7 @@ Applied tools:
 - `discover_models`
 - `load_simulation`
 - `validate_simulation_request`
+- `export_oecd_report`
 - `get_job_status`
 - `get_results`
 
@@ -36,6 +37,9 @@ Model-bound enhanced responses also flatten backend information when available:
   - returns paginated discoverable model entries from disk, including `filePath`, `backend`, `discoveryState`, and `loadedSimulationIds`
 - `validate_simulation_request`
   - returns `simulationId`, `backend`, `validation`, `profile`, `capabilities`, and `warnings`
+- `export_oecd_report`
+  - returns `simulationId`, `backend`, `generatedAt`, and `report`
+  - `report` includes `profile`, `validation`, `oecdChecklist`, `oecdChecklistScore`, `missingEvidence`, `performanceEvidence`, and an optional `parameterTable`
 - `get_job_status`
   - returns top-level `jobId`, `status`, `resultId`, and `resultHandle.resultsId`
   - still includes nested `job` for backward compatibility

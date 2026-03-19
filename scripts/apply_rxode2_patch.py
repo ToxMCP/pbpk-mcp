@@ -42,6 +42,10 @@ PATCH_FILES = (
         "/usr/local/lib/python3.11/site-packages/mcp/tools/discover_models.py",
     ),
     (
+        WORKSPACE_ROOT / "patches" / "mcp" / "tools" / "export_oecd_report.py",
+        "/usr/local/lib/python3.11/site-packages/mcp/tools/export_oecd_report.py",
+    ),
+    (
         WORKSPACE_ROOT / "patches" / "mcp" / "tools" / "get_results.py",
         "/usr/local/lib/python3.11/site-packages/mcp/tools/get_results.py",
     ),
@@ -113,6 +117,7 @@ def verify_python(container: str) -> None:
                 "'/usr/local/lib/python3.11/site-packages/mcp/tools/load_simulation.py', "
                 "'/usr/local/lib/python3.11/site-packages/mcp/tools/get_job_status.py', "
                 "'/usr/local/lib/python3.11/site-packages/mcp/tools/discover_models.py', "
+                "'/usr/local/lib/python3.11/site-packages/mcp/tools/export_oecd_report.py', "
                 "'/usr/local/lib/python3.11/site-packages/mcp/tools/get_results.py', "
                 "'/usr/local/lib/python3.11/site-packages/mcp/tools/validate_simulation_request.py'"
                 "]; "

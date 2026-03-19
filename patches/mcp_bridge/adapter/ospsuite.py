@@ -353,6 +353,46 @@ class SubprocessOspsuiteAdapter(OspsuiteAdapter):
         self._handles[handle.simulation_id] = handle
         return dict(response)
 
+    def export_oecd_report(
+        self,
+        simulation_id: str,
+        *,
+        request: Mapping[str, Any] | None = None,
+        include_parameter_table: bool = True,
+        parameter_pattern: str | None = None,
+        parameter_limit: int = 200,
+    ) -> dict[str, Any]:
+        handle = self._get_handle(simulation_id)
+        response = self._call_backend(
+            "export_oecd_report",
+            {
+                "simulationId": handle.simulation_id,
+                "request": dict(request or {}),
+                "includeParameterTable": include_parameter_table,
+                "parameterPattern": parameter_pattern,
+                "parameterLimit": parameter_limit,
+            },
+        )
+
+        if isinstance(handle.metadata, Mapping):
+            updated_metadata = dict(handle.metadata)
+        else:
+            updated_metadata = {}
+
+        report = response.get("report")
+        if isinstance(report, Mapping):
+            for key in ("validation", "profile", "capabilities"):
+                payload = report.get(key)
+                if isinstance(payload, Mapping):
+                    updated_metadata[key] = dict(payload)
+
+        if isinstance(response.get("backend"), str):
+            updated_metadata["backend"] = response["backend"]
+
+        handle.metadata = updated_metadata
+        self._handles[handle.simulation_id] = handle
+        return dict(response)
+
     def run_population_simulation_sync(
         self,
         config: PopulationSimulationConfig,

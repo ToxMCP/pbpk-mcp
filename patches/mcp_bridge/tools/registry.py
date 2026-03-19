@@ -27,6 +27,11 @@ from mcp.tools.discover_models import (
     DiscoverModelsResponse,
     discover_models,
 )
+from mcp.tools.export_oecd_report import (
+    ExportOecdReportRequest,
+    ExportOecdReportResponse,
+    export_oecd_report,
+)
 from mcp.tools.get_parameter_value import (
     GetParameterValueRequest,
     GetParameterValueResponse,
@@ -139,6 +144,15 @@ def get_tool_registry() -> Dict[str, ToolDescriptor]:
             request_model=ValidateSimulationRequestRequest,
             response_model=ValidateSimulationRequestResponse,
             handler=validate_simulation_request,
+            dependencies=("adapter",),
+            roles=_standard_roles("viewer", "operator", "admin"),
+        ),
+        "export_oecd_report": ToolDescriptor(
+            name="export_oecd_report",
+            description="Export an OECD-style model dossier/report for a loaded simulation, including profile, assessment, and parameter provenance.",
+            request_model=ExportOecdReportRequest,
+            response_model=ExportOecdReportResponse,
+            handler=export_oecd_report,
             dependencies=("adapter",),
             roles=_standard_roles("viewer", "operator", "admin"),
         ),

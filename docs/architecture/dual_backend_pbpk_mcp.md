@@ -2,277 +2,318 @@
 
 ## Status
 
-Proposed target architecture, grounded in the current hybrid subprocess bridge and patch set in this workspace.
+Current architecture and near-term operating model for this workspace.
 
-Current implementation signals:
+This document describes the current direction of PBPK MCP as it is implemented today:
 
-- `scripts/ospsuite_bridge.R` already dispatches `.pkml` to `ospsuite` and `.R` to `rxode2`.
-- `patches/mcp_bridge/adapter/ospsuite.py` already accepts both `.pkml` and `.R`.
-- `patches/mcp/tools/load_simulation.py` already validates both `.pkml` and `.R`.
-
-This document defines how to keep that flexibility without making the MCP harder to use.
+- `.pkml` models run through `ospsuite`
+- MCP-ready `.R` PBPK models run through `rxode2`
+- discovery is filesystem-backed
+- OECD-oriented qualification metadata is exposed separately from runtime execution
+- Berkeley Madonna `.mmd` remains a conversion source, not a runtime format
 
 ## Product Positioning
 
-The product should remain a single `PBPK_MCP`.
+PBPK MCP should remain one user-facing MCP product.
 
-The implementation should support multiple execution backends behind one interface:
+Users should think in terms of:
 
-- `ospsuite` for PK-Sim / MoBi simulation-transfer files (`.pkml`)
-- `rxode2` for custom and population-oriented `.R` model modules
+- discover a model
+- load it
+- validate the intended use
+- run the model
+- inspect results
+- export a qualification-oriented report when needed
 
-`rxode2` should be presented as a first-class PBPK execution engine for native R-authored models, not merely as a landing zone for converted Berkeley Madonna projects.
+They should not have to choose a separate server for PK-Sim, MoBi, or native R-authored PBPK models.
 
-Users should think in terms of a PBPK workflow, not server selection. The MCP should choose the backend from the model type and then report that choice explicitly.
+The internal architecture should therefore keep:
 
-For GitHub and public-facing docs, the positioning should be:
+- one user-facing MCP/API surface
+- explicit but automatic backend routing
+- explicit capability reporting
+- explicit scientific qualification boundaries
 
-- accessible by default
-  - one load / validate / run / results workflow regardless of backend
-- explicit about scientific qualification
-  - runnable models are not automatically qualified for risk assessment
-- OECD-oriented for risk assessment use cases
-  - context of use, applicability domain, uncertainty, verification, and peer-review status are first-class
-- honest about format boundaries
-  - PK-Sim / MoBi `.pkml` and MCP-ready `.R` are directly supported, Berkeley Madonna `.mmd` is a conversion source, not a runtime format
-
-## Architecture Overview
+## Logical Architecture
 
 ```mermaid
-flowchart TD
-    user["User / Risk Assessor / Modeler"] --> api["PBPK_MCP API<br/>single user-facing workflow"]
-    api --> load["load_simulation"]
-    api --> validate["validate_simulation_request"]
-    api --> run["run_simulation / run_population_simulation"]
-    api --> results["get_job_status / get_results / get_population_results"]
+flowchart LR
+    user["User / Risk Assessor / Modeler"] --> api["PBPK MCP<br/>single user-facing API"]
 
-    load --> router["Model Router<br/>select backend from model type"]
-    router --> ospsuite["OSPSuite Backend<br/>PK-Sim / MoBi (.pkml)"]
-    router --> rxode2["rxode2 Backend<br/>custom PBPK / population R (.R)"]
+    subgraph workflow["User-facing workflow"]
+        discover["discover_models<br/>/mcp/resources/models"]
+        load["load_simulation"]
+        validate["validate_simulation_request"]
+        report["export_oecd_report"]
+        run["run_simulation / run_population_simulation"]
+        results["get_job_status / get_results / get_population_results"]
+    end
 
-    ospsuite --> pkml[".pkml model files<br/>optional JSON profile sidecars"]
-    rxode2 --> rmodels["MCP-ready R model modules<br/>self-declared model profile"]
+    api --> discover
+    api --> load
+    api --> validate
+    api --> report
+    api --> run
+    api --> results
 
-    validate --> profile["Scientific Qualification Layer<br/>context of use / applicability domain / uncertainty / verification / review"]
-    profile --> run
+    discover --> registry["Filesystem-backed model registry<br/>MCP_MODEL_SEARCH_PATHS"]
+    load --> router["Model router<br/>backend selected from model type"]
 
-    mmadonna["Berkeley Madonna (.mmd)"] --> convert["Conversion Workflow"]
+    subgraph backends["Execution backends"]
+        ospsuite["OSPSuite backend<br/>PK-Sim / MoBi (.pkml)"]
+        rxode2["rxode2 backend<br/>MCP-ready R (.R)"]
+    end
+
+    router --> ospsuite
+    router --> rxode2
+
+    ospsuite --> pkml[".pkml model files<br/>optional .profile.json sidecars"]
+    rxode2 --> rmodels[".R model modules<br/>optional profile, validation, and evidence hooks"]
+
+    subgraph qualification["OECD-oriented qualification layer"]
+        qualmeta["Context of use / applicability domain<br/>model performance / parameter provenance<br/>uncertainty / verification / review"]
+        dossier["OECD-style dossier/report"]
+    end
+
+    validate --> qualmeta
+    report --> qualmeta
+    qualmeta --> dossier
+    qualmeta --> run
+
+    mmadonna["Berkeley Madonna (.mmd)"] --> convert["Conversion workflow"]
     convert --> pkml
     convert --> rmodels
 
-    run --> det["Deterministic Results"]
-    run --> pop["Population Results"]
+    run --> det["Deterministic results"]
+    run --> pop["Population results"]
     det --> results
     pop --> results
 ```
 
-The important product message in that diagram is:
+This is the public-facing story:
 
-- the user sees one PBPK MCP
-- backend selection is explicit but automatic
-- OECD-style qualification sits beside execution, not hidden inside it
-- unsupported source formats are handled through conversion, not silent runtime coercion
+- one MCP
+- two runtime backends
+- one qualification layer
+- one explicit conversion boundary for unsupported source formats
+
+## Runtime Deployment
+
+```mermaid
+flowchart TD
+    user["User / MCP client"] --> api["PBPK MCP API<br/>FastAPI + MCP endpoints"]
+    api --> auth["Auth / request guardrails"]
+    api --> catalog["Model discovery and session registry"]
+    api --> redis["Redis<br/>job broker and result backend"]
+    api --> jobtools["Async job tools"]
+
+    catalog --> models["Model search paths<br/>var/models, configured directories"]
+
+    jobtools --> worker["Execution worker"]
+    worker --> bridge["Bridge layer<br/>adapter + normalization"]
+
+    bridge --> ospruntime["OSPSuite runtime<br/>.pkml execution"]
+    bridge --> rruntime["R runtime + rxode2<br/>native .R execution"]
+
+    worker --> stored["Stored job state / result handles"]
+    stored --> api
+
+    ospruntime --> pkmlfiles["PK-Sim / MoBi transfer files"]
+    rruntime --> rfiles["PBPK R model modules"]
+```
+
+This deployment view matters because the dependency profile is not symmetric:
+
+- `ospsuite` and `rxode2` do not have the same runtime footprint
+- `rxode2` package builds are heavy and should be prebuilt into an image
+- the user-facing API should stay stable even if worker images diverge
 
 ## Design Goals
 
 - Keep one user-facing MCP surface.
-- Preserve the clean PK-Sim / MoBi experience for `.pkml`.
-- Add a first-class path for custom R-based PBPK models.
-- Make backend differences explicit instead of hiding them.
-- Allow backend-specific features without fragmenting the product.
-- Support separate runtime images if dependency footprints diverge.
+- Preserve a clean PK-Sim and MoBi experience for `.pkml`.
+- Support native R-authored PBPK models through `rxode2`.
+- Make qualification state explicit rather than implied.
+- Keep discovery generic across supported model files.
+- Allow backend-specific capabilities without fragmenting the product.
 
 ## Non-Goals
 
 - Raw Berkeley Madonna `.mmd` execution.
+- Treating runnable as equivalent to qualified.
 - Pretending `.pkml` and `.R` models are internally identical.
-- Forcing all backends to support the same advanced features.
-
-## Key Rule
-
-Unify the workflow, not the implementation.
-
-That means:
-
-- shared tool names for common tasks
-- backend-specific capability flags
-- explicit backend metadata on every loaded model and result
-- clear capability errors when a tool is not supported for a model
+- Forcing every backend to support every advanced workflow.
 
 ## Supported Model Types
 
-### Directly loadable
+### Direct runtime support
 
 - `.pkml` via `ospsuite`
 - `.R` via the PBPK R model-module contract
 
-### Not directly loadable
+### Conversion-source only
 
 - `.mmd`
+- `.pksim5` project files unless exported to `.pkml`
 
-Berkeley Madonna files should be treated as source artifacts that must be converted into either:
-
-- `.pkml` for OSPSuite workflows, or
-- `.R` for custom/R-based workflows
-
-The MCP should never silently accept `.mmd` and then do ambiguous behavior.
+The MCP should not silently convert unsupported source formats during `load_simulation`.
 
 ## Canonical Concepts
 
 ### Model session
 
-A loaded model instance tracked by `simulation_id`.
+A loaded model instance tracked by `simulationId`.
 
 ### Backend
 
-The execution engine selected for the loaded model.
+The execution engine selected for a loaded model.
 
-Initial backend values:
+Current backend values:
 
 - `ospsuite`
 - `rxode2`
 
-### Deterministic result
+### Capabilities
 
-A normal single-run simulation result with time-series output.
+Operational behavior flags such as:
 
-### Population result
+- deterministic-run support
+- population-run support
+- chunked population-result support
+- parameter editing support
 
-A cohort simulation result with aggregate metrics and optional chunked subject-level payloads.
+### Scientific profile
 
-### Capability flags
+Qualification-oriented metadata such as:
 
-A compact summary of what tools/behaviors the backend supports for that loaded model.
+- `contextOfUse`
+- `applicabilityDomain`
+- `modelPerformance`
+- `parameterProvenance`
+- `uncertainty`
+- `implementationVerification`
+- `peerReview`
+- `profileSource`
+
+### Validation assessment
+
+A preflight decision about whether a requested use is within declared guardrails or outside the model's declared profile.
+
+This is not the same as a regulatory approval statement.
 
 ## Common Contract
 
-Every loaded model should expose the same high-level handle shape:
+Every loaded model should expose one stable high-level handle shape.
+
+Illustrative example:
 
 ```json
 {
-  "simulation_id": "cisplatin-rxode2",
-  "file_path": "/app/var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R",
+  "simulationId": "cisplatin-rxode2",
+  "backend": "rxode2",
+  "contractVersion": "pbpk-mcp.v1",
   "metadata": {
     "name": "cisplatin_population_rxode2_model.R",
-    "backend": "rxode2",
-    "engine": "rxode2",
-    "modelVersion": "2026-03-17",
-    "createdBy": "rxode2",
-    "createdAt": "2026-03-17T12:00:00Z"
+    "engine": "rxode2"
   },
   "capabilities": {
     "supportsParameterEditing": true,
     "supportsDeterministicRuns": true,
     "supportsPopulationRuns": true,
-    "supportsChunkedPopulationResults": true,
-    "supportsUnitAwareParameters": false
+    "supportsChunkedPopulationResults": true
+  },
+  "profile": {
+    "contextOfUse": {
+      "regulatoryUse": "research-only"
+    },
+    "applicabilityDomain": {
+      "qualificationLevel": "research-use"
+    }
   }
 }
 ```
 
-`capabilities` is the main addition that should be formalized next. The current patch set already returns `metadata.backend`; the next step is to expose capability flags alongside it.
+The important architectural rule is:
 
-The same loaded model should also be able to expose a scientific `profile` that is separate from operational `capabilities`:
+- `capabilities` describe runtime behavior
+- `profile` describes scientific qualification status
 
-```json
-{
-  "contextOfUse": {
-    "regulatoryUse": "research-only"
-  },
-  "applicabilityDomain": {
-    "qualificationLevel": "research-use"
-  },
-  "uncertainty": {
-    "status": "partially-characterized"
-  },
-  "implementationVerification": {
-    "status": "basic-internal-checks"
-  },
-  "peerReview": {
-    "status": "not-reported"
-  }
-}
-```
-
-This separation is important because OECD-style scientific qualification is not the same thing as runtime support for a tool action.
+Those must stay separate.
 
 ## Tool Surface
 
 ### Common tools
 
-These should remain shared across backends:
+These are intended to remain shared across both backends:
 
 | Tool | Purpose | `ospsuite` | `rxode2` |
 | --- | --- | --- | --- |
+| `discover_models` | Discover supported model files on disk | Yes | Yes |
 | `load_simulation` | Load a model by file path | Yes | Yes |
-| `list_parameters` | Enumerate editable parameters | Yes | Yes |
+| `list_parameters` | Enumerate parameters | Yes | Yes |
 | `get_parameter_value` | Read one parameter | Yes | Yes |
 | `set_parameter_value` | Write one parameter | Yes | Yes |
+| `validate_simulation_request` | Assess intended use and guardrails | Yes | Yes |
 | `run_simulation` | Run one deterministic simulation | Yes | Yes |
+| `get_job_status` | Inspect job state | Yes | Yes |
 | `get_results` | Retrieve deterministic results | Yes | Yes |
+| `export_oecd_report` | Export a structured qualification report | Yes | Yes |
 
 ### Backend-specific tools
 
-These should exist only where they make sense:
+These should remain backend-specific unless semantics converge later:
 
 | Tool | Purpose | `ospsuite` | `rxode2` |
 | --- | --- | --- | --- |
 | `run_population_simulation` | Run cohort/population workflow | No | Yes |
-| `get_population_results` | Retrieve population results | No | Yes |
-
-Future backend-specific tools should follow the same rule: shared if the semantics are truly shared, backend-specific if not.
+| `get_population_results` | Retrieve population aggregates and chunks | No | Yes |
 
 ## Behavioral Rules
 
-### 1. Backend must be explicit
+### 1. Backend must always be explicit
 
-`load_simulation` must always report the selected backend.
+`load_simulation` should always report the selected backend.
 
 ### 2. Capability failures must be actionable
 
-If a tool is called for an unsupported backend, return an explicit error such as:
-
-```json
-{
-  "code": "capability_not_supported",
-  "message": "Population simulations are not supported for backend 'ospsuite'",
-  "details": {
-    "backend": "ospsuite",
-    "requiredCapability": "supportsPopulationRuns"
-  }
-}
-```
+Unsupported operations should fail with an explicit capability-oriented error, not a vague backend crash.
 
 ### 3. Parameter paths stay canonical
 
-Even if the implementation differs, parameter access should remain path-based from the MCP perspective.
+Even when internal implementation differs, MCP parameter access should remain path-based and stable.
 
 ### 4. Result types stay distinct
 
-Deterministic results and population results should not be merged into one vague payload.
+Deterministic and population results should remain separate payload shapes.
 
 ### 5. No silent format coercion
 
-The MCP should not auto-convert `.mmd` or any other unsupported source format during `load_simulation`.
+The MCP should not silently accept `.mmd` or `.pksim5` and invent runtime behavior.
+
+### 6. Qualification is advisory, not hidden execution logic
+
+Validation and dossier export should inform the user clearly, but scientific qualification should not be disguised as a runtime success flag.
 
 ## Backend Capability Matrix
 
-Initial capability model:
+Current capability model:
 
 | Capability | Meaning | `ospsuite` | `rxode2` |
 | --- | --- | --- | --- |
 | `supportsParameterEditing` | Can edit model parameters through MCP | Yes | Yes |
 | `supportsDeterministicRuns` | Can run one simulation and return time-series data | Yes | Yes |
-| `supportsPopulationRuns` | Can run cohort sampling/simulation | No | Yes |
-| `supportsChunkedPopulationResults` | Can return population chunks/handles | No | Yes |
+| `supportsPopulationRuns` | Can run cohort sampling and simulation | No | Yes |
+| `supportsChunkedPopulationResults` | Can return chunk handles for population payloads | No | Yes |
 | `supportsUnitAwareParameters` | Tool can reliably round-trip explicit units | Yes | Partial |
-| `supportsEventTables` | Backend supports event-driven dosing tables | Partial | Future |
+| `supportsQualificationExport` | Can export an OECD-style report | Yes | Yes |
 
-The exact capability list can grow, but it should stay small and operational.
+The exact list can grow, but it should remain compact and operational.
 
 ## R Model-Module Contract
 
-The current `.R` path should be formalized around this contract:
+The `.R` path is formalized around a PBPK R model-module contract.
+
+Common hooks:
 
 - `pbpk_model_metadata()`
 - `pbpk_parameter_catalog()`
@@ -280,149 +321,110 @@ The current `.R` path should be formalized around this contract:
 - `pbpk_run_simulation(parameters, simulation_id = NULL, run_id = NULL, request = list())`
 - `pbpk_run_population(parameters, cohort = list(), outputs = list(), simulation_id = NULL, request = list())`
 
-Required behavior:
+Qualification-oriented hooks:
 
-- `pbpk_default_parameters()` returns a named list
-- parameter names are the canonical parameter paths
-- deterministic results return normalized time-series payloads
-- population results return aggregates plus optional chunk payloads
-
-Recommended additions for the next revision:
-
-- `pbpk_capabilities()`
 - `pbpk_model_profile()`
 - `pbpk_validate_request(request)`
-- `pbpk_supported_outputs()`
+- `pbpk_parameter_table(...)`
+- `pbpk_performance_evidence(...)`
 
-Those additions would let the backend advertise richer behavior without leaking R implementation details into the MCP layer.
+Optional operational hooks:
+
+- `pbpk_capabilities()`
+- `pbpk_supported_outputs()`
 
 Recommended semantic split:
 
 - `pbpk_capabilities()`
-  - operational MCP behavior such as population-run support and parameter editing
+  - operational MCP behavior
 - `pbpk_model_profile()`
-  - scientific context-of-use, applicability domain, uncertainty, implementation verification, and peer-review metadata
+  - scientific context-of-use and qualification metadata
 - `pbpk_validate_request()`
-  - request-level assessment that can report both runtime-guardrail failures and context-of-use mismatches
+  - request-level assessment of guardrails and declared applicability
+- `pbpk_parameter_table()`
+  - dossier-oriented parameter provenance export
+- `pbpk_performance_evidence()`
+  - observed-versus-predicted or other model-performance evidence rows
 
-## Deployment Model
+## OECD-Oriented Qualification Layer
 
-The user-facing MCP should stay unified even if the runtime splits.
+The current qualification model is intentionally broader than runtime bounds.
 
-Recommended topology:
+It aims to support:
 
-- `pbpk-api`
-  - one MCP/API surface
-  - model routing
-  - result persistence
-- `pbpk-worker-ospsuite`
-  - OSPSuite runtime and `.pkml` execution
-- `pbpk-worker-rxode2`
-  - R-heavy runtime with `rxode2` and related compiled dependencies
+- context of use
+- applicability domain
+- model performance and predictivity
+- parameter provenance
+- uncertainty and sensitivity characterization
+- implementation verification
+- peer review and prior use
+- reporting and traceability
 
-This is the preferred long-term shape because:
+Current MCP surfaces for this layer:
 
-- OSPSuite and `rxode2` have different dependency and build profiles
-- PK-Sim users should not pay for R-heavy runtime complexity if they do not need it
-- `rxode2` source builds are memory-hungry and should be prebuilt into an image, not compiled inside a constrained runtime container
+- `validate_simulation_request`
+- `export_oecd_report`
 
-## User Experience Rules
+The important boundary remains:
 
-To keep the MCP more usable rather than less usable:
+- qualification metadata can be complete while evidence is incomplete
+- runtime guardrails can pass while regulatory suitability remains unproven
 
-- do not ask the user to choose a server
-- do show the selected backend after load
-- do keep common tools common
-- do return capability-aware errors
-- do document which model types are directly supported
-- do not describe `.mmd` as directly executable
+## Current Limitations
 
-## Migration Plan
+### Format limitations
 
-### Phase 1: Patch-based hybrid bridge
+- Berkeley Madonna `.mmd` is not directly executable
+- `.pksim5` is not directly executed and should be exported to `.pkml`
+- an `.R` file can be discoverable without being runnable if it does not implement the expected contract
 
-Status: mostly done in this workspace.
+### Capability limitations
 
-Deliverables:
+- population simulation is currently implemented for `rxode2`, not generic OSPSuite `.pkml`
+- backend capability sets are intentionally not identical
+- some OSPSuite transfer files still rely on runtime output-selection fallbacks
 
-- extension-based backend detection in `scripts/ospsuite_bridge.R`
+### Qualification limitations
+
+- runtime success is not evidence of external model qualification
+- some example profiles remain `illustrative-example` or `research-use`
+- `modelPerformance` and `parameterProvenance` may still be partially populated rather than dossier-complete
+- exported performance evidence may still reflect smoke or internal evidence instead of full observed-versus-predicted packages
+
+### Operational limitations
+
+- `rxode2` worker images should be prebuilt because package compilation is heavy
+- laptop deployments should keep conservative worker memory caps
+- the API surface is unified, but worker images may diverge further as runtimes evolve
+
+## Current Implementation Notes
+
+These parts are already implemented in this workspace:
+
+- extension-based backend routing in `scripts/ospsuite_bridge.R`
 - `.R` acceptance in `load_simulation`
-- population-result persistence in the patched subprocess adapter
-- one reference `rxode2` cisplatin model module
-
-### Phase 2: Formalize shared response schemas
-
-Deliverables:
-
-- add `capabilities` to the model handle
-- add `backend` and `engine` consistently to all result metadata
-- standardize capability error codes
-- document deterministic vs population result payloads
-
-Acceptance criteria:
-
-- every loaded model reports backend and capabilities
-- unsupported tool calls fail with predictable capability errors
-
-### Phase 3: Split runtime images, keep one MCP
-
-Deliverables:
-
-- dedicated OSPSuite worker image
-- dedicated `rxode2` worker image with prebuilt R packages
-- routing layer based on backend or model registry metadata
-
-Acceptance criteria:
-
-- PK-Sim workflows remain stable and low-friction
-- R-heavy packages are no longer compiled inside constrained runtime workers
-
-### Phase 4: Add model registry metadata
-
-Deliverables:
-
-- central registry of loadable models
-- per-model backend declaration
-- optional tags such as `renal`, `population`, `cisplatin`, `validated`
-
-Acceptance criteria:
-
-- tools can discover models without relying only on raw file paths
-- the MCP can validate backend/model compatibility before load
-
-Current implementation note:
-
-- the workspace now has an initial filesystem-backed model registry surface via `/mcp/resources/models` and `discover_models`
-- this discovery layer scans `MCP_MODEL_SEARCH_PATHS` for supported `.pkml` and `.R` files
-- it is intentionally lightweight and path-based, so discovery does not require preloading every model at startup
-
-### Phase 5: Berkeley Madonna conversion path
-
-Deliverables:
-
-- documented conversion workflow from `.mmd` to `.R` or `.pkml`
-- optional helper script for extracting equations/parameters into the R model-module skeleton
-
-Acceptance criteria:
-
-- `.mmd` remains unsupported as a runtime format
-- conversion into supported runtime formats becomes repeatable
+- filesystem-backed discovery through `/mcp/resources/models` and `discover_models`
+- capability-aware validation and OECD-style profile export
+- sidecar-backed scientific metadata for `.pkml` models
+- structured OECD dossier export through `export_oecd_report`
 
 ## Recommended Near-Term Work
 
-1. Add `capabilities` to the `load_simulation` response and adapter handle model.
-2. Separate the worker image story from the MCP API story.
-3. Prebuild an R worker image with `rxode2` rather than compiling inside the runtime worker.
-4. Add a small model-registry layer so users can select named models instead of raw paths.
-5. Treat Berkeley Madonna support as a conversion workflow, not a third execution backend.
+1. Add broader model-performance datasets and acceptance criteria.
+2. Add quantitative uncertainty and sensitivity result export.
+3. Add stronger implementation-verification evidence and regression bundles.
+4. Keep sidecar and R-model qualification metadata examples honest and non-inflated.
+5. Continue expanding end-to-end live tests across representative PK-Sim, MoBi, and native R models.
 
 ## Decision Summary
 
-The right architecture is:
+The right architecture remains:
 
-- one `PBPK_MCP`
+- one `PBPK MCP`
 - multiple explicit execution backends
 - one shared user workflow
-- separate runtime images where needed
+- one explicit qualification layer
+- one explicit conversion boundary for unsupported source formats
 
-That keeps the system more usable, not less usable, because complexity stays in the backend boundary instead of the user interface.
+That keeps the product accessible while still making it useful for OECD-oriented review and, over time, more defensible for regulatory decision support.

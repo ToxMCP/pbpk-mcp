@@ -13,6 +13,11 @@ from .tools.discover_models import (
     DiscoverableModelModel,
     discover_models,
 )
+from .tools.export_oecd_report import (
+    ExportOecdReportRequest,
+    ExportOecdReportResponse,
+    export_oecd_report,
+)
 from .tools.get_parameter_value import (
     GetParameterValueRequest,
     GetParameterValueResponse,
@@ -64,6 +69,9 @@ __all__ = [
     "DiscoverModelsResponse",
     "DiscoverableModelModel",
     "discover_models",
+    "ExportOecdReportRequest",
+    "ExportOecdReportResponse",
+    "export_oecd_report",
     "GetResultsRequest",
     "GetResultsResponse",
     "get_results",

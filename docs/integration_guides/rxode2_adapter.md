@@ -41,6 +41,8 @@ Optional guardrail hooks:
 - `pbpk_supported_outputs()`
 - `pbpk_capabilities()`
 - `pbpk_validate_request(request = list(), parameters = NULL, stage = NULL, ...)`
+- `pbpk_parameter_table(parameters = NULL, parameter_catalog = NULL, ...)`
+- `pbpk_performance_evidence(...)`
 
 The bridge keeps parameter editing generic, so parameter values are stored by path in the bridge and passed into the model functions as a named list.
 
@@ -49,6 +51,8 @@ If `pbpk_model_profile()` is present, `load_simulation` also returns a `profile`
 
 - `contextOfUse`
 - `applicabilityDomain`
+- `modelPerformance`
+- `parameterProvenance`
 - `uncertainty`
 - `implementationVerification`
 - `peerReview`
@@ -74,6 +78,8 @@ Current MCP surfaces that use this data:
   - returns `capabilities`, `profile`, and the default `validation` payload for the loaded model
 - `validate_simulation_request`
   - runs preflight validation without triggering execution
+- `export_oecd_report`
+  - returns a structured dossier/report with `profile`, `validation`, `oecdChecklist`, `performanceEvidence`, and an optional parameter table
 - `run_simulation` / `get_results`
   - preserve the validation assessment on deterministic result metadata
 
