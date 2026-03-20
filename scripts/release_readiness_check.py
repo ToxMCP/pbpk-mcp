@@ -17,6 +17,19 @@ DEFAULT_BASE_URL = "http://127.0.0.1:8000"
 CONTRACT_VERSION = "pbpk-mcp.v1"
 CISPLATIN_MODEL = "/app/var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R"
 PREGNANCY_PKML = "/app/var/models/esqlabs/pregnancy-neonates-batch-run/Pregnant_simulation_PKSim.pkml"
+PKSIM5_PROJECT = "/app/var/demos/cimetidine/Cimetidine-Model.pksim5"
+REQUIRED_TOOLS = {
+    "discover_models",
+    "validate_model_manifest",
+    "load_simulation",
+    "validate_simulation_request",
+    "run_simulation",
+    "run_population_simulation",
+    "get_job_status",
+    "get_results",
+    "get_population_results",
+    "export_oecd_report",
+}
 
 
 def http_json(url: str, payload: dict | None = None, timeout: int = 60) -> dict:
@@ -48,6 +61,14 @@ def call_tool(base_url: str, tool: str, arguments: dict, *, critical: bool = Fal
     return response["structuredContent"]
 
 
+def call_tool_error(base_url: str, tool: str, arguments: dict, *, critical: bool = False, timeout: int = 60) -> str:
+    try:
+        call_tool(base_url, tool, arguments, critical=critical, timeout=timeout)
+    except RuntimeError as exc:
+        return str(exc)
+    raise RuntimeError(f"{tool} unexpectedly succeeded for arguments {arguments}")
+
+
 def poll_job(base_url: str, job_id: str, timeout_seconds: int = 180) -> dict:
     deadline = time.time() + timeout_seconds
     last_status: dict | None = None
@@ -71,6 +92,11 @@ def run_bridge_tests() -> None:
         cwd=WORKSPACE_ROOT,
         check=True,
     )
+    subprocess.run(
+        ["python3", "-m", "unittest", "-v", "tests/test_load_simulation_contract.py"],
+        cwd=WORKSPACE_ROOT,
+        check=True,
+    )
 
 
 def assert_true(condition: bool, message: str) -> None:
@@ -88,15 +114,55 @@ def run_release_check(base_url: str, *, skip_unit_tests: bool = False) -> dict:
     assert_true(health.get("status") == "ok", f"Health check failed: {health}")
     summary["health"] = health
 
+    tool_catalog = http_json(f"{base_url}/mcp/list_tools", timeout=30)
+    tool_names = {tool["name"] for tool in tool_catalog["tools"]}
+    assert_true(
+        REQUIRED_TOOLS.issubset(tool_names),
+        f"Live tool catalog is missing required workflow tools: {sorted(REQUIRED_TOOLS - tool_names)}",
+    )
+
     discovery = call_tool(base_url, "discover_models", {"search": "cisplatin", "limit": 20}, timeout=30)
     items = discovery["items"]
     cisplatin_matches = [item for item in items if "cisplatin" in item["filePath"].lower()]
     assert_true(bool(cisplatin_matches), "Cisplatin model not discoverable through discover_models")
+    resource_models = http_json(f"{base_url}/mcp/resources/models?search=cisplatin&limit=20", timeout=30)
+    resource_matches = [
+        item for item in resource_models["items"] if "cisplatin" in item["filePath"].lower()
+    ]
+    assert_true(bool(resource_matches), "Cisplatin model not discoverable through /mcp/resources/models")
+    assert_true(
+        cisplatin_matches[0]["backend"] == resource_matches[0]["backend"],
+        "discover_models and /mcp/resources/models disagree on the cisplatin backend",
+    )
+    assert_true(
+        cisplatin_matches[0]["runtimeFormat"] == resource_matches[0]["runtimeFormat"],
+        "discover_models and /mcp/resources/models disagree on the cisplatin runtime format",
+    )
     summary["discovery"] = {
         "total": discovery["total"],
         "cisplatinMatches": len(cisplatin_matches),
         "firstBackend": cisplatin_matches[0]["backend"],
     }
+    summary["toolCatalog"] = {
+        "requiredTools": sorted(REQUIRED_TOOLS),
+        "missingTools": sorted(REQUIRED_TOOLS - tool_names),
+    }
+
+    pksim5_error = call_tool_error(
+        base_url,
+        "load_simulation",
+        {"filePath": PKSIM5_PROJECT, "simulationId": f"reject-pksim5-{uuid4().hex[:8]}"},
+        critical=True,
+        timeout=60,
+    )
+    assert_true(
+        "Direct .pksim5 loading is not supported" in pksim5_error,
+        f".pksim5 rejection message was not explicit enough: {pksim5_error}",
+    )
+    assert_true(
+        "export the PK-Sim project to .pkml first" in pksim5_error,
+        f".pksim5 rejection message did not include conversion guidance: {pksim5_error}",
+    )
 
     manifest_check = call_tool(
         base_url,

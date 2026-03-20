@@ -8,3 +8,5 @@ docker compose \
   -f "${compose_file}" \
   -p pbpk_mcp \
   up -d --force-recreate --remove-orphans redis api worker
+
+python3 "${workspace_root}/scripts/apply_rxode2_patch.py" --restart

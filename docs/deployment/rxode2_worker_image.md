@@ -10,6 +10,8 @@ This is the recommended path because:
 - `rxode2` and its compiled dependencies are significantly heavier than the OSPSuite runtime
 - source-compiling `rxode2` inside a capped runtime worker is likely to fail under memory pressure
 
+For the patch-first local operator workflow layered on top of this image, see [`runtime_patch_flow.md`](runtime_patch_flow.md).
+
 ## Image Layout
 
 The dedicated worker image is defined in:
@@ -23,9 +25,9 @@ It extends:
 and then bakes in:
 
 - the `rxode2` R package
+- the patch-first runtime contract defined by `scripts/runtime_patch_manifest.py`
+- the installer in `scripts/install_runtime_patches.py`
 - the hybrid bridge in `scripts/ospsuite_bridge.R`
-- the patched adapter in `patches/mcp_bridge/adapter/ospsuite.py`
-- the patched validator in `patches/mcp/tools/load_simulation.py`
 - the reference cisplatin model module in `cisplatin_models/cisplatin_population_rxode2_model.R`
 
 ## Build
@@ -109,6 +111,7 @@ Current local runtime behavior:
 - `pbpk_mcp-worker-1` runs with a `4 GiB` memory cap
 - the worker healthcheck uses `pgrep` against the Celery worker process
 - PK-Sim / MoBi `.pkml` models remain supported on the same worker
-- `rxode2` `.R` models work without hot-patching the running container
+- `scripts/deploy_rxode2_stack.sh` recreates the stack and reapplies the current workspace patch set to the API and worker
+- the local implementation is therefore patch-first for this convergence stage, even though the image also carries a baked baseline patch set
 
 Longer-term, separate worker pools are still the cleaner production shape when OSPSuite-only and `rxode2` workloads need different scaling or isolation.

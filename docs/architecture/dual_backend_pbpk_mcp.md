@@ -11,6 +11,7 @@ This document describes the current direction of PBPK MCP as it is implemented t
 - discovery is filesystem-backed
 - OECD-oriented qualification metadata is exposed separately from runtime execution
 - Berkeley Madonna `.mmd` remains a conversion source, not a runtime format
+- the current contract-convergence stage is patch-first, with the live MCP surface implemented from `patches/` and applied into the running containers
 
 ## Product Positioning
 
@@ -34,6 +35,24 @@ The internal architecture should therefore keep:
 - explicit but automatic backend routing
 - explicit capability reporting
 - explicit scientific qualification boundaries
+
+## Contract-Convergence Stage
+
+`v0.3.0` is intentionally a contract-convergence milestone, not a packaging-cleanup milestone.
+
+For this stage:
+
+- the live MCP surface is defined by `patches/`
+- the runtime patch set is applied through a shared manifest
+- the worker image and the hot-patch flow are expected to converge on the same file map
+
+This is deliberate because the published PBPK workflow and the live tests were already aligned around the patch-first surface, while a full packaged `src/` migration would be a larger structural refactor with more risk.
+
+The current maintainability rule is:
+
+- change the canonical runtime contract in `patches/`
+- verify it on the live stack
+- defer “retire the patch-first runtime and move the active implementation into `src/`” to a later milestone after the contract is stable
 
 ## Logical Architecture
 
@@ -131,6 +150,7 @@ This deployment view matters because the dependency profile is not symmetric:
 - `ospsuite` and `rxode2` do not have the same runtime footprint
 - `rxode2` package builds are heavy and should be prebuilt into an image
 - the user-facing API should stay stable even if worker images diverge
+- the local stack currently relies on a shared runtime patch manifest so image builds and hot patches apply the same contract surface
 
 ## Design Goals
 

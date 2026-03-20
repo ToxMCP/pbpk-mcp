@@ -58,6 +58,53 @@ class ModelDiscoveryLiveStackTests(unittest.TestCase):
         self.assertEqual(item["runtimeFormat"], "r")
         self.assertIn(item["discoveryState"], {"discovered", "loaded"})
 
+    def test_tool_catalog_exposes_documented_workflow(self) -> None:
+        payload = api_json("/mcp/list_tools")
+        tool_names = {tool["name"] for tool in payload["tools"]}
+
+        expected = {
+            "discover_models",
+            "validate_model_manifest",
+            "load_simulation",
+            "validate_simulation_request",
+            "run_simulation",
+            "run_population_simulation",
+            "get_job_status",
+            "get_results",
+            "get_population_results",
+            "export_oecd_report",
+        }
+        self.assertTrue(expected.issubset(tool_names))
+
+    def test_resource_endpoint_matches_discover_models_for_cisplatin(self) -> None:
+        resource_payload = api_json("/mcp/resources/models?search=cisplatin&backend=rxode2&limit=20")
+        tool_payload = call_tool(
+            {
+                "tool": "discover_models",
+                "arguments": {"search": "cisplatin", "backend": "rxode2", "limit": 20},
+            }
+        )["structuredContent"]
+
+        resource_matches = [
+            item
+            for item in resource_payload["items"]
+            if item["filePath"].endswith("cisplatin_population_rxode2_model.R")
+        ]
+        tool_matches = [
+            item
+            for item in tool_payload["items"]
+            if item["filePath"].endswith("cisplatin_population_rxode2_model.R")
+        ]
+
+        self.assertTrue(resource_matches, "resource endpoint did not return the cisplatin model")
+        self.assertTrue(tool_matches, "discover_models did not return the cisplatin model")
+
+        resource_item = resource_matches[0]
+        tool_item = tool_matches[0]
+        self.assertEqual(resource_item["backend"], tool_item["backend"])
+        self.assertEqual(resource_item["runtimeFormat"], tool_item["runtimeFormat"])
+        self.assertEqual(resource_item["profileSource"], tool_item["profileSource"])
+
     def test_tool_discovers_new_workspace_model_file(self) -> None:
         directory = WORKSPACE_ROOT / "var" / "models" / "discovery-tests"
         directory.mkdir(parents=True, exist_ok=True)

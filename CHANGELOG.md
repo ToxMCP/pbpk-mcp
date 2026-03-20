@@ -6,6 +6,26 @@ All notable changes to this project should be documented in this file.
 
 - No unreleased changes documented yet.
 
+## v0.3.0 - 2026-03-20
+
+### Added
+
+- shared runtime patch manifest and installer so the Docker image build and hot-patch workflow use the same file map
+- release-readiness checks for tool-catalog exposure, discovery/resource parity, and explicit `.pksim5` rejection guidance
+- load-policy contract tests covering conversion-only format messaging
+
+### Changed
+
+- made the patch-first runtime layer explicit as the canonical implementation surface for this convergence stage
+- updated `scripts/deploy_rxode2_stack.sh` to recreate the stack and immediately reapply the current workspace patch set
+- changed `scripts/apply_rxode2_patch.py` to patch both API and worker containers by default
+- tightened direct `.pksim5` and `.mmd` rejection messages so conversion guidance is explicit and consistent with the published architecture
+
+### Notes
+
+- `v0.3.0` is the contract-convergence milestone for the current patch-first PBPK MCP runtime
+- packaging migration into a pure `src/` implementation is intentionally deferred to a later stage
+
 ## v0.2.4 - 2026-03-19
 
 ### Added

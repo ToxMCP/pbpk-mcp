@@ -11,6 +11,7 @@ from uuid import uuid4
 
 API_CONTAINER = "pbpk_mcp-api-1"
 CONTRACT_VERSION = "pbpk-mcp.v1"
+PKSIM5_PROJECT = "/app/var/demos/cimetidine/Cimetidine-Model.pksim5"
 
 
 def docker_exec_json(script: str):
@@ -200,6 +201,22 @@ class OecdLiveStackTests(unittest.TestCase):
         self.assertEqual(manifest["validationMode"], "static-manifest-inspection")
         self.assertEqual(manifest["qualificationState"]["state"], "research-use")
         self.assertTrue(manifest["hooks"]["modelProfile"])
+
+    def test_load_simulation_rejects_pksim5_with_export_guidance(self) -> None:
+        response = call_tool(
+            {
+                "tool": "load_simulation",
+                "critical": True,
+                "arguments": {
+                    "filePath": PKSIM5_PROJECT,
+                    "simulationId": f"pksim5-live-{uuid4().hex[:8]}",
+                },
+            }
+        )
+        self.assertEqual(response["status"], 400)
+        message = json.dumps(response["body"])
+        self.assertIn("Direct .pksim5 loading is not supported", message)
+        self.assertIn("export the PK-Sim project to .pkml first", message)
 
     def test_async_results_preserve_oecd_validation_metadata(self) -> None:
         simulation_id = f"oecd-live-run-{uuid4().hex[:8]}"

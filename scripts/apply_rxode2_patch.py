@@ -6,70 +6,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+from runtime_patch_manifest import (
+    DEFAULT_PATCH_CONTAINERS,
+    iter_patch_mappings,
+    python_target_paths,
+    r_target_paths,
+    target_directories,
+)
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
-PATCH_FILES = (
-    (
-        WORKSPACE_ROOT / "patches" / "mcp" / "__init__.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/__init__.py",
-    ),
-    (
-        WORKSPACE_ROOT / "patches" / "mcp_bridge" / "adapter" / "ospsuite.py",
-        "/usr/local/lib/python3.11/site-packages/mcp_bridge/adapter/ospsuite.py",
-    ),
-    (
-        WORKSPACE_ROOT / "patches" / "mcp_bridge" / "model_catalog.py",
-        "/usr/local/lib/python3.11/site-packages/mcp_bridge/model_catalog.py",
-    ),
-    (
-        WORKSPACE_ROOT / "patches" / "mcp_bridge" / "model_manifest.py",
-        "/usr/local/lib/python3.11/site-packages/mcp_bridge/model_manifest.py",
-    ),
-    (
-        WORKSPACE_ROOT / "patches" / "mcp_bridge" / "routes" / "resources.py",
-        "/usr/local/lib/python3.11/site-packages/mcp_bridge/routes/resources.py",
-    ),
-    (
-        WORKSPACE_ROOT / "patches" / "mcp_bridge" / "tools" / "registry.py",
-        "/usr/local/lib/python3.11/site-packages/mcp_bridge/tools/registry.py",
-    ),
-    (
-        WORKSPACE_ROOT / "patches" / "mcp" / "tools" / "load_simulation.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/tools/load_simulation.py",
-    ),
-    (
-        WORKSPACE_ROOT / "patches" / "mcp" / "tools" / "get_job_status.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/tools/get_job_status.py",
-    ),
-    (
-        WORKSPACE_ROOT / "patches" / "mcp" / "tools" / "discover_models.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/tools/discover_models.py",
-    ),
-    (
-        WORKSPACE_ROOT / "patches" / "mcp" / "tools" / "export_oecd_report.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/tools/export_oecd_report.py",
-    ),
-    (
-        WORKSPACE_ROOT / "patches" / "mcp" / "tools" / "validate_model_manifest.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/tools/validate_model_manifest.py",
-    ),
-    (
-        WORKSPACE_ROOT / "patches" / "mcp" / "tools" / "get_results.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/tools/get_results.py",
-    ),
-    (
-        WORKSPACE_ROOT / "patches" / "mcp" / "tools" / "validate_simulation_request.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/tools/validate_simulation_request.py",
-    ),
-    (
-        WORKSPACE_ROOT / "scripts" / "ospsuite_bridge.R",
-        "/app/scripts/ospsuite_bridge.R",
-    ),
-    (
-        WORKSPACE_ROOT / "cisplatin_models" / "cisplatin_population_rxode2_model.R",
-        "/app/var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R",
-    ),
-)
 
 
 def run(cmd: list[str], *, capture: bool = True) -> subprocess.CompletedProcess[str]:
@@ -82,6 +27,7 @@ def run(cmd: list[str], *, capture: bool = True) -> subprocess.CompletedProcess[
 
 
 def ensure_container_dirs(container: str) -> None:
+    directories = " ".join(target_directories())
     run(
         [
             "docker",
@@ -89,24 +35,20 @@ def ensure_container_dirs(container: str) -> None:
             container,
             "sh",
             "-lc",
-            "mkdir -p /app/scripts /app/var/models/rxode2/cisplatin "
-            "/usr/local/lib/python3.11/site-packages/mcp_bridge/adapter "
-            "/usr/local/lib/python3.11/site-packages/mcp_bridge/routes "
-            "/usr/local/lib/python3.11/site-packages/mcp_bridge/tools "
-            "/usr/local/lib/python3.11/site-packages/mcp/tools "
-            "/usr/local/lib/python3.11/site-packages/mcp",
+            f"mkdir -p {directories}",
         ]
     )
 
 
 def copy_files(container: str) -> None:
-    for source, target in PATCH_FILES:
+    for source, target in iter_patch_mappings(WORKSPACE_ROOT):
         if not source.is_file():
             raise FileNotFoundError(source)
         run(["docker", "cp", str(source), f"{container}:{target}"])
 
 
 def verify_python(container: str) -> None:
+    file_list = ", ".join(repr(path) for path in python_target_paths())
     run(
         [
             "docker",
@@ -116,21 +58,7 @@ def verify_python(container: str) -> None:
             "-c",
             (
                 "import py_compile, tempfile; "
-                "files = ["
-                "'/usr/local/lib/python3.11/site-packages/mcp/__init__.py', "
-                "'/usr/local/lib/python3.11/site-packages/mcp_bridge/adapter/ospsuite.py', "
-                "'/usr/local/lib/python3.11/site-packages/mcp_bridge/model_catalog.py', "
-                "'/usr/local/lib/python3.11/site-packages/mcp_bridge/model_manifest.py', "
-                "'/usr/local/lib/python3.11/site-packages/mcp_bridge/routes/resources.py', "
-                "'/usr/local/lib/python3.11/site-packages/mcp_bridge/tools/registry.py', "
-                "'/usr/local/lib/python3.11/site-packages/mcp/tools/load_simulation.py', "
-                "'/usr/local/lib/python3.11/site-packages/mcp/tools/get_job_status.py', "
-                "'/usr/local/lib/python3.11/site-packages/mcp/tools/discover_models.py', "
-                "'/usr/local/lib/python3.11/site-packages/mcp/tools/export_oecd_report.py', "
-                "'/usr/local/lib/python3.11/site-packages/mcp/tools/validate_model_manifest.py', "
-                "'/usr/local/lib/python3.11/site-packages/mcp/tools/get_results.py', "
-                "'/usr/local/lib/python3.11/site-packages/mcp/tools/validate_simulation_request.py'"
-                "]; "
+                f"files = [{file_list}]; "
                 "tmp = tempfile.mkdtemp(); "
                 "[(py_compile.compile(path, cfile=f'{tmp}/{index}.pyc', doraise=True)) for index, path in enumerate(files)]"
             ),
@@ -139,6 +67,9 @@ def verify_python(container: str) -> None:
 
 
 def verify_r_parsing(container: str) -> None:
+    parse_calls = "; ".join(
+        f"invisible(parse(file='{path}'))" for path in r_target_paths()
+    )
     run(
         [
             "docker",
@@ -146,11 +77,7 @@ def verify_r_parsing(container: str) -> None:
             container,
             "Rscript",
             "-e",
-            (
-                "invisible(parse(file='/app/scripts/ospsuite_bridge.R')); "
-                "invisible(parse(file='/app/var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R')); "
-                "cat('ok\\n')"
-            ),
+            f"{parse_calls}; cat('ok\\n')",
         ]
     )
 
@@ -183,7 +110,7 @@ def parse_args() -> argparse.Namespace:
         "--container",
         action="append",
         default=[],
-        help="Container to patch. Repeat for multiple containers. Defaults to pbpk_mcp-worker-1.",
+        help="Container to patch. Repeat for multiple containers. Defaults to patching the API and worker containers.",
     )
     parser.add_argument(
         "--restart",
@@ -195,7 +122,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    containers = args.container or ["pbpk_mcp-worker-1"]
+    containers = args.container or list(DEFAULT_PATCH_CONTAINERS)
 
     for container in containers:
         ensure_container_dirs(container)

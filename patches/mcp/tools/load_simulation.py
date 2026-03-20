@@ -148,8 +148,19 @@ def resolve_model_path(file_path: str, *, allowed_roots: Optional[Iterable[Path]
 
     candidate = Path(file_path).expanduser()
     candidate = (Path.cwd() / candidate).resolve() if not candidate.is_absolute() else candidate.resolve()
+    suffix = candidate.suffix.lower()
 
-    if candidate.suffix.lower() not in SUPPORTED_EXTENSIONS:
+    if suffix == ".pksim5":
+        raise LoadSimulationValidationError(
+            "Direct .pksim5 loading is not supported; export the PK-Sim project to .pkml first"
+        )
+
+    if suffix == ".mmd":
+        raise LoadSimulationValidationError(
+            "Direct Berkeley Madonna .mmd loading is not supported; convert the model to .pkml or an MCP-ready .R module first"
+        )
+
+    if suffix not in SUPPORTED_EXTENSIONS:
         supported = ", ".join(sorted(SUPPORTED_EXTENSIONS))
         raise LoadSimulationValidationError(f"Only {supported} files are supported")
 

@@ -36,24 +36,14 @@ RUN mkdir -p /root/.R \
 
 RUN Rscript -e "options(Ncpus=1L); install.packages('rxode2', repos='https://cloud.r-project.org')"
 
-COPY patches/mcp/__init__.py /usr/local/lib/python3.11/site-packages/mcp/__init__.py
-COPY patches/mcp_bridge/adapter/ospsuite.py /usr/local/lib/python3.11/site-packages/mcp_bridge/adapter/ospsuite.py
-COPY patches/mcp_bridge/model_catalog.py /usr/local/lib/python3.11/site-packages/mcp_bridge/model_catalog.py
-COPY patches/mcp_bridge/model_manifest.py /usr/local/lib/python3.11/site-packages/mcp_bridge/model_manifest.py
-COPY patches/mcp_bridge/routes/resources.py /usr/local/lib/python3.11/site-packages/mcp_bridge/routes/resources.py
-COPY patches/mcp_bridge/tools/registry.py /usr/local/lib/python3.11/site-packages/mcp_bridge/tools/registry.py
-COPY patches/mcp/tools/load_simulation.py /usr/local/lib/python3.11/site-packages/mcp/tools/load_simulation.py
-COPY patches/mcp/tools/get_job_status.py /usr/local/lib/python3.11/site-packages/mcp/tools/get_job_status.py
-COPY patches/mcp/tools/discover_models.py /usr/local/lib/python3.11/site-packages/mcp/tools/discover_models.py
-COPY patches/mcp/tools/export_oecd_report.py /usr/local/lib/python3.11/site-packages/mcp/tools/export_oecd_report.py
-COPY patches/mcp/tools/validate_model_manifest.py /usr/local/lib/python3.11/site-packages/mcp/tools/validate_model_manifest.py
-COPY patches/mcp/tools/get_results.py /usr/local/lib/python3.11/site-packages/mcp/tools/get_results.py
-COPY patches/mcp/tools/validate_simulation_request.py /usr/local/lib/python3.11/site-packages/mcp/tools/validate_simulation_request.py
-COPY scripts/ospsuite_bridge.R /app/scripts/ospsuite_bridge.R
-COPY cisplatin_models/cisplatin_population_rxode2_model.R /app/var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R
+COPY patches /tmp/pbpk_runtime_source/patches
+COPY scripts/install_runtime_patches.py /tmp/pbpk_runtime_source/scripts/install_runtime_patches.py
+COPY scripts/runtime_patch_manifest.py /tmp/pbpk_runtime_source/scripts/runtime_patch_manifest.py
+COPY scripts/ospsuite_bridge.R /tmp/pbpk_runtime_source/scripts/ospsuite_bridge.R
+COPY cisplatin_models/cisplatin_population_rxode2_model.R /tmp/pbpk_runtime_source/cisplatin_models/cisplatin_population_rxode2_model.R
 
-RUN python -c "import py_compile; files = ['/usr/local/lib/python3.11/site-packages/mcp/__init__.py', '/usr/local/lib/python3.11/site-packages/mcp_bridge/adapter/ospsuite.py', '/usr/local/lib/python3.11/site-packages/mcp_bridge/model_catalog.py', '/usr/local/lib/python3.11/site-packages/mcp_bridge/model_manifest.py', '/usr/local/lib/python3.11/site-packages/mcp_bridge/routes/resources.py', '/usr/local/lib/python3.11/site-packages/mcp_bridge/tools/registry.py', '/usr/local/lib/python3.11/site-packages/mcp/tools/load_simulation.py', '/usr/local/lib/python3.11/site-packages/mcp/tools/get_job_status.py', '/usr/local/lib/python3.11/site-packages/mcp/tools/discover_models.py', '/usr/local/lib/python3.11/site-packages/mcp/tools/export_oecd_report.py', '/usr/local/lib/python3.11/site-packages/mcp/tools/validate_model_manifest.py', '/usr/local/lib/python3.11/site-packages/mcp/tools/get_results.py', '/usr/local/lib/python3.11/site-packages/mcp/tools/validate_simulation_request.py']; [py_compile.compile(path, doraise=True) for path in files]" \
-    && Rscript -e "stopifnot(requireNamespace('rxode2', quietly=TRUE)); invisible(parse(file='/app/scripts/ospsuite_bridge.R')); invisible(parse(file='/app/var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R')); cat('rxode2 worker image ready\n')"
+RUN python /tmp/pbpk_runtime_source/scripts/install_runtime_patches.py --source-root /tmp/pbpk_runtime_source --target-root / --compile-python --verify-r \
+    && Rscript -e "stopifnot(requireNamespace('rxode2', quietly=TRUE)); cat('rxode2 worker image ready\n')"
 
 RUN chown -R mcp:mcp /app/scripts /app/var/models/rxode2
 
