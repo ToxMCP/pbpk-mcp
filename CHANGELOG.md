@@ -4,6 +4,8 @@ All notable changes to this project should be documented in this file.
 
 ## Unreleased
 
+## v0.3.1 - 2026-03-20
+
 ### Added
 
 - structured `uncertaintyEvidence` and `verificationEvidence` export in the OECD report path
@@ -46,6 +48,11 @@ All notable changes to this project should be documented in this file.
 - static manifest inspection now treats a companion uncertainty-evidence bundle as a valid alternative to a dedicated `pbpk_uncertainty_evidence(...)` hook for `R` models
 - companion uncertainty-evidence bundles can now expose bundle-level metadata, and that metadata is surfaced through static manifest inspection and OECD report export
 - malformed uncertainty-evidence rows are now surfaced as warnings during static manifest inspection and OECD report export instead of being silently normalized
+
+### Notes
+
+- `v0.3.1` extends the `v0.3.0` contract-convergence line with executable verification and generic qualification-evidence bundle support
+- the public MCP workflow is unchanged; this release strengthens qualification evidence, validation, and release hygiene around that workflow
 
 ## v0.3.0 - 2026-03-20
 

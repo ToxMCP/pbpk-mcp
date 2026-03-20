@@ -38,7 +38,7 @@ The internal architecture should therefore keep:
 
 ## Contract-Convergence Stage
 
-`v0.3.0` is intentionally a contract-convergence milestone, not a packaging-cleanup milestone.
+The `v0.3.x` line is intentionally a contract-convergence milestone, not a packaging-cleanup milestone.
 
 For this stage:
 

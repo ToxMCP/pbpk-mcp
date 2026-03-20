@@ -36,7 +36,7 @@ services:
       ADAPTER_TIMEOUT_SECONDS: "10"
       PYTHONPATH: /app/src
       R_MAX_VSIZE: 2G
-      SERVICE_VERSION: "0.3.0"
+      SERVICE_VERSION: "0.3.1"
     volumes:
       - ./scripts:/app/scripts
       - ./src:/app/src

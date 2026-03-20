@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`v0.3.0` keeps a patch-first runtime on purpose.
+`v0.3.1` keeps a patch-first runtime on purpose.
 
 That means the authoritative live MCP contract is defined in:
 
