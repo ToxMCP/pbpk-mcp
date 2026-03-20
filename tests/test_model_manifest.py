@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import importlib.util
 import sys
 import tempfile
 import textwrap
@@ -10,10 +11,14 @@ from pathlib import Path
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 PATCH_ROOT = WORKSPACE_ROOT / "patches"
-if str(PATCH_ROOT) not in sys.path:
-    sys.path.insert(0, str(PATCH_ROOT))
-
-from mcp_bridge.model_manifest import validate_model_manifest  # noqa: E402
+MODEL_MANIFEST_PATH = PATCH_ROOT / "mcp_bridge" / "model_manifest.py"
+spec = importlib.util.spec_from_file_location("pbpk_patch_model_manifest", MODEL_MANIFEST_PATH)
+if spec is None or spec.loader is None:  # pragma: no cover - import guard
+    raise RuntimeError(f"Unable to load patch module from {MODEL_MANIFEST_PATH}")
+module = importlib.util.module_from_spec(spec)
+sys.modules.setdefault("pbpk_patch_model_manifest", module)
+spec.loader.exec_module(module)
+validate_model_manifest = module.validate_model_manifest
 
 
 class ModelManifestTests(unittest.TestCase):

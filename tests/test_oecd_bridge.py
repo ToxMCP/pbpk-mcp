@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import textwrap
 import unittest
@@ -30,6 +31,7 @@ def run_r_json(r_body: str):
     return json.loads(completed.stdout.strip() or "null")
 
 
+@unittest.skipUnless(shutil.which("Rscript"), "Rscript is required for bridge-level R tests")
 class OecdBridgeTests(unittest.TestCase):
     def test_normalize_model_profile_coerces_scalar_sections(self) -> None:
         payload = run_r_json(
