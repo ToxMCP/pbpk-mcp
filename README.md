@@ -74,17 +74,15 @@ The current implementation follows a layered model:
 - `Execution backends` route `.pkml` files to `ospsuite` and MCP-ready `.R` modules to `rxode2`, while treating `.pksim5` and `.mmd` as conversion-only inputs.
 - `Qualification metadata` keeps `capabilities`, `profile`, `validation`, and `qualificationState` separate so runnable does not get conflated with scientifically qualified.
 - `Executable verification` adds lightweight but structured runtime checks on top of qualification metadata, including parameter-unit consistency, structural flow/volume consistency, deterministic smoke, result-integrity, and repeat-run reproducibility checks without conflating them with formal qualification evidence.
-- `Patch-first runtime + smoke tests` keep the documented tool surface synchronized with the live API during the current `v0.3.1` convergence stage.
+- `Patch-first runtime + smoke tests` keep the documented tool surface synchronized with the live API during the current `v0.3.2` convergence stage.
 
 See `docs/architecture/dual_backend_pbpk_mcp.md` for the fuller architecture narrative, `docs/architecture/mcp_payload_conventions.md` for the response contract, and `docs/deployment/runtime_patch_flow.md` for the operator path behind the current local deployment model.
 
-## What's new in v0.3.1
+## What's new in v0.3.2
 
-- Added `run_verification_checks` and stored `executableVerification` snapshots in `export_oecd_report`.
-- Added generic companion performance-evidence bundles for `.pkml` and MCP-ready `.R` models, with conservative validation and a public starter template.
-- Added generic companion uncertainty-evidence bundles for `.pkml` and MCP-ready `.R` models, with conservative validation and a public starter template.
-- Tightened qualification boundaries so runtime smoke and internal evidence are not misrepresented as predictive or externally qualified evidence.
-- Preserved the `v0.3.0` discovery-first, dual-backend public workflow while strengthening the evidence and release-hygiene path around it.
+- Fixed the local Docker startup path so the patch-first runtime no longer gets shadowed by the mounted `src/` tree.
+- Removed the compose-level `PYTHONPATH=/app/src` override from the local API and worker deployment.
+- Preserved the `v0.3.1` public MCP workflow and OECD evidence model unchanged while restoring clean local startup and release hygiene.
 
 ## Why this project exists
 
@@ -165,7 +163,7 @@ cd pbpk-mcp
 ./scripts/deploy_rxode2_stack.sh
 ```
 
-> **Heads-up:** The current local deployment is intentionally patch-first. `./scripts/deploy_rxode2_stack.sh` recreates the stack and reapplies the current runtime patch set so the live API matches the documented `v0.3.1` contract.
+> **Heads-up:** The current local deployment is intentionally patch-first. `./scripts/deploy_rxode2_stack.sh` recreates the stack and reapplies the current runtime patch set so the live API matches the documented `v0.3.2` contract.
 
 Once the server is running:
 
@@ -233,7 +231,7 @@ The default local stack is defined in `docker-compose.celery.yml`. Key environme
 | `R_PATH` / `R_HOME` | container defaults | Point the bridge to the R runtime used by `rxode2` and OSPSuite tooling. |
 | `R_MAX_VSIZE` | `2G` | Caps R virtual memory use inside the current local worker setup. |
 | `DOTNET_GCHeapLimitPercent` | `60` | Constrains the .NET heap used by the OSPSuite runtime. |
-| `SERVICE_VERSION` | `0.3.1` | Exposed through `/health` and compose-level runtime metadata. |
+| `SERVICE_VERSION` | `0.3.2` | Exposed through `/health` and compose-level runtime metadata. |
 | `AUTH_ALLOW_ANONYMOUS` | `true` | Development-friendly local default; do not expose beyond localhost without hardening. |
 
 See `docker-compose.celery.yml`, `docs/deployment/runtime_patch_flow.md`, and `docs/deployment/rxode2_worker_image.md` for the current operator-facing deployment surface.
@@ -462,7 +460,7 @@ Important boundaries:
 - `scripts/deploy_rxode2_stack.sh` is the preferred local operator entrypoint.
 - `scripts/apply_rxode2_patch.py` is the lower-level recovery tool if you need to reapply the current contract without a full recreate.
 - `scripts/install_runtime_patches.py` and `scripts/runtime_patch_manifest.py` define the shared patch set used by both the worker image build and the runtime patch flow.
-- `patches/` is still the canonical implementation layer for the current `v0.3.1` stage; pure `src/` packaging migration is intentionally deferred.
+- `patches/` is still the canonical implementation layer for the current `v0.3.2` stage; pure `src/` packaging migration is intentionally deferred.
 
 ### Useful repository guideposts
 

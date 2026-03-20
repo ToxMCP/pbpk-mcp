@@ -4,6 +4,21 @@ All notable changes to this project should be documented in this file.
 
 ## Unreleased
 
+## v0.3.2 - 2026-03-20
+
+### Fixed
+
+- removed the compose-level `PYTHONPATH=/app/src` override from the local API and worker deployment so the patch-first runtime no longer shadows the installed `mcp_bridge` package with an incomplete mounted `src/` tree
+- restored clean startup for `mcp_bridge.app:create_app` and `mcp_bridge.services.celery_app.celery_app` in the local Docker deployment
+
+### Changed
+
+- aligned the local deployment path with the actual patch-first operating model: patched installed package first, mounted `src/` only as reference material instead of import precedence
+
+### Notes
+
+- `v0.3.2` is a deployment-hotfix release over `v0.3.1`
+- it does not change the public MCP tool workflow or the OECD evidence model; it fixes local runtime startup and release hygiene
 ## v0.3.1 - 2026-03-20
 
 ### Added

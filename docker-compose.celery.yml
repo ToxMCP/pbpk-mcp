@@ -34,9 +34,8 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
       ADAPTER_TIMEOUT_SECONDS: "10"
-      PYTHONPATH: /app/src
       R_MAX_VSIZE: 2G
-      SERVICE_VERSION: "0.3.1"
+      SERVICE_VERSION: "0.3.2"
     volumes:
       - ./scripts:/app/scripts
       - ./src:/app/src
