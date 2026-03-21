@@ -46,6 +46,7 @@ class ValidateSimulationRequestResponse(BaseModel):
     validation: dict[str, Any] = Field(default_factory=dict)
     profile: dict[str, Any] = Field(default_factory=dict)
     capabilities: dict[str, Any] = Field(default_factory=dict)
+    ngra_objects: dict[str, Any] = Field(default_factory=dict, alias="ngraObjects")
     qualification_state: dict[str, Any] | None = Field(default=None, alias="qualificationState")
     warnings: list[str] = Field(default_factory=list)
 
@@ -59,6 +60,8 @@ class ValidateSimulationRequestResponse(BaseModel):
         profile_payload = dict(profile) if isinstance(profile, Mapping) else {}
         capabilities = payload.get("capabilities")
         capabilities_payload = dict(capabilities) if isinstance(capabilities, Mapping) else {}
+        ngra_objects = payload.get("ngraObjects")
+        ngra_objects_payload = dict(ngra_objects) if isinstance(ngra_objects, Mapping) else {}
         assessment = validation_payload.get("assessment") if isinstance(validation_payload, Mapping) else None
         qualification_state = (
             dict(assessment.get("qualificationState"))
@@ -73,6 +76,7 @@ class ValidateSimulationRequestResponse(BaseModel):
             validation=validation_payload,
             profile=profile_payload,
             capabilities=capabilities_payload,
+            ngraObjects=ngra_objects_payload,
             qualificationState=qualification_state,
             warnings=_validation_warnings(validation_payload),
         )

@@ -70,6 +70,10 @@ PATCHES: tuple[RuntimePatch, ...] = (
         "/usr/local/lib/python3.11/site-packages/mcp/tools/get_results.py",
     ),
     RuntimePatch(
+        "patches/mcp/tools/ingest_external_pbpk_bundle.py",
+        "/usr/local/lib/python3.11/site-packages/mcp/tools/ingest_external_pbpk_bundle.py",
+    ),
+    RuntimePatch(
         "patches/mcp/tools/validate_simulation_request.py",
         "/usr/local/lib/python3.11/site-packages/mcp/tools/validate_simulation_request.py",
     ),

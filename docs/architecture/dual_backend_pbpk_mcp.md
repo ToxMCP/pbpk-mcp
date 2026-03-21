@@ -227,6 +227,20 @@ A preflight decision about whether a requested use is within declared guardrails
 
 This is not the same as a regulatory approval statement.
 
+### NGRA-ready PBPK objects
+
+PBPK MCP can now derive typed PBPK-side objects for downstream workflow orchestration:
+
+- `assessmentContext`
+- `pbpkQualificationSummary`
+- `uncertaintySummary`
+- `internalExposureEstimate`
+- a thin `berInputBundle` in dossier export
+
+These objects are intended to make PBPK outputs composable in downstream systems such as ToxClaw without moving BER policy or broader decision logic into PBPK MCP itself.
+
+PBPK MCP can now also normalize externally generated PBPK outputs into the same object family through `ingest_external_pbpk_bundle`. This is an interoperability/import path, not a third execution backend.
+
 ## Common Contract
 
 Every loaded model should expose one stable high-level handle shape.

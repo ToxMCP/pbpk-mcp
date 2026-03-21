@@ -74,15 +74,17 @@ The current implementation follows a layered model:
 - `Execution backends` route `.pkml` files to `ospsuite` and MCP-ready `.R` modules to `rxode2`, while treating `.pksim5` and `.mmd` as conversion-only inputs.
 - `Qualification metadata` keeps `capabilities`, `profile`, `validation`, and `qualificationState` separate so runnable does not get conflated with scientifically qualified.
 - `Executable verification` adds lightweight but structured runtime checks on top of qualification metadata, including parameter-unit consistency, structural flow/volume consistency, deterministic smoke, result-integrity, and repeat-run reproducibility checks without conflating them with formal qualification evidence.
-- `Patch-first runtime + smoke tests` keep the documented tool surface synchronized with the live API during the current `v0.3.2` convergence stage.
+- `Patch-first runtime + smoke tests` keep the documented tool surface synchronized with the live API during the current `v0.3.3` convergence stage.
 
 See `docs/architecture/dual_backend_pbpk_mcp.md` for the fuller architecture narrative, `docs/architecture/mcp_payload_conventions.md` for the response contract, and `docs/deployment/runtime_patch_flow.md` for the operator path behind the current local deployment model.
 
-## What's new in v0.3.2
+## What's new in v0.3.3
 
-- Fixed the local Docker startup path so the patch-first runtime no longer gets shadowed by the mounted `src/` tree.
-- Removed the compose-level `PYTHONPATH=/app/src` override from the local API and worker deployment.
-- Preserved the `v0.3.1` public MCP workflow and OECD evidence model unchanged while restoring clean local startup and release hygiene.
+- Added `ingest_external_pbpk_bundle` for normalization-only import of external PBPK outputs into PBPK MCP's typed PBPK-side NGRA object surface.
+- Added additive `ngraObjects` in validation and OECD dossier export, including `assessmentContext`, `pbpkQualificationSummary`, `uncertaintySummary`, and `internalExposureEstimate`.
+- Tightened BER handoff semantics so `berInputBundle` becomes ready only when PBPK MCP has a real internal exposure metric and the caller supplies an external `podRef`.
+- Kept the current boundary explicit: PBPK MCP does not execute vendor engines, parse proprietary project files, calculate BER, or make NGRA decisions.
+- Preserved the `v0.3.x` discovery-first, dual-backend workflow while strengthening interoperability with external PBPK result sources.
 
 ## Why this project exists
 
@@ -93,6 +95,7 @@ The PBPK MCP server wraps those workflows in a **single, programmable interface*
 - **Unified MCP surface** – discovery, manifest checks, load, validation, execution, results, and dossier export share one tool catalog.
 - **Dual-backend execution** – `.pkml` models run on `ospsuite`; MCP-ready `.R` models run on `rxode2`.
 - **Qualification-aware workflows** – runtime capability, scientific profile, preflight validation, and derived `qualificationState` stay separate.
+- **NGRA-ready PBPK objects** – validation and dossier export expose PBPK-side typed objects such as `assessmentContext`, `pbpkQualificationSummary`, `uncertaintySummary`, and `internalExposureEstimate` without collapsing PBPK MCP into a full decision engine.
 - **Discovery before execution** – models are discoverable from disk before they are loaded into a live session.
 - **Release-tested local deployment** – the patch-first runtime is continuously exercised with unit tests, live-stack tests, and a readiness check.
 - **Model-specific executable qualification checks** – MCP-ready models can add runtime verification hooks for checks such as flow/volume consistency, mass balance, or numerical stability without overstating regulatory qualification.
@@ -108,6 +111,8 @@ The PBPK MCP server wraps those workflows in a **single, programmable interface*
 | 🧬 **Dual-backend PBPK execution** | Route `.pkml` models to `ospsuite` and MCP-ready `.R` models to `rxode2` through one MCP surface. |
 | 🗂️ **Model discovery and curation** | Discover supported model files from `MCP_MODEL_SEARCH_PATHS`, inspect unloaded models, and run static manifest checks before load. |
 | 🛡️ **OECD-oriented qualification** | Keep `capabilities`, `profile`, `validation`, and `qualificationState` explicit; expose applicability, provenance, uncertainty, implementation verification, software-platform qualification, and qualification gaps. |
+| 🧱 **NGRA-ready PBPK objects** | Emit typed PBPK-side objects such as `assessmentContext`, `pbpkQualificationSummary`, `uncertaintySummary`, `internalExposureEstimate`, and a thin BER-ready reference bundle in dossier export, without embedding BER decision logic in PBPK MCP. |
+| 🔌 **External PBPK normalization** | Normalize externally generated PBPK outputs, qualification metadata, and optional PoD references through `ingest_external_pbpk_bundle` without pretending PBPK MCP executed the upstream engine. |
 | ✅ **Executable verification** | Run `run_verification_checks` to capture preflight validation, parameter coverage, parameter-unit consistency, structural flow/volume consistency, deterministic smoke, deterministic result integrity, repeat-run reproducibility, optional population smoke, and verification-evidence summaries in one payload. |
 | 📈 **Deterministic and population jobs** | Submit asynchronous deterministic and population simulations, then retrieve result handles, stored results, and PK summaries. |
 | 🧾 **Dossier export** | Export a structured OECD-style report with model metadata, validation context, checklist state, parameter provenance, performance evidence, uncertainty evidence, verification evidence, and software-platform qualification evidence when declared. |
@@ -163,7 +168,7 @@ cd pbpk-mcp
 ./scripts/deploy_rxode2_stack.sh
 ```
 
-> **Heads-up:** The current local deployment is intentionally patch-first. `./scripts/deploy_rxode2_stack.sh` recreates the stack and reapplies the current runtime patch set so the live API matches the documented `v0.3.2` contract.
+> **Heads-up:** The current local deployment is intentionally patch-first. `./scripts/deploy_rxode2_stack.sh` recreates the stack and reapplies the current runtime patch set so the live API matches the documented `v0.3.3` contract.
 
 Once the server is running:
 
@@ -231,7 +236,7 @@ The default local stack is defined in `docker-compose.celery.yml`. Key environme
 | `R_PATH` / `R_HOME` | container defaults | Point the bridge to the R runtime used by `rxode2` and OSPSuite tooling. |
 | `R_MAX_VSIZE` | `2G` | Caps R virtual memory use inside the current local worker setup. |
 | `DOTNET_GCHeapLimitPercent` | `60` | Constrains the .NET heap used by the OSPSuite runtime. |
-| `SERVICE_VERSION` | `0.3.2` | Exposed through `/health` and compose-level runtime metadata. |
+| `SERVICE_VERSION` | `0.3.3` | Exposed through `/health` and compose-level runtime metadata. |
 | `AUTH_ALLOW_ANONYMOUS` | `true` | Development-friendly local default; do not expose beyond localhost without hardening. |
 
 See `docker-compose.celery.yml`, `docs/deployment/runtime_patch_flow.md`, and `docs/deployment/rxode2_worker_image.md` for the current operator-facing deployment surface.
@@ -243,7 +248,7 @@ See `docker-compose.celery.yml`, `docs/deployment/runtime_patch_flow.md`, and `d
 | Category | Highlight tools | Notes |
 | --- | --- | --- |
 | Discovery and curation | `discover_models`, `validate_model_manifest`, `load_simulation` | Discover models before load, inspect static manifest state, and load supported `.pkml` or MCP-ready `.R` files into the live session registry. |
-| Qualification and reporting | `validate_simulation_request`, `run_verification_checks`, `export_oecd_report` | Run OECD-oriented preflight checks, executable verification with unit/integrity/reproducibility checks, and structured dossier export with `profile`, `validation`, `qualificationState`, and evidence sections. |
+| Qualification and reporting | `validate_simulation_request`, `run_verification_checks`, `export_oecd_report`, `ingest_external_pbpk_bundle` | Run OECD-oriented preflight checks, executable verification with unit/integrity/reproducibility checks, structured dossier export with `profile`, `validation`, `qualificationState`, and evidence sections, and normalize externally generated PBPK outputs into the same typed PBPK-side objects. |
 | Simulation control | `list_parameters`, `get_parameter_value`, `set_parameter_value`, `run_simulation` | Inspect and modify simulation parameters, then submit deterministic runs asynchronously. |
 | Async status and results | `get_job_status`, `get_results`, `calculate_pk_parameters`, `cancel_job` | Track async jobs, retrieve stored deterministic results, compute PK summaries, and cancel queued/running jobs. |
 | Population and exploration | `run_population_simulation`, `get_population_results`, `run_sensitivity_analysis` | Run population workflows and sensitivity analyses on the backends that declare those capabilities. |
@@ -293,6 +298,7 @@ PBPK MCP keeps these concepts separate:
 - `profile` for declared scientific metadata
 - `validation` for preflight applicability and guardrail assessment
 - `qualificationState` for the derived summary label
+- `ngraObjects` for PBPK-side typed NGRA-ready objects such as `assessmentContext`, `pbpkQualificationSummary`, `uncertaintySummary`, and `internalExposureEstimate`
 
 Current derived qualification states include:
 
@@ -371,6 +377,9 @@ The server currently produces and exposes:
 - discovered model inventories with loaded/unloaded state
 - static manifest validation reports
 - load-time model metadata with `backend`, `capabilities`, `profile`, `validation`, and `qualificationState`
+- validation/report payloads with typed PBPK-side NGRA-ready objects such as `assessmentContext`, `pbpkQualificationSummary`, `uncertaintySummary`, and result-backed `internalExposureEstimate`
+- a BER-ready reference bundle in dossier export that can become `ready-for-external-ber-calculation` when an external `podRef` and a resolved PBPK exposure target are both available
+- imported external PBPK run records and NGRA-ready object bundles from `ingest_external_pbpk_bundle`
 - executable verification summaries with structured check results, smoke-run artifact handles, parameter-unit consistency, result-integrity/reproducibility checks, and verification-evidence snapshots
 - deterministic result handles and stored deterministic result payloads
 - population summary payloads and chunk handles
@@ -404,6 +413,7 @@ The server currently produces and exposes:
 
 - `validate_model_manifest` is a static pre-load check; it does not by itself prove executable correctness or scientific validity.
 - Runtime guardrails are not the same as external scientific validation.
+- `ingest_external_pbpk_bundle` is a normalization/import path for externally generated PBPK outputs. It does not execute vendor engines such as GastroPlus or Simcyp, and it does not parse proprietary project files directly.
 - `run_verification_checks` is intentionally lightweight implementation verification; it now includes parameter-unit consistency, structural flow/volume consistency, deterministic integrity, and reproducibility checks, but it still does not replace formal dimensional analysis, full unit-consistency proof across equations, solver qualification, software-platform qualification, or external qualification evidence.
 - `export_oecd_report` now carries the latest stored `run_verification_checks` snapshot as `executableVerification` when one has been run for that loaded simulation. The report does not silently rerun verification during export.
 - Model-specific hooks can add executable qualification checks such as flow/volume consistency, mass balance, or solver-stability comparisons, but those checks should still be interpreted as implementation evidence within the declared context, not as blanket regulatory qualification.
@@ -460,7 +470,7 @@ Important boundaries:
 - `scripts/deploy_rxode2_stack.sh` is the preferred local operator entrypoint.
 - `scripts/apply_rxode2_patch.py` is the lower-level recovery tool if you need to reapply the current contract without a full recreate.
 - `scripts/install_runtime_patches.py` and `scripts/runtime_patch_manifest.py` define the shared patch set used by both the worker image build and the runtime patch flow.
-- `patches/` is still the canonical implementation layer for the current `v0.3.2` stage; pure `src/` packaging migration is intentionally deferred.
+- `patches/` is still the canonical implementation layer for the current `v0.3.3` stage; pure `src/` packaging migration is intentionally deferred.
 
 ### Useful repository guideposts
 

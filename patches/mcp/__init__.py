@@ -24,6 +24,11 @@ from .tools.get_parameter_value import (
     get_parameter_value,
 )
 from .tools.get_results import GetResultsRequest, GetResultsResponse, get_results
+from .tools.ingest_external_pbpk_bundle import (
+    IngestExternalPbpkBundleRequest,
+    IngestExternalPbpkBundleResponse,
+    ingest_external_pbpk_bundle,
+)
 from .tools.list_parameters import ListParametersRequest, ListParametersResponse, list_parameters
 from .tools.load_simulation import LoadSimulationRequest, LoadSimulationResponse, load_simulation
 from .tools.run_simulation import RunSimulationRequest, RunSimulationResponse, run_simulation
@@ -85,6 +90,9 @@ __all__ = [
     "GetResultsRequest",
     "GetResultsResponse",
     "get_results",
+    "IngestExternalPbpkBundleRequest",
+    "IngestExternalPbpkBundleResponse",
+    "ingest_external_pbpk_bundle",
     "SetParameterValueRequest",
     "SetParameterValueResponse",
     "set_parameter_value",

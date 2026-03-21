@@ -98,6 +98,19 @@ class OecdLiveStackTests(unittest.TestCase):
         self.assertEqual(validation_payload["contractVersion"], CONTRACT_VERSION)
         self.assertEqual(validation_payload["backend"], "rxode2")
         self.assertEqual(validation_payload["qualificationState"]["state"], "research-use")
+        self.assertIn("ngraObjects", validation_payload)
+        self.assertEqual(
+            validation_payload["ngraObjects"]["assessmentContext"]["objectType"],
+            "assessmentContext.v1",
+        )
+        self.assertEqual(
+            validation_payload["ngraObjects"]["pbpkQualificationSummary"]["state"],
+            "research-use",
+        )
+        self.assertEqual(
+            validation_payload["ngraObjects"]["internalExposureEstimate"]["status"],
+            "not-available",
+        )
         validation = validation_payload["validation"]
         self.assertTrue(validation["ok"])
         self.assertEqual(validation["assessment"]["decision"], "within-declared-guardrails")
@@ -182,10 +195,32 @@ class OecdLiveStackTests(unittest.TestCase):
         self.assertEqual(report_payload["contractVersion"], CONTRACT_VERSION)
         self.assertEqual(report_payload["backend"], "rxode2")
         self.assertEqual(report_payload["qualificationState"]["state"], "research-use")
+        self.assertIn("ngraObjects", report_payload)
         report = report_payload["report"]
         self.assertEqual(report["reportVersion"], "pbpk-oecd-report.v1")
         self.assertEqual(report["validation"]["assessment"]["decision"], "within-declared-guardrails")
         self.assertEqual(report["qualificationState"]["state"], "research-use")
+        self.assertIn("ngraObjects", report)
+        self.assertEqual(
+            report_payload["ngraObjects"]["assessmentContext"]["objectType"],
+            "assessmentContext.v1",
+        )
+        self.assertEqual(
+            report_payload["ngraObjects"]["pbpkQualificationSummary"]["state"],
+            "research-use",
+        )
+        self.assertEqual(
+            report["ngraObjects"]["internalExposureEstimate"]["status"],
+            "available",
+        )
+        self.assertIn(
+            report["ngraObjects"]["internalExposureEstimate"]["selectionStatus"],
+            {"explicit", "only-series", "unresolved"},
+        )
+        self.assertEqual(
+            report["ngraObjects"]["berInputBundle"]["status"],
+            "incomplete",
+        )
         self.assertIn("modelPerformanceAndPredictivity", report["oecdChecklist"])
         self.assertEqual(report["oecdChecklist"]["modelPerformanceAndPredictivity"]["status"], "partial")
         self.assertIn("softwarePlatformQualification", report["oecdChecklist"])

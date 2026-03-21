@@ -607,6 +607,22 @@ coerce_request_section <- function(value, scalar_key = NULL) {
   stats::setNames(list(value), scalar_key)
 }
 
+first_text_value <- function(value) {
+  values <- normalize_text_values(value)
+  if (length(values) == 0) {
+    return(NULL)
+  }
+  values[[1]]
+}
+
+selection_triplet <- function(requested = NULL, declared = NULL) {
+  list(
+    requested = requested,
+    declared = declared,
+    effective = requested %||% declared
+  )
+}
+
 normalize_context_token <- function(value) {
   candidate <- safe_chr(value)
   if (is.null(candidate) || !nzchar(candidate)) {
@@ -3328,8 +3344,609 @@ record_executable_verification_snapshot <- function(record) {
     warningCount = as.integer(safe_num(verification$warningCount, 0)),
     skippedCount = as.integer(safe_num(verification$skippedCount, 0)),
     checks = verification$checks %||% list(),
-    artifacts = verification$artifacts %||% list()
+      artifacts = verification$artifacts %||% list()
   )
+}
+
+assessment_context_from_record <- function(record, request = list(), validation = NULL) {
+  request_payload <- request %||% list()
+  assessment <- validation$assessment %||% list()
+  declared_context <- record$profile$contextOfUse %||% list()
+  declared_domain <- record$profile$applicabilityDomain %||% list()
+  requested_context <- coerce_request_section(
+    request_payload$contextOfUse %||% request_payload$context_of_use,
+    scalar_key = "regulatoryUse"
+  )
+  requested_domain <- coerce_request_section(
+    request_payload$applicabilityDomain %||% request_payload$applicability %||% request_payload$domain
+  )
+  requested_target_output <- safe_chr(request_payload$targetOutput) %||%
+    safe_chr(request_payload$outputPath) %||%
+    safe_chr(request_payload$output)
+  declared_target_outputs <- normalize_text_values(
+    record$profile$modelPerformance$targetOutputs %||% list()
+  )
+
+  list(
+    objectType = "assessmentContext.v1",
+    objectId = sprintf("%s-assessment-context", record$simulation_id),
+    simulationId = record$simulation_id,
+    backend = record$backend,
+    validationDecision = safe_chr(assessment$decision),
+    contextOfUse = list(
+      regulatoryUse = selection_triplet(
+        first_text_value(
+          requested_context$regulatoryUse %||%
+            requested_context$intendedUse %||%
+            request_payload$regulatoryUse %||%
+            request_payload$intendedUse
+        ),
+        first_text_value(declared_context$regulatoryUse)
+      ),
+      scientificPurpose = selection_triplet(
+        first_text_value(requested_context$scientificPurpose %||% request_payload$scientificPurpose),
+        first_text_value(declared_context$scientificPurpose)
+      ),
+      decisionContext = selection_triplet(
+        first_text_value(requested_context$decisionContext %||% request_payload$decisionContext),
+        first_text_value(declared_context$decisionContext)
+      )
+    ),
+    domain = list(
+      species = selection_triplet(
+        first_text_value(requested_domain$species %||% request_payload$species),
+        first_text_value(declared_domain$species)
+      ),
+      route = selection_triplet(
+        first_text_value(
+          requested_domain$routes %||%
+            requested_domain$route %||%
+            request_payload$routes %||%
+            request_payload$route
+        ),
+        first_text_value(declared_domain$routes %||% declared_domain$route)
+      ),
+      lifeStage = selection_triplet(
+        first_text_value(
+          requested_domain$lifeStage %||%
+            requested_domain$life_stage %||%
+            request_payload$lifeStage %||%
+            request_payload$life_stage
+        ),
+        first_text_value(declared_domain$lifeStage %||% declared_domain$life_stage)
+      ),
+      population = selection_triplet(
+        first_text_value(requested_domain$population %||% request_payload$population),
+        first_text_value(declared_domain$population %||% declared_domain$populations)
+      ),
+      compound = selection_triplet(
+        first_text_value(
+          requested_domain$compounds %||%
+            requested_domain$compound %||%
+            request_payload$compound
+        ),
+        first_text_value(declared_domain$compounds %||% declared_domain$compound)
+      )
+    ),
+    doseScenario = request_payload$doseScenario %||% request_payload$dose_scenario %||% NULL,
+    targetOutput = list(
+      requested = requested_target_output,
+      declared = as.list(declared_target_outputs)
+    )
+  )
+}
+
+pbpk_qualification_summary_from_record <- function(
+  record,
+  assessment = list(),
+  performance_evidence = NULL,
+  executable_verification = NULL
+) {
+  qualification_state <- assessment$qualificationState %||%
+    derive_qualification_state(record$profile, record$capabilities, assessment)
+  missing_evidence <- normalize_text_values(
+    assessment$missingEvidence %||% profile_missing_evidence(record$profile, record$capabilities)
+  )
+  checklist_score <- safe_num(
+    qualification_state$checklistScore %||% assessment$oecdChecklistScore,
+    profile_oecd_checklist_score(profile_oecd_checklist(record$profile, record$capabilities))
+  )
+
+  list(
+    objectType = "pbpkQualificationSummary.v1",
+    objectId = sprintf("%s-qualification-summary", record$simulation_id),
+    simulationId = record$simulation_id,
+    backend = record$backend,
+    state = safe_chr(qualification_state$state, "unreported"),
+    label = safe_chr(qualification_state$label),
+    summary = safe_chr(qualification_state$summary),
+    qualificationLevel = safe_chr(
+      qualification_state$qualificationLevel %||% assessment$qualificationLevel,
+      "unreported"
+    ),
+    oecdReadiness = safe_chr(assessment$oecdReadiness, "unreported"),
+    validationDecision = safe_chr(assessment$decision, "unreported"),
+    withinDeclaredContext = safe_lgl(qualification_state$withinDeclaredContext, FALSE),
+    scientificProfile = safe_lgl(qualification_state$scientificProfile, FALSE),
+    riskAssessmentReady = safe_lgl(qualification_state$riskAssessmentReady, FALSE),
+    checklistScore = checklist_score,
+    evidenceStatus = safe_chr(qualification_state$evidenceStatus, "unreported"),
+    profileSource = safe_chr(record$profile$profileSource$type, "unreported"),
+    missingEvidenceCount = as.integer(length(missing_evidence)),
+    performanceEvidenceBoundary = safe_chr(performance_evidence$qualificationBoundary),
+    executableVerificationStatus = if (isTRUE(executable_verification$included)) {
+      safe_chr(executable_verification$status, "unreported")
+    } else {
+      "not-run"
+    }
+  )
+}
+
+uncertainty_summary_from_record <- function(record, uncertainty_evidence = NULL) {
+  uncertainty <- record$profile$uncertainty %||% list()
+  evidence <- uncertainty_evidence
+  if (is.null(evidence)) {
+    evidence <- record_uncertainty_evidence(record, limit = 50L)
+  }
+
+  row_kinds <- vapply(
+    evidence$rows %||% list(),
+    function(entry) safe_chr(entry$kind, "unspecified"),
+    character(1)
+  )
+
+  list(
+    objectType = "uncertaintySummary.v1",
+    objectId = sprintf("%s-uncertainty-summary", record$simulation_id),
+    simulationId = record$simulation_id,
+    backend = record$backend,
+    status = safe_chr(uncertainty$status, "unreported"),
+    summary = safe_chr(uncertainty$summary),
+    evidenceSource = safe_chr(evidence$source),
+    sources = evidence$sources %||% list(),
+    issueCount = as.integer(safe_num(evidence$issueCount, 0)),
+    evidenceRowCount = as.integer(safe_num(evidence$returnedRows, 0)),
+    totalEvidenceRows = as.integer(safe_num(evidence$totalRows, 0)),
+    hasSensitivityAnalysis = any(row_kinds == "sensitivity-analysis"),
+    hasVariabilityApproach = any(row_kinds == "variability-approach"),
+    hasVariabilityPropagation = any(row_kinds == "variability-propagation"),
+    hasResidualUncertainty = any(row_kinds == "residual-uncertainty"),
+    bundleMetadata = evidence$bundleMetadata %||% NULL
+  )
+}
+
+pk_metric_summary_from_series <- function(series_entry) {
+  values <- series_entry$values %||% list()
+  if (length(values) == 0) {
+    return(list(
+      outputPath = safe_chr(series_entry$parameter),
+      unit = safe_chr(series_entry$unit, "unitless"),
+      pointCount = 0L,
+      cmax = NULL,
+      tmax = NULL,
+      auc0Tlast = NULL,
+      aucUnitBasis = NULL
+    ))
+  }
+
+  times <- suppressWarnings(as.numeric(vapply(values, function(entry) safe_num(entry$time, NA_real_), numeric(1))))
+  observations <- suppressWarnings(as.numeric(vapply(values, function(entry) safe_num(entry$value, NA_real_), numeric(1))))
+  finite_mask <- is.finite(times) & is.finite(observations)
+  times <- times[finite_mask]
+  observations <- observations[finite_mask]
+
+  if (length(times) == 0 || length(observations) == 0) {
+    return(list(
+      outputPath = safe_chr(series_entry$parameter),
+      unit = safe_chr(series_entry$unit, "unitless"),
+      pointCount = 0L,
+      cmax = NULL,
+      tmax = NULL,
+      auc0Tlast = NULL,
+      aucUnitBasis = NULL
+    ))
+  }
+
+  order_index <- order(times, na.last = NA)
+  times <- times[order_index]
+  observations <- observations[order_index]
+  cmax_index <- which.max(observations)
+  auc_value <- NULL
+  if (length(times) >= 2) {
+    auc_value <- sum(diff(times) * (head(observations, -1) + tail(observations, -1)) / 2)
+  }
+
+  list(
+    outputPath = safe_chr(series_entry$parameter),
+    unit = safe_chr(series_entry$unit, "unitless"),
+    pointCount = as.integer(length(observations)),
+    cmax = safe_num(observations[[cmax_index]]),
+    tmax = safe_num(times[[cmax_index]]),
+    auc0Tlast = safe_num(auc_value),
+    aucUnitBasis = if (!is.null(safe_chr(series_entry$unit)) && nzchar(safe_chr(series_entry$unit, ""))) {
+      sprintf("%s x model-time-axis", safe_chr(series_entry$unit))
+    } else {
+      "model-output-unit x model-time-axis"
+    }
+  )
+}
+
+internal_exposure_estimate_from_record <- function(record, request = list(), candidate_limit = 25L) {
+  request_payload <- request %||% list()
+  explicit_results_id <- safe_chr(request_payload$resultsId) %||% safe_chr(request_payload$resultId)
+  latest_results_id <- safe_chr(record$metadata$latestResultsId)
+  selected_results_id <- explicit_results_id %||% latest_results_id
+  source <- if (!is.null(explicit_results_id) && nzchar(explicit_results_id)) {
+    "explicit-results-id"
+  } else if (!is.null(latest_results_id) && nzchar(latest_results_id)) {
+    "latest-deterministic-results"
+  } else {
+    "none"
+  }
+  warnings <- character()
+  requested_target_output <- safe_chr(request_payload$targetOutput) %||%
+    safe_chr(request_payload$outputPath) %||%
+    safe_chr(request_payload$output)
+
+  unavailable <- function(reason, ...) {
+    extra <- list(...)
+    payload <- list(
+      objectType = "internalExposureEstimate.v1",
+      objectId = sprintf("%s-internal-exposure-estimate", record$simulation_id),
+      simulationId = record$simulation_id,
+      backend = record$backend,
+      status = "not-available",
+      resultsId = selected_results_id,
+      source = source,
+      selectionReason = reason,
+      requestedTargetOutput = requested_target_output,
+      candidateOutputCount = 0L,
+      candidateOutputs = list(),
+      warnings = as.list(unique(warnings))
+    )
+    for (name in names(extra)) {
+      payload[[name]] <- extra[[name]]
+    }
+    payload
+  }
+
+  if (is.null(selected_results_id) || !nzchar(selected_results_id)) {
+    warnings <- c(warnings, "No deterministic results handle is attached to this simulation context.")
+    return(unavailable("missing-results"))
+  }
+
+  if (!exists(selected_results_id, envir = results_store, inherits = FALSE)) {
+    warnings <- c(warnings, sprintf(
+      "Deterministic results handle '%s' is not available in the current runtime.",
+      selected_results_id
+    ))
+    return(unavailable("results-not-found"))
+  }
+
+  result <- result_record(selected_results_id)
+  if (!identical(safe_chr(result$simulation_id), record$simulation_id)) {
+    warnings <- c(warnings, sprintf(
+      "Deterministic results handle '%s' belongs to simulation '%s', not '%s'.",
+      selected_results_id,
+      safe_chr(result$simulation_id, "unknown"),
+      record$simulation_id
+    ))
+    return(unavailable("results-simulation-mismatch"))
+  }
+
+  series_entries <- result$series %||% list()
+  candidate_summaries <- lapply(series_entries, pk_metric_summary_from_series)
+  candidate_count <- length(candidate_summaries)
+  if (candidate_count == 0) {
+    warnings <- c(warnings, "The referenced deterministic results handle contains no result series.")
+    return(unavailable("empty-results"))
+  }
+
+  selection_status <- "unresolved"
+  selected_summary <- NULL
+  if (!is.null(requested_target_output) && nzchar(requested_target_output)) {
+    exact_matches <- which(vapply(
+      candidate_summaries,
+      function(entry) identical(safe_chr(entry$outputPath), requested_target_output),
+      logical(1)
+    ))
+    if (length(exact_matches) == 0) {
+      exact_matches <- which(vapply(
+        candidate_summaries,
+        function(entry) identical(
+          tolower(safe_chr(entry$outputPath, "")),
+          tolower(requested_target_output)
+        ),
+        logical(1)
+      ))
+    }
+
+    if (length(exact_matches) == 1) {
+      selected_summary <- candidate_summaries[[exact_matches[[1]]]]
+      selection_status <- "explicit"
+    } else if (length(exact_matches) > 1) {
+      warnings <- c(warnings, sprintf(
+        "Requested target output '%s' matched multiple result series.",
+        requested_target_output
+      ))
+      selection_status <- "ambiguous-explicit-target"
+    } else {
+      warnings <- c(warnings, sprintf(
+        "Requested target output '%s' was not found in the stored deterministic results.",
+        requested_target_output
+      ))
+      selection_status <- "missing-explicit-target"
+    }
+  } else if (candidate_count == 1) {
+    selected_summary <- candidate_summaries[[1]]
+    selection_status <- "only-series"
+  } else {
+    warnings <- c(
+      warnings,
+      "Multiple result series are available; declare request.targetOutput or request.outputPath to resolve a single internal exposure target."
+    )
+  }
+
+  returned_candidates <- candidate_summaries
+  truncated <- FALSE
+  if (candidate_count > as.integer(candidate_limit)) {
+    returned_candidates <- candidate_summaries[seq_len(as.integer(candidate_limit))]
+    truncated <- TRUE
+  }
+
+  list(
+    objectType = "internalExposureEstimate.v1",
+    objectId = sprintf("%s-internal-exposure-estimate", record$simulation_id),
+    simulationId = record$simulation_id,
+    backend = record$backend,
+    status = "available",
+    resultsId = selected_results_id,
+    source = source,
+    requestedTargetOutput = requested_target_output,
+    selectionStatus = selection_status,
+    selectedOutput = selected_summary,
+    candidateOutputCount = as.integer(candidate_count),
+    candidateOutputs = returned_candidates,
+    candidateOutputsTruncated = truncated,
+    warnings = as.list(unique(warnings))
+  )
+}
+
+pod_metadata_from_request <- function(request = list()) {
+  request_payload <- request %||% list()
+  pod_payload <- request_payload$pod %||%
+    request_payload$pointOfDeparture %||%
+    request_payload$point_of_departure %||%
+    list()
+  if (!is.list(pod_payload)) {
+    pod_payload <- list(ref = pod_payload)
+  }
+
+  list(
+    ref = safe_chr(pod_payload$ref) %||%
+      safe_chr(pod_payload$podRef) %||%
+      safe_chr(request_payload$podRef) %||%
+      safe_chr(request_payload$podReference) %||%
+      safe_chr(request_payload$pointOfDepartureRef),
+    source = safe_chr(pod_payload$source) %||%
+      safe_chr(pod_payload$dataset) %||%
+      safe_chr(request_payload$podSource),
+    metric = safe_chr(pod_payload$metric) %||%
+      safe_chr(pod_payload$comparisonMetric) %||%
+      safe_chr(request_payload$podMetric),
+    unit = safe_chr(pod_payload$unit) %||%
+      safe_chr(request_payload$podUnit),
+    basis = safe_chr(pod_payload$basis) %||%
+      safe_chr(request_payload$podBasis),
+    summary = safe_chr(pod_payload$summary) %||%
+      safe_chr(request_payload$podSummary),
+    value = safe_num(pod_payload$value %||% request_payload$podValue)
+  )
+}
+
+true_dose_adjustment_from_request <- function(request = list()) {
+  request_payload <- request %||% list()
+  true_dose_payload <- request_payload$trueDose %||%
+    request_payload$trueDoseAdjustment %||%
+    request_payload$true_dose %||%
+    list()
+  if (!is.list(true_dose_payload)) {
+    true_dose_payload <- list(applied = true_dose_payload)
+  }
+
+  list(
+    applied = safe_lgl(
+      true_dose_payload$applied %||%
+        true_dose_payload$trueDoseAdjustmentApplied %||%
+        request_payload$trueDoseAdjustmentApplied,
+      FALSE
+    ),
+    basis = safe_chr(true_dose_payload$basis) %||%
+      safe_chr(true_dose_payload$trueDoseBasis) %||%
+      safe_chr(request_payload$trueDoseBasis),
+    summary = safe_chr(true_dose_payload$summary) %||%
+      safe_chr(request_payload$trueDoseAdjustmentSummary)
+  )
+}
+
+resolved_internal_exposure_metric <- function(selected_output, comparison_metric) {
+  if (is.null(selected_output) || !is.list(selected_output)) {
+    return(NULL)
+  }
+
+  metric_token <- normalize_context_token(comparison_metric)
+  if (is.null(metric_token) || !nzchar(metric_token)) {
+    metric_token <- "cmax"
+  }
+
+  if (metric_token %in% c("cmax", "maximum-concentration", "max-concentration")) {
+    return(list(
+      metric = "cmax",
+      value = selected_output$cmax %||% NULL,
+      unit = safe_chr(selected_output$unit),
+      outputPath = safe_chr(selected_output$outputPath)
+    ))
+  }
+
+  if (metric_token %in% c("tmax", "time-of-maximum-concentration", "time-to-cmax")) {
+    return(list(
+      metric = "tmax",
+      value = selected_output$tmax %||% NULL,
+      unit = "model-time-axis",
+      outputPath = safe_chr(selected_output$outputPath)
+    ))
+  }
+
+  if (metric_token %in% c("auc", "auc0-tlast", "auc0tlast", "area-under-curve")) {
+    return(list(
+      metric = "auc0Tlast",
+      value = selected_output$auc0Tlast %||% NULL,
+      unit = safe_chr(selected_output$aucUnitBasis),
+      outputPath = safe_chr(selected_output$outputPath)
+    ))
+  }
+
+  NULL
+}
+
+ber_input_bundle_from_record <- function(
+  record,
+  request = list(),
+  internal_exposure_estimate = NULL,
+  uncertainty_summary = NULL,
+  qualification_summary = NULL
+) {
+  request_payload <- request %||% list()
+  pod_metadata <- pod_metadata_from_request(request_payload)
+  pod_ref <- safe_chr(pod_metadata$ref)
+  comparison_metric <- safe_chr(
+    request_payload$comparisonMetric %||% pod_metadata$metric,
+    "cmax"
+  )
+  true_dose_adjustment <- true_dose_adjustment_from_request(request_payload)
+  internal_metric <- resolved_internal_exposure_metric(
+    internal_exposure_estimate$selectedOutput %||% NULL,
+    comparison_metric
+  )
+  warnings <- character()
+  blocking_reasons <- character()
+
+  if (is.null(internal_exposure_estimate) ||
+      !identical(safe_chr(internal_exposure_estimate$status), "available")) {
+    blocking_reasons <- c(blocking_reasons, "No deterministic internal exposure estimate is currently attached.")
+  } else if (is.null(internal_exposure_estimate$selectedOutput)) {
+    blocking_reasons <- c(
+      blocking_reasons,
+      "An internal exposure result exists, but no single target output is resolved for direct BER comparison."
+    )
+  }
+
+  if (is.null(pod_ref) || !nzchar(pod_ref)) {
+    blocking_reasons <- c(blocking_reasons, "No external point-of-departure reference is attached.")
+  }
+
+  if (!is.null(internal_exposure_estimate$selectedOutput) && is.null(internal_metric)) {
+    blocking_reasons <- c(
+      blocking_reasons,
+      sprintf(
+        "Comparison metric '%s' is not mapped to a built-in deterministic PBPK exposure metric.",
+        comparison_metric
+      )
+    )
+  }
+
+  if (!is.null(pod_ref) && nzchar(pod_ref) &&
+      (is.null(pod_metadata$metric) || !nzchar(safe_chr(pod_metadata$metric, "")))) {
+    warnings <- c(
+      warnings,
+      "No explicit PoD metric metadata were attached; downstream BER logic should validate metric compatibility."
+    )
+  }
+
+  if (isTRUE(true_dose_adjustment$applied) &&
+      (is.null(true_dose_adjustment$basis) || !nzchar(safe_chr(true_dose_adjustment$basis, "")))) {
+    warnings <- c(
+      warnings,
+      "True-dose adjustment is marked as applied, but no trueDoseBasis was attached."
+    )
+  }
+
+  ready <- (length(blocking_reasons) == 0)
+  list(
+    objectType = "berInputBundle.v1",
+    objectId = sprintf("%s-ber-input-bundle", record$simulation_id),
+    simulationId = record$simulation_id,
+    backend = record$backend,
+    status = if (ready) "ready-for-external-ber-calculation" else "incomplete",
+    comparisonMetric = comparison_metric,
+    internalExposureEstimateRef = internal_exposure_estimate$objectId %||% NULL,
+    internalExposureMetric = internal_metric,
+    uncertaintySummaryRef = uncertainty_summary$objectId %||% NULL,
+    qualificationSummaryRef = qualification_summary$objectId %||% NULL,
+    podRef = pod_ref,
+    podMetadata = pod_metadata,
+    trueDoseAdjustment = true_dose_adjustment,
+    trueDoseAdjustmentApplied = safe_lgl(true_dose_adjustment$applied, FALSE),
+    blockingReasons = as.list(unique(blocking_reasons)),
+    warnings = as.list(unique(warnings))
+  )
+}
+
+build_ngra_objects <- function(
+  record,
+  request = list(),
+  validation = NULL,
+  performance_evidence = NULL,
+  uncertainty_evidence = NULL,
+  executable_verification = NULL,
+  include_ber_bundle = FALSE
+) {
+  resolved_validation <- validation %||% list()
+  assessment <- resolved_validation$assessment %||% list()
+  resolved_performance_evidence <- performance_evidence
+  if (is.null(resolved_performance_evidence)) {
+    resolved_performance_evidence <- record_performance_evidence(record, limit = 50L)
+  }
+  resolved_uncertainty_evidence <- uncertainty_evidence
+  if (is.null(resolved_uncertainty_evidence)) {
+    resolved_uncertainty_evidence <- record_uncertainty_evidence(record, limit = 50L)
+  }
+  resolved_executable_verification <- executable_verification
+  if (is.null(resolved_executable_verification)) {
+    resolved_executable_verification <- record_executable_verification_snapshot(record)
+  }
+
+  assessment_context <- assessment_context_from_record(record, request, resolved_validation)
+  qualification_summary <- pbpk_qualification_summary_from_record(
+    record,
+    assessment = assessment,
+    performance_evidence = resolved_performance_evidence,
+    executable_verification = resolved_executable_verification
+  )
+  uncertainty_summary <- uncertainty_summary_from_record(
+    record,
+    uncertainty_evidence = resolved_uncertainty_evidence
+  )
+  internal_exposure_estimate <- internal_exposure_estimate_from_record(record, request)
+
+  payload <- list(
+    assessmentContext = assessment_context,
+    pbpkQualificationSummary = qualification_summary,
+    uncertaintySummary = uncertainty_summary,
+    internalExposureEstimate = internal_exposure_estimate
+  )
+
+  if (isTRUE(include_ber_bundle)) {
+    payload$berInputBundle <- ber_input_bundle_from_record(
+      record,
+      request = request,
+      internal_exposure_estimate = internal_exposure_estimate,
+      uncertainty_summary = uncertainty_summary,
+      qualification_summary = qualification_summary
+    )
+  }
+
+  payload
 }
 
 verification_check <- function(id, label, status, summary = NULL, ...) {
@@ -4150,6 +4767,15 @@ build_oecd_report <- function(
   verification_evidence <- record_verification_evidence(record, limit = 200L)
   platform_qualification_evidence <- record_platform_qualification_evidence(record, limit = 200L)
   executable_verification <- record_executable_verification_snapshot(record)
+  ngra_objects <- build_ngra_objects(
+    record,
+    request = request,
+    validation = resolved_validation,
+    performance_evidence = performance_evidence,
+    uncertainty_evidence = uncertainty_evidence,
+    executable_verification = executable_verification,
+    include_ber_bundle = TRUE
+  )
 
   parameter_table <- if (isTRUE(include_parameter_table)) {
     record_parameter_table(
@@ -4196,6 +4822,7 @@ build_oecd_report <- function(
     verificationEvidence = verification_evidence,
     executableVerification = executable_verification,
     platformQualificationEvidence = platform_qualification_evidence,
+    ngraObjects = ngra_objects,
     parameterTable = parameter_table
   )
 }
@@ -4494,6 +5121,9 @@ handle_run_simulation_sync <- function(payload) {
       series = series_from_results(simulation_results)
     )
     assign(results_id, result, envir = results_store)
+    record$metadata$latestResultsId <- results_id
+    record$metadata$latestResultsGeneratedAt <- result$generated_at
+    assign(record$simulation_id, record, envir = simulations)
     return(list(result = result))
   }
 
@@ -4524,6 +5154,9 @@ handle_run_simulation_sync <- function(payload) {
     series = normalize_series_payload(raw$series)
   )
   assign(results_id, result, envir = results_store)
+  record$metadata$latestResultsId <- results_id
+  record$metadata$latestResultsGeneratedAt <- result$generated_at
+  assign(record$simulation_id, record, envir = simulations)
   list(result = result)
 }
 
@@ -4544,13 +5177,20 @@ handle_validate_simulation_request <- function(payload) {
 
   record$metadata$validation <- validation
   assign(record$simulation_id, record, envir = simulations)
+  ngra_objects <- build_ngra_objects(
+    simulation_record(record$simulation_id),
+    request = request,
+    validation = validation,
+    include_ber_bundle = FALSE
+  )
 
   list(
     simulationId = record$simulation_id,
     backend = record$backend,
     validation = validation,
     profile = record$profile,
-    capabilities = record$capabilities
+    capabilities = record$capabilities,
+    ngraObjects = ngra_objects
   )
 }
 
@@ -4615,6 +5255,7 @@ handle_export_oecd_report <- function(payload) {
     simulationId = record$simulation_id,
     backend = record$backend,
     generatedAt = report$generatedAt,
+    ngraObjects = report$ngraObjects %||% list(),
     report = report
   )
 }

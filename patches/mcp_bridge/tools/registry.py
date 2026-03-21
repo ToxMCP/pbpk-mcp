@@ -47,6 +47,11 @@ from mcp.tools.get_results import (
     GetResultsResponse,
     get_results,
 )
+from mcp.tools.ingest_external_pbpk_bundle import (
+    IngestExternalPbpkBundleRequest,
+    IngestExternalPbpkBundleResponse,
+    ingest_external_pbpk_bundle,
+)
 from mcp.tools.list_parameters import (
     ListParametersRequest,
     ListParametersResponse,
@@ -240,6 +245,15 @@ def get_tool_registry() -> Dict[str, ToolDescriptor]:
             response_model=GetResultsResponse,
             handler=get_results,
             dependencies=("adapter", "job_service"),
+            roles=_standard_roles("viewer", "operator", "admin"),
+        ),
+        "ingest_external_pbpk_bundle": ToolDescriptor(
+            name="ingest_external_pbpk_bundle",
+            description="Normalize externally generated PBPK outputs, qualification metadata, and optional PoD references into PBPK-side NGRA-ready objects without executing the upstream engine.",
+            request_model=IngestExternalPbpkBundleRequest,
+            response_model=IngestExternalPbpkBundleResponse,
+            handler=ingest_external_pbpk_bundle,
+            dependencies=(),
             roles=_standard_roles("viewer", "operator", "admin"),
         ),
         "calculate_pk_parameters": ToolDescriptor(

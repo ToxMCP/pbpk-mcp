@@ -31,6 +31,7 @@ class ExportOecdReportResponse(BaseModel):
     simulation_id: str = Field(alias="simulationId")
     backend: Optional[str] = None
     generated_at: Optional[str] = Field(default=None, alias="generatedAt")
+    ngra_objects: dict[str, Any] = Field(default_factory=dict, alias="ngraObjects")
     qualification_state: dict[str, Any] | None = Field(default=None, alias="qualificationState")
     report: dict[str, Any] = Field(default_factory=dict)
 
@@ -38,6 +39,8 @@ class ExportOecdReportResponse(BaseModel):
     def from_adapter_payload(cls, payload: Mapping[str, Any]) -> "ExportOecdReportResponse":
         report = payload.get("report")
         report_payload = dict(report) if isinstance(report, Mapping) else {}
+        ngra_objects = payload.get("ngraObjects")
+        ngra_objects_payload = dict(ngra_objects) if isinstance(ngra_objects, Mapping) else {}
         qualification_state = None
         report_state = report_payload.get("qualificationState") if isinstance(report_payload, Mapping) else None
         if isinstance(report_state, Mapping):
@@ -52,6 +55,7 @@ class ExportOecdReportResponse(BaseModel):
             simulationId=str(payload.get("simulationId")),
             backend=str(payload.get("backend")) if payload.get("backend") else None,
             generatedAt=str(payload.get("generatedAt")) if payload.get("generatedAt") else None,
+            ngraObjects=ngra_objects_payload,
             qualificationState=qualification_state,
             report=report_payload,
         )

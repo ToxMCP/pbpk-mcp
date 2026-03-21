@@ -87,7 +87,8 @@ runtime-contract-test: ## Run the patch-first runtime contract tests that do not
 	$(PY) -m unittest -v \
 		tests/test_load_simulation_contract.py \
 		tests/test_model_manifest.py \
-		tests/test_oecd_bridge.py
+		tests/test_oecd_bridge.py \
+		tests/test_external_pbpk_bundle.py
 
 workspace-smoke: ## Run the live workspace model smoke with rxode2 population enabled
 	$(PY) scripts/workspace_model_smoke.py --include-population

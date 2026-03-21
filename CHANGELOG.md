@@ -4,6 +4,27 @@ All notable changes to this project should be documented in this file.
 
 ## Unreleased
 
+## v0.3.3 - 2026-03-21
+
+### Added
+
+- `ingest_external_pbpk_bundle` for normalization-only import of external PBPK run outputs and qualification metadata into PBPK MCP's typed NGRA-side object surface
+- additive `ngraObjects` in `validate_simulation_request` and `export_oecd_report`, including `assessmentContext`, `pbpkQualificationSummary`, `uncertaintySummary`, and `internalExposureEstimate`
+- dossier-level `berInputBundle` handoff metadata that becomes `ready-for-external-ber-calculation` only when a real internal exposure metric and external `podRef` are both present
+- dedicated unit coverage for external PBPK bundle normalization in `tests/test_external_pbpk_bundle.py`
+
+### Changed
+
+- extended the patch-first public contract so external PBPK outputs can be normalized into the same typed PBPK-side objects used by native `.pkml` and MCP-ready `.R` workflows
+- updated release-readiness checks to assert the `ingest_external_pbpk_bundle` tool and its BER-handoff status in the live API
+- updated `make runtime-contract-test` so the public contract gate includes the external-ingestion unit test
+- aligned repository and compose/runtime version markers to `0.3.3`
+
+### Notes
+
+- `v0.3.3` extends `v0.3.2` with NGRA-ready PBPK object export and normalization-only external PBPK ingestion
+- it does not execute commercial PBPK engines, parse proprietary project files, calculate BER, or move decision policy into PBPK MCP
+
 ## v0.3.2 - 2026-03-20
 
 ### Fixed

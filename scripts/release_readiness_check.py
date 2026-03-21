@@ -20,6 +20,7 @@ PREGNANCY_PKML = "/app/var/models/esqlabs/pregnancy-neonates-batch-run/Pregnant_
 PKSIM5_PROJECT = "/app/var/demos/cimetidine/Cimetidine-Model.pksim5"
 REQUIRED_TOOLS = {
     "discover_models",
+    "ingest_external_pbpk_bundle",
     "validate_model_manifest",
     "load_simulation",
     "validate_simulation_request",
@@ -98,6 +99,11 @@ def run_bridge_tests() -> None:
         cwd=WORKSPACE_ROOT,
         check=True,
     )
+    subprocess.run(
+        ["python3", "-m", "unittest", "-v", "tests/test_external_pbpk_bundle.py"],
+        cwd=WORKSPACE_ROOT,
+        check=True,
+    )
 
 
 def assert_true(condition: bool, message: str) -> None:
@@ -149,6 +155,51 @@ def run_release_check(base_url: str, *, skip_unit_tests: bool = False) -> dict:
         "missingTools": sorted(REQUIRED_TOOLS - tool_names),
     }
 
+    external_bundle = call_tool(
+        base_url,
+        "ingest_external_pbpk_bundle",
+        {
+            "sourcePlatform": "GastroPlus",
+            "sourceVersion": "10.1",
+            "modelName": "Release readiness external import",
+            "assessmentContext": {
+                "contextOfUse": {"regulatoryUse": "research-only"},
+                "domain": {"species": "human", "route": "oral"},
+                "targetOutput": "Plasma|Parent|Concentration",
+            },
+            "internalExposure": {
+                "targetOutput": "Plasma|Parent|Concentration",
+                "species": "human",
+                "route": "oral",
+                "metrics": {
+                    "cmax": {"value": 2.5, "unit": "uM"},
+                    "auc0Tlast": {"value": 7.1, "unit": "uM*h"},
+                },
+            },
+            "qualification": {
+                "evidenceLevel": "L2",
+                "verificationStatus": "checked",
+                "platformClass": "commercial",
+            },
+            "pod": {
+                "ref": "pod-readiness-001",
+                "metric": "cmax",
+                "unit": "uM",
+                "source": "httr-benchmark",
+            },
+            "comparisonMetric": "cmax",
+        },
+        timeout=30,
+    )
+    assert_true(
+        external_bundle["ngraObjects"]["berInputBundle"]["status"] == "ready-for-external-ber-calculation",
+        "External PBPK ingestion should produce a BER-ready bundle when PoD metadata and exposure metrics are present",
+    )
+    summary["externalImport"] = {
+        "sourcePlatform": external_bundle["externalRun"]["sourcePlatform"],
+        "berBundleStatus": external_bundle["ngraObjects"]["berInputBundle"]["status"],
+    }
+
     pksim5_error = call_tool_error(
         base_url,
         "load_simulation",
@@ -197,6 +248,18 @@ def run_release_check(base_url: str, *, skip_unit_tests: bool = False) -> dict:
         timeout=60,
     )
     assert_true(cis_validation["validation"]["ok"] is True, "Cisplatin validation did not pass in-domain")
+    assert_true(
+        cis_validation["ngraObjects"]["assessmentContext"]["objectType"] == "assessmentContext.v1",
+        "validate_simulation_request should expose an assessmentContext NGRA object",
+    )
+    assert_true(
+        cis_validation["ngraObjects"]["pbpkQualificationSummary"]["state"] == "research-use",
+        "validate_simulation_request should expose the derived PBPK qualification summary",
+    )
+    assert_true(
+        cis_validation["ngraObjects"]["internalExposureEstimate"]["status"] == "not-available",
+        "validate_simulation_request should not fabricate an internal exposure estimate before a deterministic run exists",
+    )
 
     cis_verification = call_tool(
         base_url,
@@ -281,6 +344,22 @@ def run_release_check(base_url: str, *, skip_unit_tests: bool = False) -> dict:
     cis_report_payload = cis_report["report"]
     assert_true(cis_report["tool"] == "export_oecd_report", "export_oecd_report tool response missing")
     assert_true(cis_report_payload["reportVersion"] == "pbpk-oecd-report.v1", "Unexpected OECD report version")
+    assert_true(
+        cis_report["ngraObjects"]["assessmentContext"]["objectType"] == "assessmentContext.v1",
+        "export_oecd_report should expose top-level NGRA objects for downstream workflows",
+    )
+    assert_true(
+        "ngraObjects" in cis_report_payload,
+        "The exported OECD report should remain self-contained and carry its NGRA object block",
+    )
+    assert_true(
+        cis_report_payload["ngraObjects"]["internalExposureEstimate"]["status"] == "available",
+        "The exported OECD report should derive internal exposure from the latest deterministic results handle",
+    )
+    assert_true(
+        cis_report_payload["ngraObjects"]["berInputBundle"]["status"] == "incomplete",
+        "The PBPK-side BER bundle should remain incomplete until an external point-of-departure reference is attached",
+    )
     assert_true(
         cis_report_payload["oecdChecklist"]["modelPerformanceAndPredictivity"]["status"] == "partial",
         "Cisplatin performance checklist should remain partial until real fit evidence is attached",

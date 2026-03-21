@@ -64,6 +64,7 @@ class ModelDiscoveryLiveStackTests(unittest.TestCase):
 
         expected = {
             "discover_models",
+            "ingest_external_pbpk_bundle",
             "validate_model_manifest",
             "load_simulation",
             "validate_simulation_request",
@@ -179,6 +180,56 @@ class ModelDiscoveryLiveStackTests(unittest.TestCase):
         self.assertTrue(matches, "loaded cisplatin model was not reported as loaded")
         loaded_ids = matches[0]["loadedSimulationIds"]
         self.assertIn(simulation_id, loaded_ids)
+
+    def test_external_pbpk_ingestion_tool_normalizes_ngra_objects(self) -> None:
+        response = call_tool(
+            {
+                "tool": "ingest_external_pbpk_bundle",
+                "arguments": {
+                    "sourcePlatform": "GastroPlus",
+                    "sourceVersion": "10.1",
+                    "modelName": "Imported example",
+                    "assessmentContext": {
+                        "contextOfUse": {"regulatoryUse": "research-only"},
+                        "domain": {"species": "human", "route": "oral"},
+                        "targetOutput": "Plasma|Parent|Concentration",
+                    },
+                    "internalExposure": {
+                        "targetOutput": "Plasma|Parent|Concentration",
+                        "species": "human",
+                        "route": "oral",
+                        "metrics": {
+                            "cmax": {"value": 2.5, "unit": "uM"},
+                            "auc0Tlast": {"value": 7.1, "unit": "uM*h"},
+                        },
+                    },
+                    "qualification": {
+                        "evidenceLevel": "L2",
+                        "verificationStatus": "checked",
+                        "platformClass": "commercial",
+                    },
+                    "pod": {
+                        "ref": "pod-001",
+                        "metric": "cmax",
+                        "unit": "uM",
+                        "source": "httr-benchmark",
+                    },
+                    "comparisonMetric": "cmax",
+                },
+            }
+        )["structuredContent"]
+
+        self.assertEqual(response["tool"], "ingest_external_pbpk_bundle")
+        self.assertEqual(response["contractVersion"], "pbpk-mcp.v1")
+        self.assertEqual(response["externalRun"]["sourcePlatform"], "GastroPlus")
+        self.assertEqual(
+            response["ngraObjects"]["internalExposureEstimate"]["status"],
+            "available",
+        )
+        self.assertEqual(
+            response["ngraObjects"]["berInputBundle"]["status"],
+            "ready-for-external-ber-calculation",
+        )
 
 
 if __name__ == "__main__":

@@ -383,6 +383,7 @@ class OecdBridgeTests(unittest.TestCase):
                 modelVersion = "1.0",
                 createdBy = "test",
                 createdAt = "2026-03-19T00:00:00Z",
+                latestResultsId = "example-results",
                 verification = list(
                   generatedAt = "2026-03-20T10:00:00Z",
                   status = "passed",
@@ -405,6 +406,27 @@ class OecdBridgeTests(unittest.TestCase):
               profile = profile,
               parameters = parameters,
               parameter_catalog = catalog
+            )
+            assign(
+              "example-results",
+              list(
+                results_id = "example-results",
+                simulation_id = "example-model",
+                generated_at = "2026-03-20T10:05:00Z",
+                metadata = list(engine = "rxode2"),
+                series = list(
+                  list(
+                    parameter = "Plasma|Cisplatin|Concentration",
+                    unit = "mg/L",
+                    values = list(
+                      list(time = 0, value = 0),
+                      list(time = 1, value = 2),
+                      list(time = 2, value = 1)
+                    )
+                  )
+                )
+              ),
+              envir = results_store
             )
             build_oecd_report(
               record,
@@ -440,12 +462,141 @@ class OecdBridgeTests(unittest.TestCase):
         self.assertEqual(payload["executableVerification"]["checks"][0]["id"], "mass-balance")
         self.assertEqual(payload["platformQualificationEvidence"]["included"], True)
         self.assertGreaterEqual(payload["platformQualificationEvidence"]["returnedRows"], 1)
+        self.assertIn("ngraObjects", payload)
+        self.assertEqual(payload["ngraObjects"]["assessmentContext"]["objectType"], "assessmentContext.v1")
+        self.assertEqual(
+            payload["ngraObjects"]["pbpkQualificationSummary"]["state"],
+            "research-use",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["uncertaintySummary"]["status"],
+            "partially-characterized",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["internalExposureEstimate"]["status"],
+            "available",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["internalExposureEstimate"]["selectionStatus"],
+            "only-series",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["internalExposureEstimate"]["selectedOutput"]["cmax"],
+            2,
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["berInputBundle"]["status"],
+            "incomplete",
+        )
         self.assertEqual(payload["parameterTable"]["source"], "parameter_catalog")
         self.assertEqual(payload["parameterTable"]["returnedRows"], 2)
         self.assertEqual(
             payload["parameterTable"]["rows"][0]["provenance_status"],
             "declared",
         )
+
+    def test_build_oecd_report_marks_ber_bundle_ready_with_pod_ref_and_target_output(self) -> None:
+        payload = run_r_json(
+            """
+            parameters <- list("Dose|DosePerSquareMeter" = 80)
+            profile <- normalize_model_profile(
+              list(
+                contextOfUse = list(
+                  scientificPurpose = "Tier 1 PBPK support",
+                  decisionContext = "BER-ready handoff",
+                  regulatoryUse = "research-only"
+                ),
+                applicabilityDomain = list(
+                  type = "declared-with-runtime-guardrails",
+                  qualificationLevel = "research-use",
+                  species = "human",
+                  routes = "iv-infusion"
+                ),
+                uncertainty = list(status = "partially-characterized"),
+                profileSource = list(
+                  type = "module-self-declared",
+                  path = "example_model.R",
+                  sourceToolHint = "rxode2"
+                )
+              ),
+              "rxode2",
+              "/tmp/example_model.R"
+            )
+            validation <- with_profile_assessment(
+              list(ok = TRUE, errors = list(), warnings = list()),
+              profile,
+              list(scientificProfile = TRUE)
+            )
+            record <- list(
+              backend = "rxode2",
+              simulation_id = "ber-ready-model",
+              file_path = "/tmp/example_model.R",
+              metadata = list(
+                name = "BER ready model",
+                latestResultsId = "ber-ready-results"
+              ),
+              capabilities = list(scientificProfile = TRUE),
+              profile = profile,
+              parameters = parameters,
+              parameter_catalog = normalize_parameter_catalog(parameters, list())
+            )
+            assign(
+              "ber-ready-results",
+              list(
+                results_id = "ber-ready-results",
+                simulation_id = "ber-ready-model",
+                generated_at = "2026-03-21T10:00:00Z",
+                metadata = list(engine = "rxode2"),
+                series = list(
+                  list(
+                    parameter = "Plasma|Parent|Concentration",
+                    unit = "uM",
+                    values = list(
+                      list(time = 0, value = 0),
+                      list(time = 1, value = 5),
+                      list(time = 2, value = 2)
+                    )
+                  )
+                )
+              ),
+              envir = results_store
+            )
+            report <- build_oecd_report(
+              record,
+              request = list(
+                contextOfUse = "research-only",
+                targetOutput = "Plasma|Parent|Concentration",
+                comparisonMetric = "cmax",
+                podRef = "pod-123",
+                pod = list(
+                  source = "httr-benchmark",
+                  metric = "cmax",
+                  unit = "uM",
+                  basis = "true-dose-adjusted"
+                ),
+                trueDose = list(
+                  applied = TRUE,
+                  basis = "free-concentration",
+                  summary = "PoD normalized to free concentration"
+                )
+              ),
+              validation = validation,
+              include_parameter_table = FALSE
+            )
+            report$ngraObjects$berInputBundle
+            """
+        )
+
+        self.assertEqual(payload["status"], "ready-for-external-ber-calculation")
+        self.assertEqual(payload["comparisonMetric"], "cmax")
+        self.assertEqual(payload["podRef"], "pod-123")
+        self.assertEqual(payload["podMetadata"]["source"], "httr-benchmark")
+        self.assertEqual(payload["internalExposureMetric"]["metric"], "cmax")
+        self.assertEqual(payload["internalExposureMetric"]["value"], 5)
+        self.assertEqual(payload["internalExposureMetric"]["unit"], "uM")
+        self.assertTrue(payload["trueDoseAdjustmentApplied"])
+        self.assertEqual(payload["trueDoseAdjustment"]["basis"], "free-concentration")
+        self.assertEqual(payload["blockingReasons"], [])
 
     def test_performance_evidence_summary_distinguishes_runtime_internal_rows(self) -> None:
         payload = run_r_json(
