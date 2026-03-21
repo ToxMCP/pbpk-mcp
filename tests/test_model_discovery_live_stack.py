@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import tempfile
+import time
 import urllib.parse
 import urllib.request
 import unittest
@@ -118,26 +120,35 @@ class ModelDiscoveryLiveStackTests(unittest.TestCase):
         self.assertEqual(resource_item["profileSource"], tool_item["profileSource"])
 
     def test_tool_discovers_new_workspace_model_file(self) -> None:
-        directory = WORKSPACE_ROOT / "var" / "models" / "discovery-tests"
-        directory.mkdir(parents=True, exist_ok=True)
         model_name = f"autodiscovery_{uuid4().hex[:8]}.R"
-        model_path = directory / model_name
-        model_path.write_text(
-            "pbpk_default_parameters <- function() list(Test|Value = 1)\n"
-            "pbpk_run_simulation <- function(parameters, simulation_id = NULL, run_id = NULL, request = list()) {\n"
-            "  list(series = list(), metadata = list(sourceModel = basename(simulation_id %||% run_id %||% 'test')))\n"
-            "}\n",
-            encoding="utf-8",
-        )
-        try:
-            response = call_tool(
-                {
-                    "tool": "discover_models",
-                    "arguments": {"search": model_name, "limit": 20},
-                }
+        container_dir = "/app/var/models/discovery-tests"
+        container_path = f"{container_dir}/{model_name}"
+        with tempfile.NamedTemporaryFile("w", suffix=".R", delete=False, encoding="utf-8") as handle:
+            handle.write(
+                "pbpk_default_parameters <- function() list(Test|Value = 1)\n"
+                "pbpk_run_simulation <- function(parameters, simulation_id = NULL, run_id = NULL, request = list()) {\n"
+                "  list(series = list(), metadata = list(sourceModel = basename(simulation_id %||% run_id %||% 'test')))\n"
+                "}\n"
             )
-            items = response["structuredContent"]["items"]
-            matches = [item for item in items if item["filePath"].endswith(model_name)]
+            temp_path = Path(handle.name)
+        try:
+            subprocess.run(["docker", "exec", API_CONTAINER, "mkdir", "-p", container_dir], check=True)
+            subprocess.run(["docker", "cp", str(temp_path), f"{API_CONTAINER}:{container_path}"], check=True)
+
+            matches = []
+            for _ in range(10):
+                response = call_tool(
+                    {
+                        "tool": "discover_models",
+                        "arguments": {"search": model_name, "limit": 20},
+                    }
+                )
+                items = response["structuredContent"]["items"]
+                matches = [item for item in items if item["filePath"].endswith(model_name)]
+                if matches:
+                    break
+                time.sleep(0.2)
+
             self.assertTrue(matches, "newly added workspace model file was not discovered")
 
             item = matches[0]
@@ -145,7 +156,11 @@ class ModelDiscoveryLiveStackTests(unittest.TestCase):
             self.assertFalse(item["isLoaded"])
             self.assertEqual(item["discoveryState"], "discovered")
         finally:
-            model_path.unlink(missing_ok=True)
+            temp_path.unlink(missing_ok=True)
+            subprocess.run(
+                ["docker", "exec", API_CONTAINER, "rm", "-f", container_path],
+                check=False,
+            )
 
     def test_tool_marks_cisplatin_as_loaded_after_load(self) -> None:
         simulation_id = f"discover-live-cis-{uuid4().hex[:8]}"
@@ -227,8 +242,20 @@ class ModelDiscoveryLiveStackTests(unittest.TestCase):
             "available",
         )
         self.assertEqual(
+            response["ngraObjects"]["pbpkQualificationSummary"]["assessmentBoundary"],
+            "external-pbpk-normalization-only",
+        )
+        self.assertEqual(
             response["ngraObjects"]["berInputBundle"]["status"],
             "ready-for-external-ber-calculation",
+        )
+        self.assertEqual(
+            response["ngraObjects"]["pointOfDepartureReference"]["status"],
+            "attached-external-reference",
+        )
+        self.assertEqual(
+            response["ngraObjects"]["berInputBundle"]["decisionOwner"],
+            "external-orchestrator",
         )
 
 

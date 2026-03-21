@@ -4,6 +4,28 @@ All notable changes to this project should be documented in this file.
 
 ## Unreleased
 
+### Changed
+
+- tightened the PBPK-side NGRA handoff objects so `pbpkQualificationSummary`, `uncertaintySummary`, `internalExposureEstimate`, and `berInputBundle` now expose explicit boundary/support metadata for downstream orchestration
+- made BER handoff ownership more explicit by identifying external decision ownership and required external inputs in both native and imported PBPK-side bundles
+- split external PoD metadata into a typed `pointOfDepartureReference` handoff object so PoD provenance is explicit without moving PoD interpretation into PBPK MCP
+- `export_oecd_report` now adds a descriptive `oecdCoverage` block aligned to OECD PBK Guidance Tables 3.1 and 3.2, without changing `oecdChecklistScore` or `qualificationState`
+- parameter tables can now be enriched generically through companion bundles such as `model.parameters.json`, with row-level coverage reporting for sources, citations, distributions, study conditions, and rationale in both static manifests and OECD dossier export
+- `peerReview` metadata are now normalized into structured review-record, prior-use, and revision-history coverage rather than being treated only as a free-text status flag
+- `modelPerformance` metadata now normalize structured dataset records and acceptance-criterion coverage so predictive-support traceability is not reduced to a single status field
+
+### Added
+
+- generic parameter-table companion bundle support and starter documentation/template for `.pkml` and MCP-ready `.R` models
+
+### Fixed
+
+- redeployed live-stack parameter-table coverage so the running `export_oecd_report` contract now matches the enriched local bridge payload
+
+### Notes
+
+- this increment strengthens OECD-style parameter provenance/reporting completeness without changing qualification scoring or NGRA decision ownership
+
 ## v0.3.3 - 2026-03-21
 
 ### Added

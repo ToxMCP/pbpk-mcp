@@ -87,6 +87,9 @@ The report then computes conservative summary fields such as:
 - `supportsObservedVsPredictedEvidence`
 - `supportsPredictiveDatasetEvidence`
 - `supportsExternalQualificationEvidence`
+- `traceability`
+
+`traceability` is additive. It summarizes whether the declared `modelPerformance` profile and exported evidence rows actually carry structured dataset records and explicit acceptance criteria.
 
 This is meant to prevent runtime smoke or internal reference rows from being mistaken for predictive validation.
 
@@ -140,6 +143,8 @@ Examples:
 - `Relative error <= 20% for plasma Cmax in the declared adult IV study`
 - `Geometric mean fold error within 2-fold across the packaged benchmark set`
 - `Runtime simulation completes and returns finite concentration-time output`
+
+If the scientific profile already declares `goodnessOfFit.datasetRecords`, `predictiveChecks.datasetRecords`, or section-level `acceptanceCriteria`, the bridge now preserves those as traceability counts in the exported performance summary even when the companion bundle is the only explicit row source.
 
 ## Template
 

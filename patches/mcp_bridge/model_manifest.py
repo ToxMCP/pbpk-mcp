@@ -90,6 +90,16 @@ def uncertainty_evidence_sidecar_candidates(file_path: Path) -> tuple[Path, ...]
     )
 
 
+def parameter_table_sidecar_candidates(file_path: Path) -> tuple[Path, ...]:
+    stem = file_path.with_suffix("")
+    return (
+        Path(f"{stem}.parameters.json"),
+        Path(f"{stem}.parameter-table.json"),
+        Path(f"{file_path}.parameters.json"),
+        Path(f"{file_path}.parameter-table.json"),
+    )
+
+
 def normalize_token(value: Any) -> str | None:
     if value is None:
         return None
@@ -423,6 +433,35 @@ def _extract_uncertainty_evidence_metadata(payload: Any) -> dict[str, Any] | Non
     return dict(metadata)
 
 
+def _extract_parameter_table_rows(payload: Any) -> list[Any] | None:
+    if isinstance(payload, Sequence) and not isinstance(payload, (str, bytes, bytearray)):
+        if payload and not isinstance(payload, Mapping):
+            return list(payload)
+    if not isinstance(payload, Mapping):
+        return None
+
+    candidates = (
+        payload.get("rows"),
+        payload.get("parameterTable", {}).get("rows") if isinstance(payload.get("parameterTable"), Mapping) else None,
+        payload.get("parameters"),
+    )
+    for candidate in candidates:
+        if isinstance(candidate, Sequence) and not isinstance(candidate, (str, bytes, bytearray)):
+            return list(candidate)
+    return None
+
+
+def _extract_parameter_table_metadata(payload: Any) -> dict[str, Any] | None:
+    if not isinstance(payload, Mapping):
+        return None
+    metadata = payload.get("metadata")
+    if metadata is None and isinstance(payload.get("parameterTable"), Mapping):
+        metadata = payload["parameterTable"].get("metadata")
+    if not isinstance(metadata, Mapping):
+        return None
+    return dict(metadata)
+
+
 def _validate_performance_evidence_rows(rows: Sequence[Any], *, field_prefix: str) -> list[dict[str, Any]]:
     issues: list[dict[str, Any]] = []
     for index, entry in enumerate(rows, start=1):
@@ -618,6 +657,119 @@ def _validate_uncertainty_evidence_metadata(
     return issues
 
 
+def _validate_parameter_table_rows(rows: Sequence[Any], *, field_prefix: str) -> list[dict[str, Any]]:
+    issues: list[dict[str, Any]] = []
+    for index, entry in enumerate(rows, start=1):
+        if not isinstance(entry, Mapping):
+            continue
+        row_id = _safe_text(entry.get("id") or entry.get("path")) or f"row-{index:03d}"
+        row_field_prefix = f"{field_prefix}[{index}]"
+
+        def add_issue(code: str, message: str, field: str) -> None:
+            issues.append(
+                _issue(
+                    code,
+                    message,
+                    field=field,
+                    severity="warning",
+                )
+            )
+
+        path = _safe_text(entry.get("path"))
+        if not path:
+            add_issue(
+                "parameter_row_path_missing",
+                f"Parameter-table row '{row_id}' should declare a path.",
+                f"{row_field_prefix}.path",
+            )
+            continue
+
+        source = _safe_text(entry.get("source"))
+        source_citation = _safe_text(entry.get("sourceCitation") or entry.get("source_citation"))
+        source_table = _safe_text(entry.get("sourceTable") or entry.get("source_table"))
+        source_type = _safe_text(entry.get("sourceType") or entry.get("source_type"))
+        evidence_type = _safe_text(entry.get("evidenceType") or entry.get("evidence_type"))
+        rationale = _safe_text(entry.get("rationale") or entry.get("motivation"))
+        experimental_conditions = entry.get("experimentalConditions") or entry.get("testConditions") or entry.get("studyConditions")
+        has_conditions = _safe_text(experimental_conditions) is not None or (
+            isinstance(experimental_conditions, Sequence) and not isinstance(experimental_conditions, (str, bytes, bytearray)) and len(experimental_conditions) > 0
+        )
+
+        has_provenance = any(value is not None for value in (
+            source,
+            source_citation,
+            source_table,
+            source_type,
+            evidence_type,
+            rationale,
+            _safe_text(entry.get("distribution") or entry.get("distributionType") or entry.get("distribution_type")),
+            entry.get("mean"),
+            entry.get("sd"),
+            entry.get("standardDeviation"),
+            entry.get("lowerBound"),
+            entry.get("upperBound"),
+            experimental_conditions,
+        ))
+
+        if has_provenance and not any(value is not None for value in (source, source_citation, source_table)):
+            add_issue(
+                "parameter_row_source_missing",
+                f"Parameter row '{row_id}' declares provenance metadata but does not identify a source, citation, or source table.",
+                row_field_prefix,
+            )
+
+        distribution = _safe_text(entry.get("distribution") or entry.get("distributionType") or entry.get("distribution_type"))
+        if distribution and all(entry.get(field) is None for field in ("mean", "sd", "standardDeviation", "lowerBound", "upperBound")):
+            add_issue(
+                "parameter_row_distribution_details_missing",
+                f"Parameter row '{row_id}' declares a distribution but does not provide supporting statistics or bounds.",
+                f"{row_field_prefix}.distribution",
+            )
+
+        source_type_token = normalize_token(source_type)
+        evidence_type_token = normalize_token(evidence_type)
+        experimental_source = (
+            bool(source_type_token and re.search(r"in-vitro|in-vivo|in-silico|experimental|study|guideline", source_type_token))
+            or bool(evidence_type_token and re.search(r"experimental|study|literature", evidence_type_token))
+        )
+        if experimental_source and not has_conditions and rationale is None:
+            add_issue(
+                "parameter_row_conditions_missing",
+                f"Parameter row '{row_id}' looks experimental or study-derived but does not declare study conditions or rationale.",
+                row_field_prefix,
+            )
+
+    return issues
+
+
+def _validate_parameter_table_metadata(
+    metadata: Mapping[str, Any] | None,
+    *,
+    field_prefix: str,
+) -> list[dict[str, Any]]:
+    issues: list[dict[str, Any]] = []
+    metadata_dict = dict(metadata or {})
+    if not _safe_text(metadata_dict.get("bundleVersion")):
+        issues.append(
+            _issue(
+                "parameter_table_bundle_version_missing",
+                "Parameter-table bundle metadata should declare bundleVersion.",
+                field=f"{field_prefix}.bundleVersion",
+                severity="warning",
+            )
+        )
+    if not _safe_text(metadata_dict.get("summary")):
+        issues.append(
+            _issue(
+                "parameter_table_bundle_summary_missing",
+                "Parameter-table bundle metadata should declare summary.",
+                field=f"{field_prefix}.summary",
+                severity="warning",
+            )
+        )
+    return issues
+
+
 def _load_performance_evidence_sidecar(
     file_path: Path,
 ) -> tuple[list[Any], dict[str, Any] | None, str | None, list[dict[str, Any]]]:
@@ -696,6 +848,46 @@ def _load_uncertainty_evidence_sidecar(
     return [], None, None, issues
 
 
+def _load_parameter_table_sidecar(
+    file_path: Path,
+) -> tuple[list[Any], dict[str, Any] | None, str | None, list[dict[str, Any]]]:
+    issues: list[dict[str, Any]] = []
+    for candidate in parameter_table_sidecar_candidates(file_path):
+        if not candidate.exists():
+            continue
+        try:
+            payload = json.loads(candidate.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            issues.append(
+                _issue(
+                    "parameter_table_sidecar_parse_error",
+                    f"Failed to parse parameter-table sidecar JSON: {exc}",
+                    field=str(candidate),
+                    severity="warning",
+                )
+            )
+            return [], None, str(candidate), issues
+
+        rows = _extract_parameter_table_rows(payload)
+        metadata = _extract_parameter_table_metadata(payload)
+        if rows is None:
+            issues.append(
+                _issue(
+                    "parameter_table_sidecar_rows_missing",
+                    "Parameter-table sidecar must provide 'rows', 'parameterTable.rows', or a top-level row array.",
+                    field=str(candidate),
+                    severity="warning",
+                )
+            )
+            return [], metadata, str(candidate), issues
+
+        issues.extend(_validate_parameter_table_metadata(metadata, field_prefix=f"{candidate}:metadata"))
+        issues.extend(_validate_parameter_table_rows(rows, field_prefix=f"{candidate}:rows"))
+        return list(rows), metadata, str(candidate), issues
+
+    return [], None, None, issues
+
+
 def _extract_assignment(text: str, field_name: str) -> str | None:
     pattern = re.compile(rf"\b{re.escape(field_name)}\s*=\s*['\"]([^'\"]+)['\"]")
     match = pattern.search(text)
@@ -707,12 +899,14 @@ def _extract_assignment(text: str, field_name: str) -> str | None:
 
 def _validate_r_model(file_path: Path) -> dict[str, Any]:
     text = file_path.read_text(encoding="utf-8", errors="ignore")
+    parameter_table_sidecar_rows, parameter_table_sidecar_metadata, parameter_table_sidecar_path, parameter_table_sidecar_issues = _load_parameter_table_sidecar(file_path)
     performance_sidecar_rows, performance_sidecar_metadata, performance_sidecar_path, performance_sidecar_issues = _load_performance_evidence_sidecar(file_path)
     uncertainty_sidecar_rows, uncertainty_sidecar_metadata, uncertainty_sidecar_path, uncertainty_sidecar_issues = _load_uncertainty_evidence_sidecar(file_path)
     hooks = {
         name: bool(pattern.search(text))
         for name, pattern in _R_HOOK_PATTERNS.items()
     }
+    hooks["parameterTableSidecar"] = parameter_table_sidecar_path is not None
     hooks["performanceEvidenceSidecar"] = performance_sidecar_path is not None
     hooks["uncertaintyEvidenceSidecar"] = uncertainty_sidecar_path is not None
     sections = {
@@ -726,6 +920,7 @@ def _validate_r_model(file_path: Path) -> dict[str, Any]:
     }
 
     issues: list[dict[str, Any]] = []
+    issues.extend(parameter_table_sidecar_issues)
     issues.extend(performance_sidecar_issues)
     issues.extend(uncertainty_sidecar_issues)
     if not hooks["modelProfile"]:
@@ -745,11 +940,11 @@ def _validate_r_model(file_path: Path) -> dict[str, Any]:
                 severity="warning",
             )
         )
-    if not hooks["parameterTable"]:
+    if not hooks["parameterTable"] and not hooks["parameterTableSidecar"]:
         issues.append(
             _issue(
                 "parameter_table_hook_missing",
-                "R model does not declare pbpk_parameter_table(...).",
+                "R model does not declare pbpk_parameter_table(...) and no parameter-table sidecar was found.",
                 field=str(file_path),
                 severity="warning",
             )
@@ -809,7 +1004,7 @@ def _validate_r_model(file_path: Path) -> dict[str, Any]:
         status["present"] for status in sections.values()
     )
     evidence_sections_complete = (
-        hooks["parameterTable"] and
+        (hooks["parameterTable"] or hooks["parameterTableSidecar"]) and
         (hooks["performanceEvidence"] or hooks["performanceEvidenceSidecar"]) and
         (hooks["uncertaintyEvidence"] or hooks["uncertaintyEvidenceSidecar"]) and
         hooks["verificationEvidence"] and
@@ -845,6 +1040,9 @@ def _validate_r_model(file_path: Path) -> dict[str, Any]:
         "sections": sections,
         "issues": issues,
         "supplementalEvidence": {
+            "parameterTableSidecarPath": parameter_table_sidecar_path,
+            "parameterTableRowCount": len(parameter_table_sidecar_rows),
+            "parameterTableBundleMetadata": parameter_table_sidecar_metadata,
             "performanceEvidenceSidecarPath": performance_sidecar_path,
             "performanceEvidenceRowCount": len(performance_sidecar_rows),
             "performanceEvidenceBundleMetadata": performance_sidecar_metadata,
@@ -866,6 +1064,7 @@ def validate_model_manifest(file_path: str | Path) -> dict[str, Any]:
 
     if backend == "ospsuite":
         profile, sidecar_path, sidecar_issues = _load_sidecar_profile(path)
+        parameter_table_sidecar_rows, parameter_table_sidecar_metadata, parameter_table_sidecar_path, parameter_table_sidecar_issues = _load_parameter_table_sidecar(path)
         performance_sidecar_rows, performance_sidecar_metadata, performance_sidecar_path, performance_sidecar_issues = _load_performance_evidence_sidecar(path)
         uncertainty_sidecar_rows, uncertainty_sidecar_metadata, uncertainty_sidecar_path, uncertainty_sidecar_issues = _load_uncertainty_evidence_sidecar(path)
         if profile is None:
@@ -889,9 +1088,12 @@ def validate_model_manifest(file_path: str | Path) -> dict[str, Any]:
                         evidence_sections_complete=False,
                     ),
                     "sections": {},
-                    "issues": [*sidecar_issues, *performance_sidecar_issues, *uncertainty_sidecar_issues],
+                    "issues": [*sidecar_issues, *parameter_table_sidecar_issues, *performance_sidecar_issues, *uncertainty_sidecar_issues],
                     "sidecarPath": sidecar_path,
                     "supplementalEvidence": {
+                        "parameterTableSidecarPath": parameter_table_sidecar_path,
+                        "parameterTableRowCount": len(parameter_table_sidecar_rows),
+                        "parameterTableBundleMetadata": parameter_table_sidecar_metadata,
                         "performanceEvidenceSidecarPath": performance_sidecar_path,
                         "performanceEvidenceRowCount": len(performance_sidecar_rows),
                         "performanceEvidenceBundleMetadata": performance_sidecar_metadata,
@@ -908,8 +1110,11 @@ def validate_model_manifest(file_path: str | Path) -> dict[str, Any]:
             profile_source="sidecar",
             sidecar_path=sidecar_path,
         )
-        manifest["issues"] = [*sidecar_issues, *performance_sidecar_issues, *uncertainty_sidecar_issues, *manifest["issues"]]
+        manifest["issues"] = [*sidecar_issues, *parameter_table_sidecar_issues, *performance_sidecar_issues, *uncertainty_sidecar_issues, *manifest["issues"]]
         manifest["supplementalEvidence"] = {
+            "parameterTableSidecarPath": parameter_table_sidecar_path,
+            "parameterTableRowCount": len(parameter_table_sidecar_rows),
+            "parameterTableBundleMetadata": parameter_table_sidecar_metadata,
             "performanceEvidenceSidecarPath": performance_sidecar_path,
             "performanceEvidenceRowCount": len(performance_sidecar_rows),
             "performanceEvidenceBundleMetadata": performance_sidecar_metadata,

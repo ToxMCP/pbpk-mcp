@@ -108,8 +108,23 @@ class OecdLiveStackTests(unittest.TestCase):
             "research-use",
         )
         self.assertEqual(
+            validation_payload["ngraObjects"]["pbpkQualificationSummary"]["assessmentBoundary"],
+            "pbpk-execution-and-qualification-substrate-only",
+        )
+        self.assertFalse(
+            validation_payload["ngraObjects"]["pbpkQualificationSummary"]["supports"]["regulatoryDecision"],
+        )
+        self.assertEqual(
             validation_payload["ngraObjects"]["internalExposureEstimate"]["status"],
             "not-available",
+        )
+        self.assertEqual(
+            validation_payload["ngraObjects"]["pointOfDepartureReference"]["status"],
+            "not-attached",
+        )
+        self.assertEqual(
+            validation_payload["ngraObjects"]["internalExposureEstimate"]["decisionBoundary"],
+            "no-ngra-decision-policy",
         )
         validation = validation_payload["validation"]
         self.assertTrue(validation["ok"])
@@ -201,6 +216,18 @@ class OecdLiveStackTests(unittest.TestCase):
         self.assertEqual(report["validation"]["assessment"]["decision"], "within-declared-guardrails")
         self.assertEqual(report["qualificationState"]["state"], "research-use")
         self.assertIn("ngraObjects", report)
+        self.assertIn("oecdCoverage", report)
+        self.assertEqual(report["oecdCoverage"]["coverageVersion"], "pbpk-oecd-coverage.v1")
+        self.assertFalse(report["oecdCoverage"]["affectsChecklistScore"])
+        self.assertFalse(report["oecdCoverage"]["affectsQualificationState"])
+        self.assertEqual(
+            report["oecdCoverage"]["reportingTemplate"]["sections"]["modelPerformance"]["status"],
+            "partial",
+        )
+        self.assertIn(
+            report["oecdCoverage"]["evaluationChecklist"]["sections"]["regulatoryPurpose"]["status"],
+            {"partial", "declared"},
+        )
         self.assertEqual(
             report_payload["ngraObjects"]["assessmentContext"]["objectType"],
             "assessmentContext.v1",
@@ -210,8 +237,19 @@ class OecdLiveStackTests(unittest.TestCase):
             "research-use",
         )
         self.assertEqual(
+            report_payload["ngraObjects"]["pbpkQualificationSummary"]["assessmentBoundary"],
+            "pbpk-execution-and-qualification-substrate-only",
+        )
+        self.assertEqual(
             report["ngraObjects"]["internalExposureEstimate"]["status"],
             "available",
+        )
+        self.assertIn(
+            "externalBerHandoff",
+            report["ngraObjects"]["internalExposureEstimate"]["supports"],
+        )
+        self.assertFalse(
+            report["ngraObjects"]["internalExposureEstimate"]["supports"]["decisionRecommendation"],
         )
         self.assertIn(
             report["ngraObjects"]["internalExposureEstimate"]["selectionStatus"],
@@ -220,6 +258,14 @@ class OecdLiveStackTests(unittest.TestCase):
         self.assertEqual(
             report["ngraObjects"]["berInputBundle"]["status"],
             "incomplete",
+        )
+        self.assertEqual(
+            report["ngraObjects"]["pointOfDepartureReference"]["status"],
+            "not-attached",
+        )
+        self.assertEqual(
+            report["ngraObjects"]["berInputBundle"]["decisionOwner"],
+            "external-orchestrator",
         )
         self.assertIn("modelPerformanceAndPredictivity", report["oecdChecklist"])
         self.assertEqual(report["oecdChecklist"]["modelPerformanceAndPredictivity"]["status"], "partial")
@@ -244,6 +290,12 @@ class OecdLiveStackTests(unittest.TestCase):
         )
         uncertainty_row_ids = {entry["id"] for entry in report["uncertaintyEvidence"]["rows"]}
         self.assertIn("bounded-variability-propagation-summary", uncertainty_row_ids)
+        self.assertIn("coverage", report["parameterTable"])
+        self.assertEqual(
+            report["parameterTable"]["coverage"]["rowCount"],
+            report["parameterTable"]["matchedRows"],
+        )
+        self.assertIn("rowsWithExperimentalConditions", report["parameterTable"]["coverage"])
         self.assertIn("local-sensitivity-screen-summary", uncertainty_row_ids)
         self.assertTrue(
             any(entry.startswith("bounded-variability-propagation-") for entry in uncertainty_row_ids)

@@ -64,6 +64,25 @@ If `pbpk_model_profile()` is present, `load_simulation` also returns a `profile`
 - `platformQualification`
 - `peerReview`
 
+`peerReview` can now carry structured traceability fields such as:
+
+- `reviewRecords`
+- `priorRegulatoryUse`
+- `revisionStatus`
+- `revisionHistory`
+
+When these are present, the bridge exposes additive coverage counters in the normalized profile so downstream dossier tooling can distinguish declared peer engagement from prior-use and revision traceability.
+
+`modelPerformance` can now also carry richer traceability fields such as:
+
+- `goodnessOfFit.datasetRecords`
+- `predictiveChecks.datasetRecords`
+- `evaluationData.datasetRecords`
+- `goodnessOfFit.acceptanceCriteria`
+- `predictiveChecks.acceptanceCriteria`
+
+When these are present, the bridge exposes additive coverage counters in the normalized profile and in `performanceEvidence.traceability`, so predictive-support metadata is not reduced to a single `status` field.
+
 If `pbpk_validate_request()` is present, the bridge calls it during:
 
 - `load_simulation`
@@ -92,11 +111,15 @@ Current MCP surfaces that use this data:
   - runs executable verification checks and returns structured check results, smoke artifact handles, parameter-unit consistency, structural flow/volume consistency, deterministic integrity/reproducibility summaries, optional model-specific checks such as mass balance or solver stability, and a compact verification-evidence snapshot
 - `export_oecd_report`
   - returns a structured dossier/report with `qualificationState`, `profile`, `validation`, `oecdChecklist`, `performanceEvidence`, `uncertaintyEvidence`, `verificationEvidence`, `executableVerification`, `platformQualificationEvidence`, and an optional parameter table
+  - `parameterTable` now also carries `coverage`, `issues`, `bundleMetadata`, and merged-source provenance so dossier completeness around units, citations, distributions, study conditions, and rationale is visible directly in the MCP payload
+  - if a model author prefers file-based attachment over a code hook, companion bundles such as `model.parameters.json` are also supported; see [parameter_table_bundles.md](/Volumes/Storage/topotox_offload/20260220_space_relief/manual_offload/PBPK_MCP/docs/integration_guides/parameter_table_bundles.md)
   - `performanceEvidence` now carries explicit classification fields such as `strongestEvidenceClass`, `qualificationBoundary`, and support flags for observed-versus-predicted, predictive-dataset, and external-qualification evidence so runtime smoke checks are not overstated
+  - `performanceEvidence.traceability` now reports whether structured dataset records and explicit acceptance criteria were actually declared, even when the bundled evidence remains internal or limited
   - if a model author prefers file-based attachment over a code hook, companion bundles such as `model.performance.json` are also supported; see [performance_evidence_bundles.md](/Volumes/Storage/topotox_offload/20260220_space_relief/manual_offload/PBPK_MCP/docs/integration_guides/performance_evidence_bundles.md)
   - `executableVerification` is included when `run_verification_checks` has already been executed for that loaded simulation; export does not rerun verification implicitly
   - `uncertaintyEvidence` can include bounded local sensitivity rows and compact variability-propagation summaries for models that choose to export them, but those rows should still be documented as internal quantitative evidence rather than global uncertainty analysis
   - if a model author prefers file-based attachment over a code hook, companion bundles such as `model.uncertainty.json` are also supported; see [uncertainty_evidence_bundles.md](/Volumes/Storage/topotox_offload/20260220_space_relief/manual_offload/PBPK_MCP/docs/integration_guides/uncertainty_evidence_bundles.md)
+  - `peerReviewAndPriorUse` now becomes stronger only when structured peer-review records, prior-use traceability, and revision-history details are actually declared; a free-text review summary alone remains partial evidence
 - `run_simulation` / `get_results`
   - preserve the validation assessment on deterministic result metadata
 

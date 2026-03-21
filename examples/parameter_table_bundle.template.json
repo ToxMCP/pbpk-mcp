@@ -1,0 +1,56 @@
+{
+  "metadata": {
+    "bundleVersion": "pbpk-parameter-table.v1",
+    "summary": "Template parameter-table bundle for PBPK MCP.",
+    "evidenceScope": "Replace these rows with real model-specific parameter provenance, distributions, and study conditions. Do not publish placeholders as qualification evidence.",
+    "curator": "Replace with model author or organization",
+    "createdAt": "2026-03-21",
+    "notes": [
+      "Use runtime parameter paths as stable keys so the bridge can merge these rows with the loaded parameter catalog.",
+      "Only declare distributions, statistics, and experimental conditions when they are supported by the actual model documentation."
+    ]
+  },
+  "rows": [
+    {
+      "path": "Physiology|BodyWeight",
+      "display_name": "Body weight",
+      "unit": "kg",
+      "category": "Physiology",
+      "source": "Replace with the actual physiology reference or curated default source",
+      "sourceType": "physiology-default",
+      "sourceCitation": "Replace with citation, report section, or curated reference ID",
+      "sourceTable": "Replace with source table or appendix identifier if available",
+      "evidenceType": "literature-informed default",
+      "rationale": "Describe why this parameter value or bound is used in the declared context of use.",
+      "distribution": "lognormal",
+      "mean": 70.0,
+      "sd": 12.0,
+      "lowerBound": 35.0,
+      "upperBound": 140.0,
+      "experimentalConditions": [
+        "Adult human default",
+        "Declared for the reference route and population used in this model package"
+      ],
+      "notes": [
+        "Replace with the actual population basis and any model-specific caveats."
+      ]
+    },
+    {
+      "path": "Partitioning|TissueToPlasma",
+      "display_name": "Tissue to plasma partition coefficient",
+      "unit": "unitless",
+      "category": "Partitioning",
+      "source": "Replace with the actual partitioning study, estimation workflow, or mechanistic derivation",
+      "sourceType": "estimated-parameter",
+      "sourceCitation": "Replace with citation, fitting report, or supplementary methods reference",
+      "evidenceType": "estimated-or-fitted",
+      "rationale": "Explain whether this parameter was measured, estimated, or calibrated and why it is appropriate for the declared model scope.",
+      "experimentalConditions": [
+        "State tissue, species, matrix, and assay conditions if relevant"
+      ],
+      "notes": [
+        "Use sourceTable, mean/sd, or bounds only when they truly exist for this parameter."
+      ]
+    }
+  ]
+}

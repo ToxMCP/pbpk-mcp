@@ -204,6 +204,150 @@ class ModelManifestTests(unittest.TestCase):
         codes = {issue["code"] for issue in manifest["issues"]}
         self.assertNotIn("performance_evidence_hook_missing", codes)
 
+    def test_r_manifest_accepts_parameter_table_sidecar_without_hook(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            model_path = root / "example_model.R"
+            model_path.write_text(
+                textwrap.dedent(
+                    """
+                    pbpk_model_profile <- function(...) {
+                      list(
+                        contextOfUse = list(
+                          scientificPurpose = "Kidney PBPK research",
+                          decisionContext = "Internal decision support",
+                          regulatoryUse = "research-only"
+                        ),
+                        applicabilityDomain = list(
+                          type = "declared-with-runtime-guardrails",
+                          qualificationLevel = "research-use"
+                        ),
+                        modelPerformance = list(status = "limited-internal-evaluation"),
+                        parameterProvenance = list(status = "partially-declared"),
+                        uncertainty = list(status = "partially-characterized"),
+                        implementationVerification = list(status = "basic-internal-checks"),
+                        platformQualification = list(status = "runtime-platform-documented"),
+                        peerReview = list(status = "not-reported")
+                      )
+                    }
+                    pbpk_validate_request <- function(...) list(ok = TRUE)
+                    pbpk_run_simulation <- function(...) list()
+                    pbpk_run_population <- function(...) list()
+                    pbpk_performance_evidence <- function(...) list()
+                    pbpk_uncertainty_evidence <- function(...) list()
+                    pbpk_verification_evidence <- function(...) list()
+                    pbpk_platform_qualification_evidence <- function(...) list()
+                    pbpk_run_verification_checks <- function(...) list()
+                    """
+                ),
+                encoding="utf-8",
+            )
+            (root / "example_model.parameters.json").write_text(
+                json.dumps(
+                    {
+                        "metadata": {
+                            "bundleVersion": "pbpk-parameter-table.v1",
+                            "summary": "Example companion parameter table",
+                        },
+                        "rows": [
+                            {
+                                "path": "Physiology|BodyWeight",
+                                "unit": "kg",
+                                "source": "Example physiology defaults",
+                                "sourceCitation": "Doe et al. 2024",
+                                "distribution": "lognormal",
+                                "mean": 70,
+                                "sd": 10,
+                                "experimentalConditions": ["adult healthy volunteers"],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = validate_model_manifest(model_path)
+
+        manifest = payload["manifest"]
+        self.assertEqual(manifest["manifestStatus"], "valid")
+        self.assertEqual(manifest["qualificationState"]["state"], "research-use")
+        self.assertFalse(manifest["hooks"]["parameterTable"])
+        self.assertTrue(manifest["hooks"]["parameterTableSidecar"])
+        self.assertEqual(
+            manifest["supplementalEvidence"]["parameterTableRowCount"],
+            1,
+        )
+        self.assertEqual(
+            manifest["supplementalEvidence"]["parameterTableBundleMetadata"]["bundleVersion"],
+            "pbpk-parameter-table.v1",
+        )
+        codes = {issue["code"] for issue in manifest["issues"]}
+        self.assertNotIn("parameter_table_hook_missing", codes)
+
+    def test_r_manifest_warns_for_malformed_parameter_table_sidecar_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            model_path = root / "example_model.R"
+            model_path.write_text(
+                textwrap.dedent(
+                    """
+                    pbpk_model_profile <- function(...) {
+                      list(
+                        contextOfUse = list(
+                          scientificPurpose = "Kidney PBPK research",
+                          decisionContext = "Internal decision support",
+                          regulatoryUse = "research-only"
+                        ),
+                        applicabilityDomain = list(
+                          type = "declared-with-runtime-guardrails",
+                          qualificationLevel = "research-use"
+                        ),
+                        modelPerformance = list(status = "limited-internal-evaluation"),
+                        parameterProvenance = list(status = "partially-declared"),
+                        uncertainty = list(status = "partially-characterized"),
+                        implementationVerification = list(status = "basic-internal-checks"),
+                        platformQualification = list(status = "runtime-platform-documented"),
+                        peerReview = list(status = "not-reported")
+                      )
+                    }
+                    pbpk_validate_request <- function(...) list(ok = TRUE)
+                    pbpk_run_simulation <- function(...) list()
+                    pbpk_run_population <- function(...) list()
+                    pbpk_performance_evidence <- function(...) list()
+                    pbpk_uncertainty_evidence <- function(...) list()
+                    pbpk_verification_evidence <- function(...) list()
+                    pbpk_platform_qualification_evidence <- function(...) list()
+                    pbpk_run_verification_checks <- function(...) list()
+                    """
+                ),
+                encoding="utf-8",
+            )
+            (root / "example_model.parameters.json").write_text(
+                json.dumps(
+                    {
+                        "metadata": {},
+                        "rows": [
+                            {
+                                "path": "Physiology|BodyWeight",
+                                "distribution": "lognormal",
+                                "sourceType": "in-vitro-estimate",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = validate_model_manifest(model_path)
+
+        manifest = payload["manifest"]
+        codes = {issue["code"] for issue in manifest["issues"]}
+        self.assertIn("parameter_table_bundle_version_missing", codes)
+        self.assertIn("parameter_table_bundle_summary_missing", codes)
+        self.assertIn("parameter_row_source_missing", codes)
+        self.assertIn("parameter_row_distribution_details_missing", codes)
+        self.assertIn("parameter_row_conditions_missing", codes)
+
     def test_r_manifest_warns_for_malformed_performance_sidecar_rows(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

@@ -78,6 +78,93 @@ class OecdBridgeTests(unittest.TestCase):
         self.assertEqual(payload["peerReview"]["summary"], "No external peer review")
         self.assertEqual(payload["profileSource"]["summary"], "workspace-model")
 
+    def test_normalize_model_profile_canonicalizes_peer_review_traceability(self) -> None:
+        payload = run_r_json(
+            """
+            normalize_model_profile(
+              list(
+                peerReview = list(
+                  status = "declared",
+                  reviews = list(
+                    list(
+                      reviewer = "Independent reviewer",
+                      reviewType = "expert-review",
+                      reviewDate = "2026-03-01",
+                      reviewOutcome = "accepted-with-notes"
+                    )
+                  ),
+                  priorUse = list(
+                    list(
+                      jurisdiction = "OECD",
+                      context = "consumer safety"
+                    )
+                  ),
+                  changeHistory = list(
+                    list(
+                      version = "1.1",
+                      date = "2026-03-10",
+                      summary = "Updated transporter scaling notes"
+                    )
+                  ),
+                  changeStatus = "actively-maintained"
+                )
+              ),
+              "rxode2",
+              "/tmp/example_model.R"
+            )
+            """
+        )
+
+        self.assertEqual(payload["peerReview"]["reviewRecordCount"], 1)
+        self.assertEqual(payload["peerReview"]["priorUseCount"], 1)
+        self.assertEqual(payload["peerReview"]["revisionEntryCount"], 1)
+        self.assertTrue(payload["peerReview"]["coverage"]["hasRevisionStatus"])
+        self.assertEqual(payload["peerReview"]["revisionStatus"], "actively-maintained")
+        self.assertEqual(len(payload["peerReview"]["reviewRecords"]), 1)
+        self.assertEqual(len(payload["peerReview"]["priorRegulatoryUse"]), 1)
+        self.assertEqual(len(payload["peerReview"]["revisionHistory"]), 1)
+
+    def test_normalize_model_profile_canonicalizes_performance_traceability(self) -> None:
+        payload = run_r_json(
+            """
+            normalize_model_profile(
+              list(
+                modelPerformance = list(
+                  status = "declared",
+                  goodnessOfFit = list(
+                    status = "declared",
+                    metrics = list("Cmax"),
+                    datasets = list("adult-iv-study"),
+                    records = list(
+                      list(dataset = "adult-iv-study", matrix = "plasma")
+                    ),
+                    criteria = list("Relative error <= 20% for plasma Cmax")
+                  ),
+                  predictiveChecks = list(
+                    status = "declared",
+                    benchmarkDatasets = list(
+                      list(dataset = "external-benchmark", route = "iv")
+                    ),
+                    acceptanceCriterion = "GMFE within 2-fold across the benchmark set"
+                  )
+                )
+              ),
+              "rxode2",
+              "/tmp/example_model.R"
+            )
+            """
+        )
+
+        coverage = payload["modelPerformance"]["coverage"]
+        self.assertEqual(coverage["goodnessOfFitMetricCount"], 1)
+        self.assertEqual(coverage["goodnessOfFitDatasetCount"], 1)
+        self.assertEqual(coverage["goodnessOfFitDatasetRecordCount"], 1)
+        self.assertEqual(coverage["predictiveDatasetRecordCount"], 1)
+        self.assertEqual(coverage["acceptanceCriterionCount"], 2)
+        self.assertTrue(coverage["hasExplicitAcceptanceCriteria"])
+        self.assertEqual(payload["modelPerformance"]["acceptanceCriterionCount"], 2)
+        self.assertEqual(payload["modelPerformance"]["predictiveDatasetRecordCount"], 1)
+
     def test_profile_request_mismatch_accepts_scalar_context_without_crashing(self) -> None:
         payload = run_r_json(
             """
@@ -219,6 +306,228 @@ class OecdBridgeTests(unittest.TestCase):
         self.assertEqual(assessment["qualificationState"]["state"], "research-use")
         self.assertFalse(assessment["qualificationState"]["riskAssessmentReady"])
 
+    def test_with_profile_assessment_promotes_structured_peer_review_traceability(self) -> None:
+        payload = run_r_json(
+            """
+            profile <- normalize_model_profile(
+              list(
+                contextOfUse = list(
+                  scientificPurpose = "Kidney PBPK research",
+                  decisionContext = "Exploratory use",
+                  regulatoryUse = "research-only"
+                ),
+                applicabilityDomain = list(
+                  type = "declared-with-runtime-guardrails",
+                  qualificationLevel = "research-use",
+                  species = "human",
+                  routes = "iv-infusion"
+                ),
+                modelPerformance = list(
+                  status = "limited-internal-evaluation",
+                  goodnessOfFit = list(status = "not-bundled", summary = "No formal fit metrics"),
+                  predictiveChecks = list(status = "smoke-only", summary = "Smoke tests only"),
+                  targetOutputs = list("Plasma|Cisplatin|Concentration")
+                ),
+                parameterProvenance = list(
+                  status = "partially-declared",
+                  sourceTable = "pbpk_parameter_table",
+                  coverage = "Named runtime parameters",
+                  provenanceMethod = "module annotations"
+                ),
+                uncertainty = list(
+                  status = "partially-characterized",
+                  sensitivityAnalysis = list(status = "not-encoded"),
+                  residualUncertainty = "Residual transport uncertainty"
+                ),
+                implementationVerification = list(
+                  status = "basic-internal-checks",
+                  solver = "rxode2::rxSolve",
+                  verifiedChecks = list("syntax", "smoke test")
+                ),
+                platformQualification = list(
+                  status = "runtime-platform-documented",
+                  softwareName = "rxode2",
+                  runtime = "R",
+                  runtimeVersion = "R 4.4.0",
+                  qualificationBasis = "Runtime version is recorded for traceability; no formal platform qualification dossier is bundled."
+                ),
+                peerReview = list(
+                  status = "declared",
+                  reviewRecords = list(
+                    list(
+                      reviewer = "Independent reviewer",
+                      reviewType = "expert-review",
+                      reviewDate = "2026-03-01",
+                      reviewOutcome = "accepted-with-notes"
+                    )
+                  ),
+                  priorRegulatoryUse = list(
+                    list(
+                      jurisdiction = "OECD",
+                      context = "consumer safety"
+                    )
+                  ),
+                  revisionHistory = list(
+                    list(
+                      version = "1.1",
+                      date = "2026-03-10",
+                      summary = "Updated transporter scaling notes"
+                    )
+                  ),
+                  revisionStatus = "actively-maintained"
+                ),
+                profileSource = list(
+                  type = "module-self-declared",
+                  path = "example_model.R",
+                  sourceToolHint = "rxode2"
+                )
+              ),
+              "rxode2",
+              "/tmp/example_model.R"
+            )
+            with_profile_assessment(
+              list(ok = TRUE, errors = list(), warnings = list()),
+              profile,
+              list(scientificProfile = TRUE)
+            )
+            """
+        )
+
+        assessment = payload["assessment"]
+        checklist = assessment["oecdChecklist"]
+        warning_codes = {entry["code"] for entry in payload["warnings"]}
+
+        self.assertAlmostEqual(assessment["oecdChecklistScore"], 8.5 / 9, places=3)
+        self.assertEqual(checklist["peerReviewAndPriorUse"]["status"], "declared")
+        self.assertNotIn("peer_review_traceability_limited", warning_codes)
+
+    def test_with_profile_assessment_warns_for_sparse_peer_review_traceability(self) -> None:
+        payload = run_r_json(
+            """
+            profile <- normalize_model_profile(
+              list(
+                contextOfUse = list(
+                  scientificPurpose = "Kidney PBPK research",
+                  decisionContext = "Exploratory use",
+                  regulatoryUse = "research-only"
+                ),
+                applicabilityDomain = list(
+                  type = "declared-with-runtime-guardrails",
+                  qualificationLevel = "research-use",
+                  species = "human",
+                  routes = "iv-infusion"
+                ),
+                modelPerformance = list(status = "limited-internal-evaluation"),
+                parameterProvenance = list(status = "partially-declared", sourceTable = "pbpk_parameter_table"),
+                uncertainty = list(status = "partially-characterized"),
+                implementationVerification = list(status = "basic-internal-checks", verifiedChecks = list("smoke test")),
+                platformQualification = list(
+                  status = "runtime-platform-documented",
+                  softwareName = "rxode2",
+                  runtime = "R",
+                  qualificationBasis = "Runtime only"
+                ),
+                peerReview = list(
+                  status = "declared",
+                  summary = "Internal discussion completed"
+                ),
+                profileSource = list(type = "module-self-declared", path = "example_model.R")
+              ),
+              "rxode2",
+              "/tmp/example_model.R"
+            )
+            with_profile_assessment(
+              list(ok = TRUE, errors = list(), warnings = list()),
+              profile,
+              list(scientificProfile = TRUE)
+            )
+            """
+        )
+
+        assessment = payload["assessment"]
+        checklist = assessment["oecdChecklist"]
+        warning_codes = {entry["code"] for entry in payload["warnings"]}
+        missing_evidence = set(assessment["missingEvidence"])
+
+        self.assertEqual(checklist["peerReviewAndPriorUse"]["status"], "partial")
+        self.assertIn("peer_review_traceability_limited", warning_codes)
+        self.assertIn("Structured peer-review records", missing_evidence)
+        self.assertIn("Prior regulatory or external use traceability", missing_evidence)
+        self.assertIn("Revision or change history", missing_evidence)
+
+    def test_with_profile_assessment_promotes_structured_performance_traceability(self) -> None:
+        payload = run_r_json(
+            """
+            profile <- normalize_model_profile(
+              list(
+                contextOfUse = list(
+                  scientificPurpose = "Kidney PBPK research",
+                  decisionContext = "Exploratory use",
+                  regulatoryUse = "research-only"
+                ),
+                applicabilityDomain = list(
+                  type = "declared-with-runtime-guardrails",
+                  qualificationLevel = "research-use",
+                  species = "human",
+                  routes = "iv-infusion"
+                ),
+                modelPerformance = list(
+                  status = "declared",
+                  goodnessOfFit = list(
+                    status = "declared",
+                    metrics = list("Cmax"),
+                    datasetRecords = list(
+                      list(dataset = "adult-iv-study", matrix = "plasma")
+                    ),
+                    acceptanceCriteria = list("Relative error <= 20% for plasma Cmax")
+                  ),
+                  predictiveChecks = list(
+                    status = "declared",
+                    datasetRecords = list(
+                      list(dataset = "external-benchmark", route = "iv")
+                    ),
+                    acceptanceCriterion = "GMFE within 2-fold across the benchmark set"
+                  ),
+                  targetOutputs = list("Plasma|Cisplatin|Concentration")
+                ),
+                parameterProvenance = list(
+                  status = "partially-declared",
+                  sourceTable = "pbpk_parameter_table",
+                  coverage = "Named runtime parameters",
+                  provenanceMethod = "module annotations"
+                ),
+                uncertainty = list(status = "partially-characterized"),
+                implementationVerification = list(status = "basic-internal-checks", verifiedChecks = list("smoke test")),
+                platformQualification = list(
+                  status = "runtime-platform-documented",
+                  softwareName = "rxode2",
+                  runtime = "R",
+                  runtimeVersion = "R 4.4.0",
+                  qualificationBasis = "Runtime version is recorded for traceability; no formal platform qualification dossier is bundled."
+                ),
+                peerReview = list(status = "not-reported"),
+                profileSource = list(type = "module-self-declared", path = "example_model.R")
+              ),
+              "rxode2",
+              "/tmp/example_model.R"
+            )
+            with_profile_assessment(
+              list(ok = TRUE, errors = list(), warnings = list()),
+              profile,
+              list(scientificProfile = TRUE)
+            )
+            """
+        )
+
+        assessment = payload["assessment"]
+        checklist = assessment["oecdChecklist"]
+        warning_codes = {entry["code"] for entry in payload["warnings"]}
+        missing_evidence = set(assessment["missingEvidence"])
+
+        self.assertEqual(checklist["modelPerformanceAndPredictivity"]["status"], "declared")
+        self.assertNotIn("model_performance_evidence_limited", warning_codes)
+        self.assertNotIn("Explicit performance acceptance criteria", missing_evidence)
+
     def test_normalize_parameter_catalog_preserves_provenance_fields(self) -> None:
         payload = run_r_json(
             """
@@ -245,6 +554,79 @@ class OecdBridgeTests(unittest.TestCase):
         self.assertEqual(row["source"], "Protocol input")
         self.assertEqual(row["evidenceType"], "scenario definition")
         self.assertEqual(row["provenance_status"], "declared")
+
+    def test_record_parameter_table_reads_companion_sidecar_and_reports_coverage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            model_path = root / "example_model.R"
+            model_path.write_text("# example model", encoding="utf-8")
+            (root / "example_model.parameters.json").write_text(
+                json.dumps(
+                    {
+                        "metadata": {
+                            "bundleVersion": "pbpk-parameter-table.v1",
+                            "summary": "Example companion parameter table",
+                        },
+                        "rows": [
+                            {
+                                "path": "Physiology|BodyWeight",
+                                "unit": "kg",
+                                "source": "Example physiology defaults",
+                                "sourceCitation": "Doe et al. 2026",
+                                "distribution": "lognormal",
+                                "mean": 70,
+                                "sd": 10,
+                                "experimentalConditions": ["adult healthy volunteers"],
+                                "rationale": "Default adult physiology prior",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = run_r_json(
+                f"""
+                parameters <- list("Physiology|BodyWeight" = 70)
+                catalog <- normalize_parameter_catalog(
+                  parameters,
+                  list(
+                    list(
+                      path = "Physiology|BodyWeight",
+                      display_name = "Body weight",
+                      unit = "kg",
+                      category = "Physiology"
+                    )
+                  )
+                )
+                record <- list(
+                  backend = "rxode2",
+                  simulation_id = "example-model",
+                  file_path = {json.dumps(str(model_path))},
+                  metadata = list(name = "Example model"),
+                  capabilities = list(scientificProfile = FALSE),
+                  profile = list(),
+                  parameters = parameters,
+                  parameter_catalog = catalog
+                )
+                record_parameter_table(record, limit = 10L)
+                """
+            )
+
+        self.assertEqual(payload["source"], "combined")
+        self.assertEqual(payload["sidecarPath"], str(model_path.with_suffix(".parameters.json")))
+        self.assertEqual(payload["bundleMetadata"]["bundleVersion"], "pbpk-parameter-table.v1")
+        self.assertEqual(payload["coverage"]["rowsWithSources"], 1)
+        self.assertEqual(payload["coverage"]["rowsWithDistributions"], 1)
+        self.assertEqual(payload["coverage"]["rowsWithExperimentalConditions"], 1)
+        self.assertEqual(payload["coverage"]["rowsWithRationale"], 1)
+        self.assertEqual(payload["issueCount"], 0)
+        row = payload["rows"][0]
+        self.assertEqual(row["distribution"], "lognormal")
+        self.assertEqual(row["mean"], 70)
+        self.assertEqual(row["sd"], 10)
+        self.assertEqual(row["sourceCitation"], "Doe et al. 2026")
+        self.assertEqual(row["experimentalConditions"], ["adult healthy volunteers"])
 
     def test_with_profile_assessment_handles_unreported_parameter_count(self) -> None:
         payload = run_r_json(
@@ -441,6 +823,26 @@ class OecdBridgeTests(unittest.TestCase):
         self.assertEqual(payload["reportVersion"], "pbpk-oecd-report.v1")
         self.assertEqual(payload["oecdChecklist"]["modelPerformanceAndPredictivity"]["status"], "partial")
         self.assertEqual(payload["qualificationState"]["state"], "research-use")
+        self.assertIn("oecdCoverage", payload)
+        self.assertEqual(payload["oecdCoverage"]["coverageVersion"], "pbpk-oecd-coverage.v1")
+        self.assertFalse(payload["oecdCoverage"]["affectsChecklistScore"])
+        self.assertFalse(payload["oecdCoverage"]["affectsQualificationState"])
+        self.assertEqual(
+            payload["oecdCoverage"]["reportingTemplate"]["sections"]["modelPerformance"]["status"],
+            "partial",
+        )
+        self.assertEqual(
+            payload["oecdCoverage"]["reportingTemplate"]["sections"]["modelConceptualisation"]["status"],
+            "missing",
+        )
+        self.assertEqual(
+            payload["oecdCoverage"]["evaluationChecklist"]["sections"]["regulatoryPurpose"]["status"],
+            "partial",
+        )
+        self.assertEqual(
+            payload["oecdCoverage"]["evaluationChecklist"]["sections"]["theoreticalBasisOfModelEquations"]["status"],
+            "missing",
+        )
         self.assertEqual(payload["performanceEvidence"]["included"], True)
         self.assertEqual(payload["performanceEvidence"]["returnedRows"], 0)
         self.assertEqual(payload["performanceEvidence"]["strongestEvidenceClass"], "none")
@@ -469,12 +871,37 @@ class OecdBridgeTests(unittest.TestCase):
             "research-use",
         )
         self.assertEqual(
+            payload["ngraObjects"]["pbpkQualificationSummary"]["assessmentBoundary"],
+            "pbpk-execution-and-qualification-substrate-only",
+        )
+        self.assertFalse(
+            payload["ngraObjects"]["pbpkQualificationSummary"]["supports"]["regulatoryDecision"],
+        )
+        self.assertIn(
+            "higher-level NGRA decision policy or orchestrator outside PBPK MCP",
+            payload["ngraObjects"]["pbpkQualificationSummary"]["requiredExternalInputs"],
+        )
+        self.assertEqual(
             payload["ngraObjects"]["uncertaintySummary"]["status"],
             "partially-characterized",
         )
         self.assertEqual(
+            payload["ngraObjects"]["uncertaintySummary"]["decisionBoundary"],
+            "no-ngra-decision-policy",
+        )
+        self.assertFalse(
+            payload["ngraObjects"]["uncertaintySummary"]["supports"]["crossDomainUncertaintyRegister"],
+        )
+        self.assertEqual(
             payload["ngraObjects"]["internalExposureEstimate"]["status"],
             "available",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["internalExposureEstimate"]["assessmentBoundary"],
+            "pbpk-side-internal-exposure-estimate-only",
+        )
+        self.assertTrue(
+            payload["ngraObjects"]["internalExposureEstimate"]["supports"]["externalBerHandoff"],
         )
         self.assertEqual(
             payload["ngraObjects"]["internalExposureEstimate"]["selectionStatus"],
@@ -485,8 +912,24 @@ class OecdBridgeTests(unittest.TestCase):
             2,
         )
         self.assertEqual(
+            payload["ngraObjects"]["pointOfDepartureReference"]["status"],
+            "not-attached",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["pointOfDepartureReference"]["decisionOwner"],
+            "external-orchestrator",
+        )
+        self.assertEqual(
             payload["ngraObjects"]["berInputBundle"]["status"],
             "incomplete",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["berInputBundle"]["decisionOwner"],
+            "external-orchestrator",
+        )
+        self.assertIn(
+            "external point-of-departure reference",
+            payload["ngraObjects"]["berInputBundle"]["requiredExternalInputs"],
         )
         self.assertEqual(payload["parameterTable"]["source"], "parameter_catalog")
         self.assertEqual(payload["parameterTable"]["returnedRows"], 2)
@@ -588,6 +1031,15 @@ class OecdBridgeTests(unittest.TestCase):
         )
 
         self.assertEqual(payload["status"], "ready-for-external-ber-calculation")
+        self.assertEqual(payload["assessmentBoundary"], "external-ber-calculation-only")
+        self.assertEqual(
+            payload["decisionOwner"],
+            "external-orchestrator",
+        )
+        self.assertEqual(
+            payload["pointOfDepartureReferenceRef"],
+            "ber-ready-model-point-of-departure-reference",
+        )
         self.assertEqual(payload["comparisonMetric"], "cmax")
         self.assertEqual(payload["podRef"], "pod-123")
         self.assertEqual(payload["podMetadata"]["source"], "httr-benchmark")
@@ -597,6 +1049,11 @@ class OecdBridgeTests(unittest.TestCase):
         self.assertTrue(payload["trueDoseAdjustmentApplied"])
         self.assertEqual(payload["trueDoseAdjustment"]["basis"], "free-concentration")
         self.assertEqual(payload["blockingReasons"], [])
+        self.assertTrue(payload["supports"]["externalBerCalculation"])
+        self.assertIn(
+            "BER calculation and decision policy outside PBPK MCP",
+            payload["requiredExternalInputs"],
+        )
 
     def test_performance_evidence_summary_distinguishes_runtime_internal_rows(self) -> None:
         payload = run_r_json(
@@ -689,6 +1146,54 @@ class OecdBridgeTests(unittest.TestCase):
         )
         self.assertEqual(payload["bundleMetadata"]["bundleVersion"], "pbpk-performance-evidence.v1")
         self.assertTrue(str(payload["sidecarPath"]).endswith("example_model.performance.json"))
+
+    def test_record_performance_evidence_reports_profile_traceability(self) -> None:
+        payload = run_r_json(
+            """
+            record <- list(
+              backend = "rxode2",
+              simulation_id = "example-traceability",
+              file_path = "/tmp/example_model.R",
+              metadata = list(name = "Example model"),
+              profile = list(
+                modelPerformance = list(
+                  status = "declared",
+                  goodnessOfFit = list(
+                    status = "declared",
+                    metrics = list("Cmax"),
+                    datasets = list("adult-iv-study"),
+                    datasetRecords = list(
+                      list(dataset = "adult-iv-study", matrix = "plasma")
+                    ),
+                    acceptanceCriteria = list("Relative error <= 20% for plasma Cmax")
+                  ),
+                  predictiveChecks = list(
+                    status = "declared",
+                    datasetRecords = list(
+                      list(dataset = "external-benchmark", route = "iv")
+                    ),
+                    acceptanceCriterion = "GMFE within 2-fold across the benchmark set"
+                  )
+                )
+              ),
+              capabilities = list(scientificProfile = TRUE),
+              parameters = list(),
+              parameter_catalog = list()
+            )
+            record_performance_evidence(record, limit = 20)
+            """
+        )
+
+        self.assertEqual(payload["traceability"]["goodnessOfFitDatasetRecordCount"], 1)
+        self.assertEqual(payload["traceability"]["predictiveDatasetRecordCount"], 1)
+        self.assertEqual(payload["traceability"]["acceptanceCriterionCount"], 2)
+        self.assertTrue(payload["traceability"]["hasExplicitAcceptanceCriteria"])
+        self.assertTrue(
+            any(
+                row.get("acceptanceCriterion") == "Relative error <= 20% for plasma Cmax"
+                for row in payload["rows"]
+            )
+        )
 
     def test_record_performance_evidence_reports_semantic_issues(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

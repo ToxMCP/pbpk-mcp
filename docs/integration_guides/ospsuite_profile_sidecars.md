@@ -41,12 +41,27 @@ Supported sections mirror the current MCP scientific profile structure:
 - `implementationVerification`
 - `peerReview`
 
+Inside `peerReview`, richer traceability can now be declared with fields such as:
+
+- `reviewRecords`
+- `priorRegulatoryUse`
+- `revisionStatus`
+- `revisionHistory`
+
+The bridge normalizes those fields and reports additive coverage counters in the merged profile so OECD dossier exports can distinguish peer review, prior use, and revision traceability more explicitly.
+
 For richer performance reporting, `modelPerformance` may also include structured fields such as:
 
 - `goodnessOfFit.metrics`
 - `goodnessOfFit.datasets`
+- `goodnessOfFit.datasetRecords`
 - `predictiveChecks.datasets`
+- `predictiveChecks.datasetRecords`
+- `goodnessOfFit.acceptanceCriteria`
+- `predictiveChecks.acceptanceCriteria`
 - `evidence`
+
+When these richer fields are present, the bridge exposes additive coverage counts in the normalized profile and performance-report output so predictive-support traceability is more explicit.
 
 If you prefer to keep quantitative evidence separate from the scientific profile, PBPK MCP also supports dedicated companion bundles such as:
 
@@ -61,6 +76,13 @@ The same companion-bundle pattern is also available for uncertainty/sensitivity 
 - `model.uncertainty-evidence.json`
 
 Those bundles are documented in [uncertainty_evidence_bundles.md](/Volumes/Storage/topotox_offload/20260220_space_relief/manual_offload/PBPK_MCP/docs/integration_guides/uncertainty_evidence_bundles.md).
+
+The same companion-bundle pattern is now available for richer parameter tables via files such as:
+
+- `model.parameters.json`
+- `model.parameter-table.json`
+
+Those bundles are documented in [parameter_table_bundles.md](/Volumes/Storage/topotox_offload/20260220_space_relief/manual_offload/PBPK_MCP/docs/integration_guides/parameter_table_bundles.md).
 
 For richer uncertainty and verification reporting, the sidecar may also include structured evidence rows such as:
 

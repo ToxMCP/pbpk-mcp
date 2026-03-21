@@ -195,9 +195,19 @@ def run_release_check(base_url: str, *, skip_unit_tests: bool = False) -> dict:
         external_bundle["ngraObjects"]["berInputBundle"]["status"] == "ready-for-external-ber-calculation",
         "External PBPK ingestion should produce a BER-ready bundle when PoD metadata and exposure metrics are present",
     )
+    assert_true(
+        external_bundle["ngraObjects"]["berInputBundle"]["decisionOwner"] == "external-orchestrator",
+        "External PBPK ingestion should preserve the boundary that BER calculation is owned by an external orchestrator",
+    )
+    assert_true(
+        external_bundle["ngraObjects"]["pointOfDepartureReference"]["status"] == "attached-external-reference",
+        "External PBPK ingestion should normalize the external PoD reference into a typed handoff object",
+    )
     summary["externalImport"] = {
         "sourcePlatform": external_bundle["externalRun"]["sourcePlatform"],
         "berBundleStatus": external_bundle["ngraObjects"]["berInputBundle"]["status"],
+        "decisionOwner": external_bundle["ngraObjects"]["berInputBundle"]["decisionOwner"],
+        "podReferenceStatus": external_bundle["ngraObjects"]["pointOfDepartureReference"]["status"],
     }
 
     pksim5_error = call_tool_error(
@@ -345,6 +355,14 @@ def run_release_check(base_url: str, *, skip_unit_tests: bool = False) -> dict:
     assert_true(cis_report["tool"] == "export_oecd_report", "export_oecd_report tool response missing")
     assert_true(cis_report_payload["reportVersion"] == "pbpk-oecd-report.v1", "Unexpected OECD report version")
     assert_true(
+        cis_report_payload["oecdCoverage"]["coverageVersion"] == "pbpk-oecd-coverage.v1",
+        "The exported OECD report should carry the additive OECD coverage map",
+    )
+    assert_true(
+        cis_report_payload["oecdCoverage"]["affectsChecklistScore"] is False,
+        "OECD coverage mapping must remain descriptive and must not affect the checklist score",
+    )
+    assert_true(
         cis_report["ngraObjects"]["assessmentContext"]["objectType"] == "assessmentContext.v1",
         "export_oecd_report should expose top-level NGRA objects for downstream workflows",
     )
@@ -391,6 +409,14 @@ def run_release_check(base_url: str, *, skip_unit_tests: bool = False) -> dict:
     assert_true(
         cis_report_payload["performanceEvidence"]["supportsExternalQualificationEvidence"] is False,
         "Cisplatin report must not claim external qualification evidence when none is bundled",
+    )
+    assert_true(
+        cis_report_payload["parameterTable"]["coverage"]["rowCount"] == cis_report_payload["parameterTable"]["matchedRows"],
+        "Parameter-table coverage should describe the matched parameter table rows",
+    )
+    assert_true(
+        "rowsWithExperimentalConditions" in cis_report_payload["parameterTable"]["coverage"],
+        "Parameter-table coverage should expose study-condition coverage counts",
     )
     uncertainty_row_ids = {entry["id"] for entry in cis_report_payload["uncertaintyEvidence"]["rows"]}
     assert_true(

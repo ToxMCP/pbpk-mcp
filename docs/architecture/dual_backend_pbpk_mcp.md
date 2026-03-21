@@ -120,6 +120,13 @@ This is the public-facing story:
 - one qualification layer
 - one explicit conversion boundary for unsupported source formats
 
+The typed PBPK-side NGRA objects now carry explicit handoff semantics as well:
+
+- `assessmentBoundary` identifies what PBPK MCP is actually claiming for a given object
+- `decisionBoundary` makes it explicit that BER calculation and NGRA decision policy remain external
+- `supports` flags tell downstream orchestrators which PBPK-side capabilities are actually present versus absent
+- `pointOfDepartureReference` makes external PoD provenance explicit without turning PBPK MCP into the owner of PoD interpretation or BER policy
+
 ## Runtime Deployment
 
 ```mermaid
@@ -462,7 +469,7 @@ These parts are already implemented in this workspace:
 - filesystem-backed discovery through `/mcp/resources/models` and `discover_models`
 - capability-aware validation and OECD-style profile export
 - sidecar-backed scientific metadata for `.pkml` models
-- structured OECD dossier export through `export_oecd_report`, including stored executable-verification snapshots when `run_verification_checks` has already been run for that simulation
+- structured OECD dossier export through `export_oecd_report`, including stored executable-verification snapshots when `run_verification_checks` has already been run for that simulation and an additive `oecdCoverage` map for OECD Tables 3.1/3.2
 
 ## Recommended Near-Term Work
 

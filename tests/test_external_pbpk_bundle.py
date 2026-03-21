@@ -82,12 +82,35 @@ class ExternalPbpkBundleTests(unittest.TestCase):
             "research-use",
         )
         self.assertEqual(
+            payload["ngraObjects"]["pbpkQualificationSummary"]["assessmentBoundary"],
+            "external-pbpk-normalization-only",
+        )
+        self.assertTrue(
+            payload["ngraObjects"]["pbpkQualificationSummary"]["supports"]["externalImportNormalization"],
+        )
+        self.assertEqual(
             payload["ngraObjects"]["internalExposureEstimate"]["status"],
             "available",
         )
         self.assertEqual(
+            payload["ngraObjects"]["pointOfDepartureReference"]["status"],
+            "attached-external-reference",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["uncertaintySummary"]["decisionBoundary"],
+            "no-ngra-decision-policy",
+        )
+        self.assertEqual(
             payload["ngraObjects"]["berInputBundle"]["status"],
             "ready-for-external-ber-calculation",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["berInputBundle"]["pointOfDepartureReferenceRef"],
+            "gastroplus-point-of-departure-reference",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["berInputBundle"]["decisionOwner"],
+            "external-orchestrator",
         )
         self.assertEqual(
             payload["ngraObjects"]["berInputBundle"]["internalExposureMetric"]["value"],
@@ -112,6 +135,14 @@ class ExternalPbpkBundleTests(unittest.TestCase):
         self.assertEqual(
             payload["ngraObjects"]["berInputBundle"]["status"],
             "incomplete",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["pointOfDepartureReference"]["status"],
+            "not-attached",
+        )
+        self.assertIn(
+            "BER calculation and decision policy outside PBPK MCP",
+            payload["ngraObjects"]["berInputBundle"]["requiredExternalInputs"],
         )
         self.assertIn(
             "No external point-of-departure reference is attached.",

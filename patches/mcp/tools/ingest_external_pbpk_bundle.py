@@ -170,6 +170,8 @@ def _build_assessment_context(payload: IngestExternalPbpkBundleRequest) -> dict[
         "simulationId": None,
         "backend": EXTERNAL_BACKEND,
         "sourcePlatform": payload.source_platform,
+        "assessmentBoundary": "pbpk-context-alignment-only",
+        "decisionBoundary": "no-ngra-decision-policy",
         "validationDecision": None,
         "contextOfUse": {
             "regulatoryUse": _selection_triplet(
@@ -200,6 +202,12 @@ def _build_assessment_context(payload: IngestExternalPbpkBundleRequest) -> dict[
             "requested": target_output,
             "declared": [target_output] if target_output else [],
         },
+        "supports": {
+            "declaredProfileComparison": True,
+            "requestContextAlignment": True,
+            "typedNgraHandoff": True,
+            "decisionRecommendation": False,
+        },
     }
 
 
@@ -227,12 +235,37 @@ def _derive_external_qualification_state(qualification: Mapping[str, Any]) -> st
 def _build_pbpk_qualification_summary(payload: IngestExternalPbpkBundleRequest) -> dict[str, Any]:
     qualification = _as_mapping(payload.qualification)
     state = _derive_external_qualification_state(qualification)
+    performance_boundary = _safe_text(qualification.get("performanceEvidenceBoundary"))
+    required_external_inputs = [
+        "higher-level NGRA decision policy or orchestrator outside PBPK MCP"
+    ]
+    if not performance_boundary or performance_boundary == "no-bundled-performance-evidence":
+        required_external_inputs.append(
+            "predictive or external qualification evidence for stronger regulatory-facing claims"
+        )
+    elif performance_boundary == "runtime-or-internal-evidence-only":
+        required_external_inputs.append(
+            "observed-vs-predicted, predictive-dataset, or external qualification evidence"
+        )
+
+    limitations: list[str] = []
+    if performance_boundary == "runtime-or-internal-evidence-only":
+        limitations.append(
+            "Imported performance evidence is limited to runtime or internal supporting evidence."
+        )
+    elif performance_boundary == "no-bundled-performance-evidence":
+        limitations.append(
+            "No bundled predictive-performance evidence were attached to the imported PBPK bundle."
+        )
+
     return {
         "objectType": "pbpkQualificationSummary.v1",
         "objectId": f"{payload.source_platform.lower()}-qualification-summary",
         "simulationId": None,
         "backend": EXTERNAL_BACKEND,
         "sourcePlatform": payload.source_platform,
+        "assessmentBoundary": "external-pbpk-normalization-only",
+        "decisionBoundary": "no-ngra-decision-policy",
         "state": state,
         "label": qualification.get("label") or state.replace("-", " ").title(),
         "summary": qualification.get("summary")
@@ -247,40 +280,103 @@ def _build_pbpk_qualification_summary(payload: IngestExternalPbpkBundleRequest) 
         "evidenceStatus": qualification.get("verificationStatus") or "imported",
         "profileSource": "external-import",
         "missingEvidenceCount": int(qualification.get("missingEvidenceCount") or 0),
-        "performanceEvidenceBoundary": qualification.get("performanceEvidenceBoundary"),
+        "performanceEvidenceBoundary": performance_boundary,
         "executableVerificationStatus": qualification.get("verificationStatus") or "not-run-in-pbpk-mcp",
         "platformClass": qualification.get("platformClass"),
         "validationReferences": _normalize_text_list(qualification.get("validationReferences")),
+        "supports": {
+            "nativeExecution": False,
+            "externalImportNormalization": True,
+            "manifestValidation": False,
+            "preflightValidation": False,
+            "executableVerification": False,
+            "oecdDossierExport": True,
+            "typedNgraHandoff": True,
+            "externalBerHandoff": True,
+            "regulatoryDecision": False,
+        },
+        "requiredExternalInputs": list(dict.fromkeys(required_external_inputs)),
+        "limitations": list(dict.fromkeys(limitations)),
     }
 
 
 def _build_uncertainty_summary(payload: IngestExternalPbpkBundleRequest) -> dict[str, Any]:
     uncertainty = _as_mapping(payload.uncertainty)
+    has_sensitivity = bool(
+        uncertainty.get("hasSensitivityAnalysis") or uncertainty.get("sensitivityAnalysis")
+    )
+    has_variability_approach = bool(
+        uncertainty.get("hasVariabilityApproach") or uncertainty.get("variabilityApproach")
+    )
+    has_variability_propagation = bool(
+        uncertainty.get("hasVariabilityPropagation") or uncertainty.get("variabilityPropagation")
+    )
+    has_residual_uncertainty = bool(
+        uncertainty.get("hasResidualUncertainty") or uncertainty.get("residualUncertainty")
+    )
+    status = _safe_text(uncertainty.get("status")) or "unreported"
+    if has_variability_propagation:
+        variability_status = "propagated"
+    elif has_variability_approach:
+        variability_status = "characterized"
+    elif status != "unreported":
+        variability_status = "declared-without-structured-variability"
+    else:
+        variability_status = "unreported"
+
+    if has_sensitivity:
+        sensitivity_status = "available"
+    elif status != "unreported":
+        sensitivity_status = "not-bundled"
+    else:
+        sensitivity_status = "unreported"
+
+    if has_residual_uncertainty:
+        residual_status = "declared"
+    elif status != "unreported":
+        residual_status = "not-explicit"
+    else:
+        residual_status = "unreported"
+
+    required_external_inputs = ["cross-domain uncertainty synthesis outside PBPK MCP"]
+    if not has_residual_uncertainty:
+        required_external_inputs.append(
+            "explicit residual uncertainty register for broader NGRA interpretation"
+        )
+
     return {
         "objectType": "uncertaintySummary.v1",
         "objectId": f"{payload.source_platform.lower()}-uncertainty-summary",
         "simulationId": None,
         "backend": EXTERNAL_BACKEND,
         "sourcePlatform": payload.source_platform,
-        "status": uncertainty.get("status") or "unreported",
+        "assessmentBoundary": "pbpk-side-uncertainty-summary-only",
+        "decisionBoundary": "no-ngra-decision-policy",
+        "status": status,
         "summary": uncertainty.get("summary"),
         "evidenceSource": uncertainty.get("source") or "external-import",
         "sources": _normalize_text_list(uncertainty.get("sources")),
         "issueCount": int(uncertainty.get("issueCount") or 0),
         "evidenceRowCount": int(uncertainty.get("evidenceRowCount") or 0),
         "totalEvidenceRows": int(uncertainty.get("totalEvidenceRows") or 0),
-        "hasSensitivityAnalysis": bool(
-            uncertainty.get("hasSensitivityAnalysis") or uncertainty.get("sensitivityAnalysis")
-        ),
-        "hasVariabilityApproach": bool(
-            uncertainty.get("hasVariabilityApproach") or uncertainty.get("variabilityApproach")
-        ),
-        "hasVariabilityPropagation": bool(
-            uncertainty.get("hasVariabilityPropagation") or uncertainty.get("variabilityPropagation")
-        ),
-        "hasResidualUncertainty": bool(
-            uncertainty.get("hasResidualUncertainty") or uncertainty.get("residualUncertainty")
-        ),
+        "hasSensitivityAnalysis": has_sensitivity,
+        "hasVariabilityApproach": has_variability_approach,
+        "hasVariabilityPropagation": has_variability_propagation,
+        "hasResidualUncertainty": has_residual_uncertainty,
+        "variabilityStatus": variability_status,
+        "sensitivityStatus": sensitivity_status,
+        "residualUncertaintyStatus": residual_status,
+        "supports": {
+            "qualitativeSummary": status != "unreported" or int(uncertainty.get("evidenceRowCount") or 0) > 0,
+            "sensitivityAnalysis": has_sensitivity,
+            "variabilityCharacterization": has_variability_approach,
+            "quantitativePropagation": has_variability_propagation,
+            "residualUncertaintyTracking": has_residual_uncertainty,
+            "typedNgraHandoff": True,
+            "crossDomainUncertaintyRegister": False,
+            "decisionRecommendation": False,
+        },
+        "requiredExternalInputs": list(dict.fromkeys(required_external_inputs)),
         "bundleMetadata": _as_mapping(uncertainty.get("bundleMetadata")) or None,
     }
 
@@ -317,6 +413,8 @@ def _build_internal_exposure_estimate(payload: IngestExternalPbpkBundleRequest) 
         "simulationId": None,
         "backend": EXTERNAL_BACKEND,
         "sourcePlatform": payload.source_platform,
+        "assessmentBoundary": "pbpk-side-internal-exposure-estimate-only",
+        "decisionBoundary": "no-ngra-decision-policy",
         "status": "available" if has_metric else "not-available",
         "resultsId": _safe_text(internal.get("resultsId")) or _safe_text(internal.get("runId")),
         "source": "external-import",
@@ -326,6 +424,12 @@ def _build_internal_exposure_estimate(payload: IngestExternalPbpkBundleRequest) 
         "candidateOutputCount": 1 if has_metric else 0,
         "candidateOutputs": [selected_output] if has_metric else [],
         "candidateOutputsTruncated": False,
+        "supports": {
+            "deterministicMetricSelection": has_metric,
+            "populationDistributionSummary": bool(_as_mapping(internal.get("distribution"))),
+            "externalBerHandoff": has_metric,
+            "decisionRecommendation": False,
+        },
         "distribution": _as_mapping(internal.get("distribution")) or None,
         "analyte": _safe_text(internal.get("analyte")),
         "species": _safe_text(internal.get("species")),
@@ -378,10 +482,76 @@ def _resolved_internal_metric(
     return None
 
 
+def _build_point_of_departure_reference(
+    payload: IngestExternalPbpkBundleRequest,
+) -> tuple[dict[str, Any], list[str]]:
+    pod = _as_mapping(payload.pod)
+    pod_ref = _safe_text(
+        pod.get("ref") or pod.get("podRef") or pod.get("reference") or pod.get("id")
+    )
+    true_dose_adjustment = {
+        "applied": bool(payload.true_dose_adjustment.get("applied")),
+        "basis": _safe_text(payload.true_dose_adjustment.get("basis")),
+        "summary": _safe_text(payload.true_dose_adjustment.get("summary")),
+    }
+    warnings: list[str] = []
+
+    if pod_ref and not _safe_text(pod.get("metric")):
+        warnings.append(
+            "No explicit PoD metric metadata were attached; downstream BER logic should validate metric compatibility."
+        )
+
+    if true_dose_adjustment["applied"] and not true_dose_adjustment["basis"]:
+        warnings.append(
+            "True-dose adjustment is marked as applied, but no true-dose basis was provided."
+        )
+
+    required_external_inputs = [
+        "PoD interpretation and suitability assessment outside PBPK MCP",
+        "BER calculation and decision policy outside PBPK MCP",
+    ]
+    if pod_ref is None:
+        required_external_inputs.append("external point-of-departure reference")
+
+    pod_reference = {
+        "objectType": "pointOfDepartureReference.v1",
+        "objectId": f"{payload.source_platform.lower()}-point-of-departure-reference",
+        "simulationId": None,
+        "backend": EXTERNAL_BACKEND,
+        "sourcePlatform": payload.source_platform,
+        "assessmentBoundary": "external-pod-reference-only",
+        "decisionBoundary": "pod-interpretation-and-ber-policy-owned-by-external-orchestrator",
+        "decisionOwner": "external-orchestrator",
+        "status": "attached-external-reference" if pod_ref is not None else "not-attached",
+        "podRef": pod_ref,
+        "source": _safe_text(pod.get("source") or pod.get("dataset")),
+        "metric": _safe_text(pod.get("metric")),
+        "unit": _safe_text(pod.get("unit")),
+        "basis": _safe_text(pod.get("basis")),
+        "summary": _safe_text(pod.get("summary")),
+        "value": _safe_float(pod.get("value")),
+        "trueDoseAdjustment": true_dose_adjustment,
+        "trueDoseAdjustmentApplied": true_dose_adjustment["applied"],
+        "supports": {
+            "typedReference": pod_ref is not None,
+            "metricMetadataAttached": bool(_safe_text(pod.get("metric"))),
+            "trueDoseMetadataAttached": (
+                (not true_dose_adjustment["applied"]) or bool(true_dose_adjustment["basis"])
+            ),
+            "externalBerCalculation": False,
+            "decisionRecommendation": False,
+        },
+        "requiredExternalInputs": list(dict.fromkeys(required_external_inputs)),
+        "warnings": warnings,
+    }
+    return pod_reference, warnings
+
+
 def _build_ber_input_bundle(
     payload: IngestExternalPbpkBundleRequest,
     *,
     internal_exposure_estimate: Mapping[str, Any],
+    point_of_departure_reference: Mapping[str, Any],
     uncertainty_summary: Mapping[str, Any],
     qualification_summary: Mapping[str, Any],
 ) -> tuple[dict[str, Any], list[str]]:
@@ -425,12 +595,16 @@ def _build_ber_input_bundle(
         "simulationId": None,
         "backend": EXTERNAL_BACKEND,
         "sourcePlatform": payload.source_platform,
+        "assessmentBoundary": "external-ber-calculation-only",
+        "decisionBoundary": "ber-calculation-and-decision-owned-by-external-orchestrator",
+        "decisionOwner": "external-orchestrator",
         "status": (
             "ready-for-external-ber-calculation" if not blocking_reasons else "incomplete"
         ),
         "comparisonMetric": comparison_metric,
         "internalExposureEstimateRef": internal_exposure_estimate.get("objectId"),
         "internalExposureMetric": internal_metric,
+        "pointOfDepartureReferenceRef": point_of_departure_reference.get("objectId"),
         "uncertaintySummaryRef": uncertainty_summary.get("objectId"),
         "qualificationSummaryRef": qualification_summary.get("objectId"),
         "podRef": pod_ref,
@@ -445,6 +619,27 @@ def _build_ber_input_bundle(
         },
         "trueDoseAdjustment": true_dose_adjustment,
         "trueDoseAdjustmentApplied": true_dose_adjustment["applied"],
+        "supports": {
+            "internalExposureMetricAttached": internal_metric is not None,
+            "externalPodReferenceAttached": pod_ref is not None,
+            "trueDoseMetadataAttached": (
+                (not true_dose_adjustment["applied"]) or bool(true_dose_adjustment["basis"])
+            ),
+            "externalBerCalculation": not blocking_reasons,
+            "decisionRecommendation": False,
+        },
+        "requiredExternalInputs": list(
+            dict.fromkeys(
+                [
+                    *(
+                        ["external point-of-departure reference"]
+                        if pod_ref is None
+                        else []
+                    ),
+                    "BER calculation and decision policy outside PBPK MCP",
+                ]
+            )
+        ),
         "blockingReasons": blocking_reasons,
         "warnings": warnings,
     }
@@ -459,9 +654,11 @@ def ingest_external_pbpk_bundle(
     qualification_summary = _build_pbpk_qualification_summary(payload)
     uncertainty_summary = _build_uncertainty_summary(payload)
     internal_exposure_estimate, internal_warnings = _build_internal_exposure_estimate(payload)
+    point_of_departure_reference, pod_warnings = _build_point_of_departure_reference(payload)
     ber_input_bundle, ber_warnings = _build_ber_input_bundle(
         payload,
         internal_exposure_estimate=internal_exposure_estimate,
+        point_of_departure_reference=point_of_departure_reference,
         uncertainty_summary=uncertainty_summary,
         qualification_summary=qualification_summary,
     )
@@ -475,9 +672,10 @@ def ingest_external_pbpk_bundle(
             "pbpkQualificationSummary": qualification_summary,
             "uncertaintySummary": uncertainty_summary,
             "internalExposureEstimate": internal_exposure_estimate,
+            "pointOfDepartureReference": point_of_departure_reference,
             "berInputBundle": ber_input_bundle,
         },
-        warnings=list(dict.fromkeys([*internal_warnings, *ber_warnings])),
+        warnings=list(dict.fromkeys([*internal_warnings, *pod_warnings, *ber_warnings])),
     )
 
 

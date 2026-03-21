@@ -336,7 +336,15 @@ normalize_parameter_catalog <- function(parameters, catalog) {
           entry$sourceCitation,
           entry$sourceTable,
           entry$evidenceType,
-          entry$rationale
+          entry$rationale,
+          entry$distribution,
+          entry$mean,
+          entry$sd,
+          entry$standardDeviation,
+          entry$experimentalConditions,
+          entry$testConditions,
+          entry$studyConditions,
+          entry$motivation
         ))) > 0) {
           "declared"
         } else {
@@ -569,7 +577,13 @@ normalize_model_profile <- function(payload, backend, file_path, applicability_d
   }
 
   for (name in normalized_sections) {
-    merged[[name]] <- normalize_profile_section(payload[[name]], defaults[[name]])
+    if (identical(name, "peerReview")) {
+      merged[[name]] <- normalize_peer_review_section(payload[[name]], defaults[[name]])
+    } else if (identical(name, "modelPerformance")) {
+      merged[[name]] <- normalize_model_performance_section(payload[[name]], defaults[[name]])
+    } else {
+      merged[[name]] <- normalize_profile_section(payload[[name]], defaults[[name]])
+    }
   }
 
   merged
@@ -703,7 +717,14 @@ performance_evidence_rows_from_profile <- function(performance) {
   }
 
   rows <- list()
-  metrics <- performance$goodnessOfFit$metrics %||% list()
+  goodness <- exact_list_field(performance, "goodnessOfFit")
+  predictive <- exact_list_field(performance, "predictiveChecks")
+  evaluation <- exact_list_field(performance, "evaluationData")
+  if (!is.list(goodness)) goodness <- list()
+  if (!is.list(predictive)) predictive <- list()
+  if (!is.list(evaluation)) evaluation <- list()
+
+  metrics <- exact_list_field(goodness, "metrics") %||% list()
   for (index in seq_along(metrics)) {
     entry <- metrics[[index]]
     if (is.character(entry) || is.numeric(entry) || is.logical(entry)) {
@@ -711,43 +732,92 @@ performance_evidence_rows_from_profile <- function(performance) {
         id = sprintf("goodness-of-fit-metric-%03d", index),
         kind = "goodness-of-fit-metric",
         metric = safe_chr(entry),
-        status = safe_chr(performance$goodnessOfFit$status, "declared")
+        status = safe_chr(exact_list_field(goodness, "status"), "declared")
       )
     } else if (is.list(entry)) {
       rows[[length(rows) + 1]] <- utils::modifyList(
         list(
           id = sprintf("goodness-of-fit-metric-%03d", index),
           kind = "goodness-of-fit-metric",
-          status = safe_chr(performance$goodnessOfFit$status, "declared")
+          status = safe_chr(exact_list_field(goodness, "status"), "declared")
         ),
         entry
       )
     }
   }
 
-  goodness_datasets <- normalize_text_values(performance$goodnessOfFit$datasets)
+  goodness_datasets <- normalize_text_values(exact_list_field(goodness, "datasets"))
   if (length(goodness_datasets) > 0) {
-    for (dataset in goodness_datasets) {
+    for (index in seq_along(goodness_datasets)) {
+      dataset <- goodness_datasets[[index]]
       rows[[length(rows) + 1]] <- list(
         id = sprintf("goodness-of-fit-dataset-%03d", length(rows) + 1),
         kind = "goodness-of-fit-dataset",
         dataset = dataset,
-        status = safe_chr(performance$goodnessOfFit$status, "declared")
+        status = safe_chr(exact_list_field(goodness, "status"), "declared"),
+        acceptanceCriterion = performance_acceptance_criterion_at(goodness, index)
       )
     }
   }
 
-  predictive_datasets <- normalize_text_values(performance$predictiveChecks$datasets)
+  predictive_datasets <- normalize_text_values(exact_list_field(predictive, "datasets"))
   if (length(predictive_datasets) > 0) {
-    for (dataset in predictive_datasets) {
+    for (index in seq_along(predictive_datasets)) {
+      dataset <- predictive_datasets[[index]]
       rows[[length(rows) + 1]] <- list(
         id = sprintf("predictive-check-dataset-%03d", length(rows) + 1),
-        kind = "predictive-check-dataset",
+        kind = "predictive-dataset",
         dataset = dataset,
-        status = safe_chr(performance$predictiveChecks$status, "declared")
+        status = safe_chr(exact_list_field(predictive, "status"), "declared"),
+        acceptanceCriterion = performance_acceptance_criterion_at(predictive, index)
       )
     }
   }
+
+  append_dataset_record_rows <- function(section, kind, default_status) {
+    dataset_records <- performance_section_dataset_records(section)
+    if (!is.list(dataset_records) || length(dataset_records) == 0) {
+      return(invisible(NULL))
+    }
+
+    for (index in seq_along(dataset_records)) {
+      entry <- dataset_records[[index]]
+      if (!is.list(entry)) {
+        next
+      }
+      dataset <- safe_chr(entry$dataset) %||%
+        safe_chr(entry$datasetId) %||%
+        safe_chr(entry$id) %||%
+        safe_chr(entry$name)
+      rows[[length(rows) + 1]] <<- utils::modifyList(
+        list(
+          id = sprintf("%s-%03d", kind, length(rows) + 1),
+          kind = kind,
+          dataset = dataset,
+          status = default_status,
+          acceptanceCriterion = safe_chr(entry$acceptanceCriterion) %||%
+            performance_acceptance_criterion_at(section, index)
+        ),
+        entry
+      )
+    }
+  }
+
+  append_dataset_record_rows(
+    goodness,
+    "goodness-of-fit-dataset",
+    safe_chr(exact_list_field(goodness, "status"), "declared")
+  )
+  append_dataset_record_rows(
+    predictive,
+    "predictive-dataset",
+    safe_chr(exact_list_field(predictive, "status"), "declared")
+  )
+  append_dataset_record_rows(
+    evaluation,
+    "predictive-dataset",
+    safe_chr(exact_list_field(evaluation, "status"), "declared")
+  )
 
   rows
 }
@@ -877,7 +947,11 @@ platform_qualification_rows_from_profile <- function(platform_qualification) {
 }
 
 performance_metric_count <- function(performance) {
-  metrics <- performance$goodnessOfFit$metrics %||% list()
+  goodness <- exact_list_field(performance, "goodnessOfFit")
+  if (!is.list(goodness)) {
+    goodness <- list()
+  }
+  metrics <- exact_list_field(goodness, "metrics") %||% list()
   if (is.null(metrics)) {
     return(0L)
   }
@@ -888,11 +962,15 @@ performance_metric_count <- function(performance) {
 }
 
 performance_dataset_count <- function(performance) {
-  as.integer(length(unique(c(
-    normalize_text_values(performance$goodnessOfFit$datasets),
-    normalize_text_values(performance$predictiveChecks$datasets),
-    normalize_text_values(performance$evaluationData$datasets)
-  ))))
+  summary <- performance_traceability_summary(performance)
+  as.integer(
+    summary$goodnessOfFitDatasetCount +
+      summary$goodnessOfFitDatasetRecordCount +
+      summary$predictiveDatasetCount +
+      summary$predictiveDatasetRecordCount +
+      summary$evaluationDatasetCount +
+      summary$evaluationDatasetRecordCount
+  )
 }
 
 performance_evidence_count <- function(performance) {
@@ -1015,27 +1093,46 @@ profile_oecd_checklist <- function(profile, capabilities = list()) {
   }
 
   performance <- profile$modelPerformance %||% list()
+  performance_traceability <- performance_traceability_summary(performance)
   performance_present <- character()
   performance_missing <- character()
   metric_count <- performance_metric_count(performance)
   dataset_count <- performance_dataset_count(performance)
   evidence_count <- performance_evidence_count(performance)
+  goodness <- exact_list_field(performance, "goodnessOfFit") %||% list()
+  predictive <- exact_list_field(performance, "predictiveChecks") %||% list()
   if (!is_missing_evidence_token(performance$status)) {
     performance_present <- c(performance_present, "status")
   } else {
     performance_missing <- c(performance_missing, "status")
   }
-  if (!is_missing_evidence_token(performance$goodnessOfFit$status) &&
-      (metric_count > 0 || dataset_count > 0 || evidence_count > 0)) {
+  if (!is_missing_evidence_token(exact_list_field(goodness, "status")) &&
+      (
+        metric_count > 0 ||
+          performance_traceability$goodnessOfFitDatasetCount > 0 ||
+          performance_traceability$goodnessOfFitDatasetRecordCount > 0 ||
+          evidence_count > 0
+      )) {
     performance_present <- c(performance_present, "goodnessOfFit")
   } else {
     performance_missing <- c(performance_missing, "goodnessOfFit")
   }
-  if (!is_missing_evidence_token(performance$predictiveChecks$status) &&
-      (dataset_count > 0 || evidence_count > 0)) {
+  if (!is_missing_evidence_token(exact_list_field(predictive, "status")) &&
+      (
+        performance_traceability$predictiveDatasetCount > 0 ||
+          performance_traceability$predictiveDatasetRecordCount > 0 ||
+          performance_traceability$evaluationDatasetCount > 0 ||
+          performance_traceability$evaluationDatasetRecordCount > 0 ||
+          evidence_count > 0
+      )) {
     performance_present <- c(performance_present, "predictiveChecks")
   } else {
     performance_missing <- c(performance_missing, "predictiveChecks")
+  }
+  if (performance_traceability$acceptanceCriterionCount > 0) {
+    performance_present <- c(performance_present, "acceptanceCriteria")
+  } else {
+    performance_missing <- c(performance_missing, "acceptanceCriteria")
   }
   if (length(normalize_text_values(performance$targetOutputs)) > 0) {
     performance_present <- c(performance_present, "targetOutputs")
@@ -1043,7 +1140,7 @@ profile_oecd_checklist <- function(profile, capabilities = list()) {
     performance_missing <- c(performance_missing, "targetOutputs")
   }
   if (is_limited_evidence_token(performance$status) ||
-      is_limited_evidence_token(performance$predictiveChecks$status)) {
+      is_limited_evidence_token(exact_list_field(predictive, "status"))) {
     performance_missing <- c(performance_missing, "externalPredictivityEvidence")
   }
 
@@ -1156,6 +1253,7 @@ profile_oecd_checklist <- function(profile, capabilities = list()) {
   }
 
   review <- profile$peerReview %||% list()
+  review_coverage <- peer_review_coverage_summary(review)
   review_present <- character()
   review_missing <- character()
   if (!is_unreported_token(review$status)) {
@@ -1163,10 +1261,20 @@ profile_oecd_checklist <- function(profile, capabilities = list()) {
   } else {
     review_missing <- c(review_missing, "status")
   }
-  if (!is.null(review$priorRegulatoryUse)) {
+  if (review_coverage$reviewRecordCount > 0) {
+    review_present <- c(review_present, "reviewRecords")
+  } else {
+    review_missing <- c(review_missing, "reviewRecords")
+  }
+  if (review_coverage$priorUseCount > 0) {
     review_present <- c(review_present, "priorRegulatoryUse")
   } else {
     review_missing <- c(review_missing, "priorRegulatoryUse")
+  }
+  if (review_coverage$revisionEntryCount > 0) {
+    review_present <- c(review_present, "revisionHistory")
+  } else {
+    review_missing <- c(review_missing, "revisionHistory")
   }
   if (length(normalize_text_values(review$revisionStatus)) > 0) {
     review_present <- c(review_present, "revisionStatus")
@@ -1285,6 +1393,1033 @@ profile_oecd_checklist_score <- function(checklist) {
   total / length(entries)
 }
 
+collect_text_values <- function(...) {
+  values <- unlist(lapply(list(...), normalize_text_values), use.names = FALSE)
+  values <- trimws(as.character(values %||% character()))
+  unique(values[nzchar(values)])
+}
+
+exact_list_field <- function(value, name) {
+  if (!is.list(value) || is.null(names(value)) || !(name %in% names(value))) {
+    return(NULL)
+  }
+  value[[name]]
+}
+
+record_entry_count <- function(value) {
+  if (is.null(value) || length(value) == 0) {
+    return(0L)
+  }
+
+  if (is.logical(value) && length(value) == 1 && !isTRUE(value)) {
+    return(0L)
+  }
+
+  if (is.list(value)) {
+    if (!is.null(names(value))) {
+      return(as.integer(length(normalize_text_values(value)) > 0))
+    }
+
+    return(as.integer(sum(vapply(value, function(entry) {
+      if (is.logical(entry) && length(entry) == 1 && !isTRUE(entry)) {
+        return(FALSE)
+      }
+      length(normalize_text_values(entry)) > 0
+    }, logical(1)))))
+  }
+
+  as.integer(length(normalize_text_values(value)) > 0)
+}
+
+peer_review_coverage_summary <- function(review) {
+  review_records <- exact_list_field(review, "reviewRecords") %||%
+    exact_list_field(review, "reviews") %||%
+    exact_list_field(review, "peerReviewRecords") %||%
+    exact_list_field(review, "reviewHistory")
+  prior_use <- exact_list_field(review, "priorRegulatoryUse") %||%
+    exact_list_field(review, "priorUse") %||%
+    exact_list_field(review, "priorApplications") %||%
+    exact_list_field(review, "priorUseHistory")
+  revision_history <- exact_list_field(review, "revisionHistory") %||%
+    exact_list_field(review, "changeHistory") %||%
+    exact_list_field(review, "versionHistory") %||%
+    exact_list_field(review, "revisions")
+
+  review_record_count <- record_entry_count(review_records)
+  if (review_record_count == 0 &&
+      length(collect_text_values(
+      review$reviewType,
+      review$reviewOutcome,
+      review$reviewDate,
+      review$reviewer,
+      review$reviewBody
+      )) > 0) {
+    review_record_count <- 1L
+  }
+
+  list(
+    reviewRecordCount = as.integer(review_record_count),
+    priorUseCount = as.integer(record_entry_count(prior_use)),
+    revisionEntryCount = as.integer(record_entry_count(revision_history)),
+    hasRevisionStatus = length(normalize_text_values(
+      exact_list_field(review, "revisionStatus") %||%
+        exact_list_field(review, "changeStatus") %||%
+        exact_list_field(review, "versionStatus")
+    )) > 0
+  )
+}
+
+normalize_peer_review_section <- function(value, default) {
+  merged <- normalize_profile_section(value, default)
+  raw <- if (is.list(value)) value else list()
+
+  review_records <- exact_list_field(raw, "reviewRecords") %||%
+    exact_list_field(raw, "reviews") %||%
+    exact_list_field(raw, "peerReviewRecords") %||%
+    exact_list_field(raw, "reviewHistory")
+  if (!is.null(review_records) && is.null(exact_list_field(merged, "reviewRecords"))) {
+    merged$reviewRecords <- review_records
+  }
+
+  prior_use <- exact_list_field(raw, "priorRegulatoryUse") %||%
+    exact_list_field(raw, "priorUse") %||%
+    exact_list_field(raw, "priorApplications") %||%
+    exact_list_field(raw, "priorUseHistory")
+  if (!is.null(prior_use) && is.null(exact_list_field(merged, "priorRegulatoryUse"))) {
+    merged$priorRegulatoryUse <- prior_use
+  }
+
+  revision_history <- exact_list_field(raw, "revisionHistory") %||%
+    exact_list_field(raw, "changeHistory") %||%
+    exact_list_field(raw, "versionHistory") %||%
+    exact_list_field(raw, "revisions")
+  if (!is.null(revision_history) && is.null(exact_list_field(merged, "revisionHistory"))) {
+    merged$revisionHistory <- revision_history
+  }
+
+  if (length(normalize_text_values(exact_list_field(merged, "revisionStatus"))) == 0) {
+    merged$revisionStatus <- safe_chr(exact_list_field(raw, "changeStatus")) %||%
+      safe_chr(exact_list_field(raw, "versionStatus"))
+  }
+  if (length(normalize_text_values(exact_list_field(merged, "summary"))) == 0) {
+    merged$summary <- safe_chr(exact_list_field(raw, "reviewSummary"))
+  }
+
+  coverage <- peer_review_coverage_summary(merged)
+  merged$coverage <- coverage
+  merged$reviewRecordCount <- coverage$reviewRecordCount
+  merged$priorUseCount <- coverage$priorUseCount
+  merged$revisionEntryCount <- coverage$revisionEntryCount
+
+  merged
+}
+
+performance_section_dataset_records <- function(section) {
+  exact_list_field(section, "datasetRecords") %||%
+    exact_list_field(section, "records") %||%
+    exact_list_field(section, "benchmarkDatasets") %||%
+    exact_list_field(section, "benchmarkRecords")
+}
+
+performance_section_dataset_names <- function(section) {
+  normalize_text_values(
+    exact_list_field(section, "datasets") %||%
+      exact_list_field(section, "datasetIds") %||%
+      exact_list_field(section, "datasetNames")
+  )
+}
+
+performance_section_acceptance_criteria <- function(section) {
+  normalize_text_values(
+    exact_list_field(section, "acceptanceCriteria") %||%
+      exact_list_field(section, "acceptanceCriterion") %||%
+      exact_list_field(section, "criteria")
+  )
+}
+
+performance_acceptance_criteria_values <- function(performance, rows = list()) {
+  section_values <- unique(c(
+    normalize_text_values(exact_list_field(performance, "acceptanceCriteria")),
+    performance_section_acceptance_criteria(exact_list_field(performance, "goodnessOfFit") %||% list()),
+    performance_section_acceptance_criteria(exact_list_field(performance, "predictiveChecks") %||% list()),
+    performance_section_acceptance_criteria(exact_list_field(performance, "evaluationData") %||% list())
+  ))
+  row_values <- unique(unlist(lapply(rows %||% list(), function(entry) {
+    normalize_text_values(entry$acceptanceCriterion)
+  }), use.names = FALSE))
+  unique(c(section_values, row_values))
+}
+
+performance_traceability_summary <- function(performance, rows = list()) {
+  goodness <- exact_list_field(performance, "goodnessOfFit")
+  predictive <- exact_list_field(performance, "predictiveChecks")
+  evaluation <- exact_list_field(performance, "evaluationData")
+  if (!is.list(goodness)) goodness <- list()
+  if (!is.list(predictive)) predictive <- list()
+  if (!is.list(evaluation)) evaluation <- list()
+
+  acceptance_values <- performance_acceptance_criteria_values(performance, rows)
+
+  list(
+    goodnessOfFitMetricCount = as.integer(length(goodness$metrics %||% list())),
+    goodnessOfFitDatasetCount = as.integer(length(performance_section_dataset_names(goodness))),
+    goodnessOfFitDatasetRecordCount = as.integer(record_entry_count(performance_section_dataset_records(goodness))),
+    predictiveDatasetCount = as.integer(length(performance_section_dataset_names(predictive))),
+    predictiveDatasetRecordCount = as.integer(record_entry_count(performance_section_dataset_records(predictive))),
+    evaluationDatasetCount = as.integer(length(performance_section_dataset_names(evaluation))),
+    evaluationDatasetRecordCount = as.integer(record_entry_count(performance_section_dataset_records(evaluation))),
+    acceptanceCriterionCount = as.integer(length(acceptance_values)),
+    hasExplicitAcceptanceCriteria = length(acceptance_values) > 0
+  )
+}
+
+performance_acceptance_criterion_at <- function(section, index) {
+  values <- performance_section_acceptance_criteria(section)
+  if (length(values) == 0) {
+    return(NULL)
+  }
+  if (index <= length(values)) {
+    return(values[[index]])
+  }
+  values[[length(values)]]
+}
+
+normalize_model_performance_section <- function(value, default) {
+  merged <- normalize_profile_section(value, default)
+
+  for (section_name in c("goodnessOfFit", "predictiveChecks", "evaluationData")) {
+    section <- exact_list_field(merged, section_name)
+    if (!is.list(section)) {
+      next
+    }
+
+    if (is.null(exact_list_field(section, "datasetRecords"))) {
+      records <- performance_section_dataset_records(section)
+      if (!is.null(records)) {
+        section$datasetRecords <- records
+      }
+    }
+    if (length(normalize_text_values(exact_list_field(section, "acceptanceCriteria"))) == 0) {
+      criteria <- performance_section_acceptance_criteria(section)
+      if (length(criteria) > 0) {
+        section$acceptanceCriteria <- as.list(criteria)
+      }
+    }
+    merged[[section_name]] <- section
+  }
+
+  if (length(normalize_text_values(exact_list_field(merged, "acceptanceCriteria"))) == 0) {
+    criteria <- performance_acceptance_criteria_values(merged)
+    if (length(criteria) > 0) {
+      merged$acceptanceCriteria <- as.list(criteria)
+    }
+  }
+
+  coverage <- performance_traceability_summary(merged)
+  merged$coverage <- coverage
+  merged$goodnessOfFitDatasetRecordCount <- coverage$goodnessOfFitDatasetRecordCount
+  merged$predictiveDatasetRecordCount <- coverage$predictiveDatasetRecordCount
+  merged$evaluationDatasetRecordCount <- coverage$evaluationDatasetRecordCount
+  merged$acceptanceCriterionCount <- coverage$acceptanceCriterionCount
+
+  merged
+}
+
+aggregate_coverage_status <- function(statuses) {
+  normalized <- normalize_text_values(statuses)
+  if (length(normalized) == 0) {
+    return("missing")
+  }
+  if (all(normalized == "declared")) {
+    return("declared")
+  }
+  if (all(normalized == "missing")) {
+    return("missing")
+  }
+  "partial"
+}
+
+coverage_item <- function(
+  id,
+  label,
+  status = "missing",
+  mapped_from = character(),
+  missing_elements = character(),
+  summary = NULL,
+  oecd_reference = NULL,
+  question_numbers = integer()
+) {
+  list(
+    id = id,
+    label = label,
+    status = safe_chr(status, "missing"),
+    oecdReference = safe_chr(oecd_reference),
+    questionNumbers = as.list(as.integer(question_numbers %||% integer())),
+    mappedFrom = as.list(unique(normalize_text_values(mapped_from))),
+    missingElements = as.list(unique(normalize_text_values(missing_elements))),
+    summary = summary
+  )
+}
+
+parameter_table_field_present <- function(parameter_table, fields) {
+  rows <- parameter_table$rows %||% list()
+  for (entry in rows) {
+    if (!is.list(entry)) {
+      next
+    }
+    for (field in fields) {
+      value <- entry[[field]]
+      if (is.null(value) || length(value) == 0) {
+        next
+      }
+      if (is.numeric(value) || is.logical(value)) {
+        return(TRUE)
+      }
+      if (length(normalize_text_values(value)) > 0) {
+        return(TRUE)
+      }
+    }
+  }
+  FALSE
+}
+
+has_passed_verification_check <- function(executable_verification, exact = character(), patterns = character()) {
+  checks <- executable_verification$checks %||% list()
+  if (length(checks) == 0) {
+    return(FALSE)
+  }
+
+  for (entry in checks) {
+    status <- tolower(safe_chr(entry$status, ""))
+    if (!identical(status, "passed")) {
+      next
+    }
+    check_id <- tolower(safe_chr(entry$id, ""))
+    if (!nzchar(check_id)) {
+      next
+    }
+    if (length(exact) > 0 && check_id %in% tolower(exact)) {
+      return(TRUE)
+    }
+    if (length(patterns) > 0 && any(vapply(patterns, function(pattern) grepl(pattern, check_id), logical(1)))) {
+      return(TRUE)
+    }
+  }
+
+  FALSE
+}
+
+build_oecd_coverage <- function(
+  record,
+  validation = list(),
+  checklist = list(),
+  missing_evidence = character(),
+  performance_evidence = list(),
+  uncertainty_evidence = list(),
+  verification_evidence = list(),
+  platform_qualification_evidence = list(),
+  executable_verification = list(),
+  parameter_table = list()
+) {
+  profile <- record$profile %||% list()
+  metadata <- record$metadata %||% list()
+  context <- profile$contextOfUse %||% list()
+  domain <- profile$applicabilityDomain %||% list()
+  performance <- profile$modelPerformance %||% list()
+  provenance <- profile$parameterProvenance %||% list()
+  uncertainty <- profile$uncertainty %||% list()
+  verification <- profile$implementationVerification %||% list()
+  platform <- profile$platformQualification %||% list()
+  review <- profile$peerReview %||% list()
+  source <- profile$profileSource %||% list()
+
+  assumption_values <- collect_text_values(
+    profile$assumptions,
+    context$assumptions,
+    domain$assumptions,
+    profile$modelAssumptions
+  )
+  conceptual_values <- collect_text_values(
+    profile$conceptualModel,
+    profile$modelStructure,
+    profile$graphicalRepresentation,
+    profile$conceptualisation,
+    profile$conceptualization,
+    profile$modeOfAction,
+    profile$biologicalBasis
+  )
+  equation_values <- collect_text_values(
+    profile$mathematicalRepresentation,
+    profile$theoreticalBasis,
+    profile$equations,
+    profile$modelEquations
+  )
+  reference_values <- collect_text_values(
+    profile$references,
+    profile$publications,
+    profile$links,
+    profile$backgroundInformation,
+    profile$backgroundReferences,
+    profile$relatedResources
+  )
+
+  developer_present <- character()
+  developer_missing <- character()
+  if (length(collect_text_values(metadata$createdBy, profile$modelDeveloper$name, profile$developer$name)) > 0) {
+    developer_present <- c(developer_present, "developerName")
+  } else {
+    developer_missing <- c(developer_missing, "developerName")
+  }
+  if (length(collect_text_values(
+    profile$modelDeveloper$contact,
+    profile$modelDeveloper$email,
+    profile$developer$contact,
+    profile$developer$email
+  )) > 0) {
+    developer_present <- c(developer_present, "contactDetails")
+  } else {
+    developer_missing <- c(developer_missing, "contactDetails")
+  }
+
+  summary_present <- character()
+  summary_missing <- character()
+  if (length(collect_text_values(
+    context$summary,
+    domain$summary,
+    performance$summary,
+    uncertainty$summary,
+    verification$summary
+  )) > 0) {
+    summary_present <- c(summary_present, "developmentAndCharacterisationSummary")
+  } else {
+    summary_missing <- c(summary_missing, "developmentAndCharacterisationSummary")
+  }
+  if (length(collect_text_values(validation$summary, validation$assessment$decision)) > 0) {
+    summary_present <- c(summary_present, "validationSummary")
+  } else {
+    summary_missing <- c(summary_missing, "validationSummary")
+  }
+  if (length(collect_text_values(context$regulatoryUse, domain$qualificationLevel)) > 0) {
+    summary_present <- c(summary_present, "regulatoryApplicability")
+  } else {
+    summary_missing <- c(summary_missing, "regulatoryApplicability")
+  }
+
+  step1_present <- character()
+  step1_missing <- character()
+  for (field in c("scientificPurpose", "decisionContext", "regulatoryUse")) {
+    if (length(normalize_text_values(context[[field]])) > 0 && !is_unreported_token(context[[field]])) {
+      step1_present <- c(step1_present, field)
+    } else {
+      step1_missing <- c(step1_missing, field)
+    }
+  }
+
+  step2_present <- character()
+  step2_missing <- character()
+  if (length(assumption_values) > 0) {
+    step2_present <- c(step2_present, "assumptions")
+  } else {
+    step2_missing <- c(step2_missing, "assumptions")
+  }
+  if (length(conceptual_values) > 0) {
+    step2_present <- c(step2_present, "conceptualModel")
+  } else {
+    step2_missing <- c(step2_missing, "conceptualModel")
+  }
+  if (length(equation_values) > 0) {
+    step2_present <- c(step2_present, "mathematicalRepresentation")
+  } else {
+    step2_missing <- c(step2_missing, "mathematicalRepresentation")
+  }
+
+  parameter_table_rows <- safe_num(parameter_table$returnedRows, 0)
+  step3_present <- character()
+  step3_missing <- character()
+  if (!is_unreported_token(provenance$status)) {
+    step3_present <- c(step3_present, "parameterProvenance")
+  } else {
+    step3_missing <- c(step3_missing, "parameterProvenance")
+  }
+  if (parameter_table_rows > 0) {
+    step3_present <- c(step3_present, "parameterTable")
+  } else {
+    step3_missing <- c(step3_missing, "parameterTable")
+  }
+  if (parameter_table_field_present(parameter_table, c("source", "sourceType", "sourceCitation", "sourceTable"))) {
+    step3_present <- c(step3_present, "parameterSources")
+  } else {
+    step3_missing <- c(step3_missing, "parameterSources")
+  }
+  if (parameter_table_field_present(parameter_table, c("distribution", "mean", "sd", "standardDeviation"))) {
+    step3_present <- c(step3_present, "parameterDistributions")
+  } else {
+    step3_missing <- c(step3_missing, "parameterDistributions")
+  }
+
+  step4_present <- character()
+  step4_missing <- character()
+  if (!is_unreported_token(verification$status)) {
+    step4_present <- c(step4_present, "implementationVerification")
+  } else {
+    step4_missing <- c(step4_missing, "implementationVerification")
+  }
+  if (length(collect_text_values(verification$solver, verification$runtime, platform$runtime, platform$runtimeVersion)) > 0) {
+    step4_present <- c(step4_present, "solverAndRuntime")
+  } else {
+    step4_missing <- c(step4_missing, "solverAndRuntime")
+  }
+  if (!is_unreported_token(platform$status)) {
+    step4_present <- c(step4_present, "platformQualification")
+  } else {
+    step4_missing <- c(step4_missing, "platformQualification")
+  }
+
+  step6_present <- character()
+  step6_missing <- character()
+  if (!is_unreported_token(source$type)) {
+    step6_present <- c(step6_present, "profileSource")
+  } else {
+    step6_missing <- c(step6_missing, "profileSource")
+  }
+  if (length(collect_text_values(source$path, source$sourceToolHint, record$file_path)) > 0) {
+    step6_present <- c(step6_present, "traceability")
+  } else {
+    step6_missing <- c(step6_missing, "traceability")
+  }
+  if (parameter_table_rows > 0) {
+    step6_present <- c(step6_present, "parameterTables")
+  } else {
+    step6_missing <- c(step6_missing, "parameterTables")
+  }
+
+  implementation_present <- character()
+  implementation_missing <- character()
+  if (length(collect_text_values(platform$softwareName, platform$softwareVersion)) > 0) {
+    implementation_present <- c(implementation_present, "softwareIdentity")
+  } else {
+    implementation_missing <- c(implementation_missing, "softwareIdentity")
+  }
+  if (length(collect_text_values(platform$runtime, platform$runtimeVersion, verification$solver)) > 0) {
+    implementation_present <- c(implementation_present, "runtimeAndSolver")
+  } else {
+    implementation_missing <- c(implementation_missing, "runtimeAndSolver")
+  }
+  if (safe_num(platform_qualification_evidence$returnedRows, 0) > 0 ||
+      length(normalize_text_values(platform$qualificationBasis)) > 0) {
+    implementation_present <- c(implementation_present, "softwareVerificationQualification")
+  } else {
+    implementation_missing <- c(implementation_missing, "softwareVerificationQualification")
+  }
+
+  parameter_section_present <- character()
+  parameter_section_missing <- character()
+  if (parameter_table_rows > 0) {
+    parameter_section_present <- c(parameter_section_present, "parameterRows")
+  } else {
+    parameter_section_missing <- c(parameter_section_missing, "parameterRows")
+  }
+  if (parameter_table_field_present(parameter_table, c("unit"))) {
+    parameter_section_present <- c(parameter_section_present, "units")
+  } else {
+    parameter_section_missing <- c(parameter_section_missing, "units")
+  }
+  if (parameter_table_field_present(parameter_table, c("source", "sourceType", "sourceCitation", "sourceTable"))) {
+    parameter_section_present <- c(parameter_section_present, "sources")
+  } else {
+    parameter_section_missing <- c(parameter_section_missing, "sources")
+  }
+  if (parameter_table_field_present(parameter_table, c("mean", "sd", "standardDeviation", "distribution"))) {
+    parameter_section_present <- c(parameter_section_present, "distributions")
+  } else {
+    parameter_section_missing <- c(parameter_section_missing, "distributions")
+  }
+  if (parameter_table_field_present(parameter_table, c("experimentalConditions", "testConditions", "rationale", "motivation"))) {
+    parameter_section_present <- c(parameter_section_present, "experimentalConditions")
+  } else {
+    parameter_section_missing <- c(parameter_section_missing, "experimentalConditions")
+  }
+
+  reporting_sections <- list(
+    nameOfModel = coverage_item(
+      "table3.1.A",
+      "A. Name of model",
+      status = if (length(collect_text_values(metadata$name, record$file_path)) > 0) "declared" else "missing",
+      mapped_from = c("report.model.name", "report.model.filePath"),
+      missing_elements = if (length(collect_text_values(metadata$name, record$file_path)) > 0) character() else "model identity",
+      summary = "Model identity reported in the exported dossier metadata.",
+      oecd_reference = "Table 3.1 A"
+    ),
+    developerAndContactDetails = coverage_item(
+      "table3.1.B",
+      "B. Model developer and contact details",
+      status = oecd_dimension_status(developer_present, developer_missing),
+      mapped_from = c("report.model.createdBy", "profile.modelDeveloper", "profile.developer"),
+      missing_elements = developer_missing,
+      summary = "Developer and contact details are mapped from report metadata or explicit profile developer fields when available.",
+      oecd_reference = "Table 3.1 B"
+    ),
+    summary = coverage_item(
+      "table3.1.C",
+      "C. Summary of model characterisation, development, validation, and regulatory applicability",
+      status = oecd_dimension_status(summary_present, summary_missing),
+      mapped_from = c("profile.contextOfUse.summary", "profile.applicabilityDomain.summary", "validation.summary", "validation.assessment.decision"),
+      missing_elements = summary_missing,
+      summary = "High-level report summary is derived from existing profile summaries and validation context.",
+      oecd_reference = "Table 3.1 C"
+    ),
+    scopeAndPurpose = coverage_item(
+      "table3.1.D.step1",
+      "D Step 1. Scope and purpose of the model (problem formulation)",
+      status = checklist$contextOfUse$status %||% oecd_dimension_status(step1_present, step1_missing),
+      mapped_from = c("profile.contextOfUse", "oecdChecklist.contextOfUse"),
+      missing_elements = step1_missing,
+      summary = "Problem formulation coverage is derived from the declared context-of-use block.",
+      oecd_reference = "Table 3.1 D Step 1"
+    ),
+    modelConceptualisation = coverage_item(
+      "table3.1.D.step2",
+      "D Step 2. Model conceptualisation (model structure, mathematical representation)",
+      status = oecd_dimension_status(step2_present, step2_missing),
+      mapped_from = c("profile.assumptions", "profile.conceptualModel", "profile.mathematicalRepresentation", "profile.equations"),
+      missing_elements = step2_missing,
+      summary = "Conceptualisation coverage is only marked when assumptions, conceptual structure, or equation metadata are explicitly declared.",
+      oecd_reference = "Table 3.1 D Step 2"
+    ),
+    modelParameterisation = coverage_item(
+      "table3.1.D.step3",
+      "D Step 3. Model parameterisation (parameter estimation and analysis)",
+      status = aggregate_coverage_status(c(
+        checklist$parameterizationAndProvenance$status,
+        oecd_dimension_status(step3_present, step3_missing)
+      )),
+      mapped_from = c("profile.parameterProvenance", "parameterTable", "oecdChecklist.parameterizationAndProvenance"),
+      missing_elements = step3_missing,
+      summary = "Parameterisation coverage is derived from parameter provenance metadata and the exported parameter table.",
+      oecd_reference = "Table 3.1 D Step 3"
+    ),
+    computerImplementation = coverage_item(
+      "table3.1.D.step4",
+      "D Step 4. Computer implementation (solving the equations)",
+      status = aggregate_coverage_status(c(
+        checklist$implementationVerification$status,
+        checklist$softwarePlatformQualification$status,
+        oecd_dimension_status(step4_present, step4_missing)
+      )),
+      mapped_from = c("profile.implementationVerification", "profile.platformQualification", "verificationEvidence", "platformQualificationEvidence"),
+      missing_elements = step4_missing,
+      summary = "Computer-implementation coverage is derived from solver/runtime metadata, implementation verification, and platform qualification evidence.",
+      oecd_reference = "Table 3.1 D Step 4"
+    ),
+    modelPerformance = coverage_item(
+      "table3.1.D.step5",
+      "D Step 5. Model Performance",
+      status = checklist$modelPerformanceAndPredictivity$status %||% "missing",
+      mapped_from = c("profile.modelPerformance", "performanceEvidence", "oecdChecklist.modelPerformanceAndPredictivity"),
+      missing_elements = checklist$modelPerformanceAndPredictivity$missingFields %||% list(),
+      summary = "Performance coverage is derived from declared fit/predictivity metadata and bundled performance evidence.",
+      oecd_reference = "Table 3.1 D Step 5"
+    ),
+    modelDocumentation = coverage_item(
+      "table3.1.D.step6",
+      "D Step 6. Model Documentation",
+      status = aggregate_coverage_status(c(
+        checklist$reportingAndTraceability$status,
+        oecd_dimension_status(step6_present, step6_missing)
+      )),
+      mapped_from = c("profile.profileSource", "parameterTable", "oecdChecklist.reportingAndTraceability"),
+      missing_elements = step6_missing,
+      summary = "Documentation coverage tracks source traceability, profile origin, and parameter-table inclusion.",
+      oecd_reference = "Table 3.1 D Step 6"
+    ),
+    identificationOfUncertainties = coverage_item(
+      "table3.1.E",
+      "E. Identification of uncertainties",
+      status = checklist$uncertaintyAndSensitivity$status %||% "missing",
+      mapped_from = c("profile.uncertainty", "uncertaintyEvidence", "oecdChecklist.uncertaintyAndSensitivity"),
+      missing_elements = checklist$uncertaintyAndSensitivity$missingFields %||% list(),
+      summary = "Uncertainty coverage is derived from declared uncertainty metadata and bundled evidence rows.",
+      oecd_reference = "Table 3.1 E"
+    ),
+    modelImplementationDetails = coverage_item(
+      "table3.1.F",
+      "F. Model implementation details",
+      status = oecd_dimension_status(implementation_present, implementation_missing),
+      mapped_from = c("profile.platformQualification", "profile.implementationVerification", "platformQualificationEvidence", "verificationEvidence"),
+      missing_elements = implementation_missing,
+      summary = "Implementation-detail coverage tracks software identity, runtime/solver metadata, and software/platform qualification basis.",
+      oecd_reference = "Table 3.1 F"
+    ),
+    peerEngagement = coverage_item(
+      "table3.1.G",
+      "G. Peer engagement (input/review)",
+      status = checklist$peerReviewAndPriorUse$status %||% "missing",
+      mapped_from = c("profile.peerReview", "oecdChecklist.peerReviewAndPriorUse"),
+      missing_elements = checklist$peerReviewAndPriorUse$missingFields %||% list(),
+      summary = "Peer-engagement coverage is derived from structured peer-review and prior-use metadata only.",
+      oecd_reference = "Table 3.1 G"
+    ),
+    parameterTables = coverage_item(
+      "table3.1.H",
+      "H. Parameter tables",
+      status = oecd_dimension_status(parameter_section_present, parameter_section_missing),
+      mapped_from = c("parameterTable", "profile.parameterProvenance"),
+      missing_elements = parameter_section_missing,
+      summary = "Parameter-table coverage is derived from the exported table contents and provenance metadata.",
+      oecd_reference = "Table 3.1 H"
+    ),
+    referencesAndBackgroundInformation = coverage_item(
+      "table3.1.references",
+      "References and background information",
+      status = if (length(reference_values) > 0) "declared" else "missing",
+      mapped_from = c("profile.references", "profile.publications", "profile.links"),
+      missing_elements = if (length(reference_values) > 0) character() else "explicit publications or resource links",
+      summary = "Reference coverage is only marked when explicit publications or external resource links are declared in the scientific profile.",
+      oecd_reference = "Table 3.1 References"
+    )
+  )
+
+  has_unit_check <- has_passed_verification_check(
+    executable_verification,
+    exact = "parameter-unit-consistency",
+    patterns = c("unit-consistency", "unit")
+  )
+  has_mass_balance_check <- has_passed_verification_check(
+    executable_verification,
+    exact = "mass-balance",
+    patterns = c("mass-balance")
+  )
+  has_flow_check <- has_passed_verification_check(
+    executable_verification,
+    patterns = c("flow-consistency", "cardiac")
+  )
+  has_volume_check <- has_passed_verification_check(
+    executable_verification,
+    patterns = c("volume-consistency")
+  )
+  has_solver_check <- has_passed_verification_check(
+    executable_verification,
+    exact = "solver-stability",
+    patterns = c("solver")
+  )
+  has_integrity_check <- has_passed_verification_check(
+    executable_verification,
+    patterns = c("deterministic-integrity", "reproducibility", "repeatability")
+  )
+
+  uncertainty_rows <- uncertainty_evidence$rows %||% list()
+  uncertainty_kinds <- tolower(vapply(uncertainty_rows, function(entry) safe_chr(entry$kind, ""), character(1)))
+  uncertainty_methods <- tolower(vapply(uncertainty_rows, function(entry) safe_chr(entry$method, ""), character(1)))
+  has_local_sensitivity <- any(grepl("local|one-at-a-time|one at a time|oat", uncertainty_methods)) ||
+    any(grepl("local|sensitivity-analysis", uncertainty_kinds))
+  has_global_sensitivity <- any(grepl("global|sobol|morris|variance", uncertainty_methods)) ||
+    any(grepl("global", uncertainty_kinds))
+  has_variability_propagation <- any(grepl("propagation", uncertainty_kinds)) ||
+    any(grepl("propagation", uncertainty_methods))
+
+  performance_rows <- performance_evidence$rows %||% list()
+  performance_traceability <- performance_traceability_summary(performance, performance_rows)
+  performance_has_acceptance <- isTRUE(performance_traceability$hasExplicitAcceptanceCriteria)
+
+  regulatory_present <- character()
+  regulatory_missing <- character()
+  if (length(collect_text_values(context$scientificPurpose, context$decisionContext, context$regulatoryUse)) > 0) {
+    regulatory_present <- c(regulatory_present, "envisagedApplication")
+  } else {
+    regulatory_missing <- c(regulatory_missing, "envisagedApplication")
+  }
+  if (length(collect_text_values(domain$qualificationLevel, validation$assessment$decision)) > 0) {
+    regulatory_present <- c(regulatory_present, "confidenceForApplication")
+  } else {
+    regulatory_missing <- c(regulatory_missing, "confidenceForApplication")
+  }
+  if (length(collect_text_values(context$alternativeAssessmentOptions, validation$assessment$alternativeAssessmentOptions)) > 0) {
+    regulatory_present <- c(regulatory_present, "alternativeAssessmentOptions")
+  } else {
+    regulatory_missing <- c(regulatory_missing, "alternativeAssessmentOptions")
+  }
+
+  documentation_status <- aggregate_coverage_status(vapply(
+    reporting_sections[c(
+      "summary",
+      "scopeAndPurpose",
+      "modelConceptualisation",
+      "modelParameterisation",
+      "computerImplementation",
+      "modelPerformance",
+      "modelDocumentation",
+      "identificationOfUncertainties",
+      "parameterTables"
+    )],
+    function(entry) safe_chr(entry$status, "missing"),
+    character(1)
+  ))
+
+  software_present <- character()
+  software_missing <- character()
+  if (length(collect_text_values(record$file_path, source$type)) > 0) {
+    software_present <- c(software_present, "q4-modelCodeAvailable")
+  } else {
+    software_missing <- c(software_missing, "q4-modelCodeAvailable")
+  }
+  if (length(equation_values) > 0) {
+    software_present <- c(software_present, "q4-mathematicalRepresentation")
+  } else {
+    software_missing <- c(software_missing, "q4-mathematicalRepresentation")
+  }
+  if (has_integrity_check || isTRUE(validation$ok)) {
+    software_present <- c(software_present, "q5-codeIntegrityChecks")
+  } else {
+    software_missing <- c(software_missing, "q5-codeIntegrityChecks")
+  }
+  if (has_unit_check) {
+    software_present <- c(software_present, "q6-unitConsistency")
+  } else {
+    software_missing <- c(software_missing, "q6-unitConsistency")
+  }
+  if (has_mass_balance_check) {
+    software_present <- c(software_present, "q7-massBalance")
+  } else {
+    software_missing <- c(software_missing, "q7-massBalance")
+  }
+  if (has_flow_check) {
+    software_present <- c(software_present, "q8-flowBalance")
+  } else {
+    software_missing <- c(software_missing, "q8-flowBalance")
+  }
+  if (has_volume_check) {
+    software_present <- c(software_present, "q9-volumeBalance")
+  } else {
+    software_missing <- c(software_missing, "q9-volumeBalance")
+  }
+  if (length(collect_text_values(verification$solver, platform$qualificationBasis)) > 0) {
+    software_present <- c(software_present, "q10-solverIdentity")
+  } else {
+    software_missing <- c(software_missing, "q10-solverIdentity")
+  }
+  if (has_solver_check) {
+    software_present <- c(software_present, "q11-solverConvergence")
+  } else {
+    software_missing <- c(software_missing, "q11-solverConvergence")
+  }
+  if (safe_num(platform_qualification_evidence$returnedRows, 0) > 0 ||
+      length(normalize_text_values(platform$qualificationBasis)) > 0) {
+    software_present <- c(software_present, "q12-platformQualification")
+  } else {
+    software_missing <- c(software_missing, "q12-platformQualification")
+  }
+
+  biological_present <- character()
+  biological_missing <- character()
+  if (!is_unreported_token(domain$type)) {
+    biological_present <- c(biological_present, "biologicalContext")
+  } else {
+    biological_missing <- c(biological_missing, "biologicalContext")
+  }
+  if (length(assumption_values) > 0) {
+    biological_present <- c(biological_present, "statedAssumptions")
+  } else {
+    biological_missing <- c(biological_missing, "statedAssumptions")
+  }
+  if (!is_unreported_token(provenance$status) || parameter_table_rows > 0) {
+    biological_present <- c(biological_present, "parameterJustification")
+  } else {
+    biological_missing <- c(biological_missing, "parameterJustification")
+  }
+
+  input_reliability_present <- character()
+  input_reliability_missing <- character()
+  if (!is_unreported_token(provenance$status)) {
+    input_reliability_present <- c(input_reliability_present, "parameterRelevanceReliability")
+  } else {
+    input_reliability_missing <- c(input_reliability_missing, "parameterRelevanceReliability")
+  }
+  if (parameter_table_field_present(parameter_table, c("source", "sourceType", "sourceCitation", "sourceTable"))) {
+    input_reliability_present <- c(input_reliability_present, "parameterSources")
+  } else {
+    input_reliability_missing <- c(input_reliability_missing, "parameterSources")
+  }
+  if (parameter_table_field_present(parameter_table, c("mean", "sd", "standardDeviation", "distribution"))) {
+    input_reliability_present <- c(input_reliability_present, "parameterDistributions")
+  } else {
+    input_reliability_missing <- c(input_reliability_missing, "parameterDistributions")
+  }
+  if (parameter_table_field_present(parameter_table, c("experimentalConditions", "testConditions", "rationale", "motivation"))) {
+    input_reliability_present <- c(input_reliability_present, "experimentalConditions")
+  } else {
+    input_reliability_missing <- c(input_reliability_missing, "experimentalConditions")
+  }
+
+  uncertainty_present <- character()
+  uncertainty_missing <- character()
+  if (safe_num(uncertainty_evidence$returnedRows, 0) > 0) {
+    uncertainty_present <- c(uncertainty_present, "q17-uncertaintyImpact")
+  } else {
+    uncertainty_missing <- c(uncertainty_missing, "q17-uncertaintyImpact")
+  }
+  if (has_local_sensitivity) {
+    uncertainty_present <- c(uncertainty_present, "q17-localSensitivity")
+  } else {
+    uncertainty_missing <- c(uncertainty_missing, "q17-localSensitivity")
+  }
+  if (has_global_sensitivity) {
+    uncertainty_present <- c(uncertainty_present, "q17-globalSensitivity")
+  } else {
+    uncertainty_missing <- c(uncertainty_missing, "q17-globalSensitivity")
+  }
+  if (has_variability_propagation) {
+    uncertainty_present <- c(uncertainty_present, "q18-influentialParameterConfidence")
+  } else {
+    uncertainty_missing <- c(uncertainty_missing, "q18-influentialParameterConfidence")
+  }
+
+  predictivity_present <- character()
+  predictivity_missing <- character()
+  if (!is_missing_evidence_token(performance$status) || safe_num(performance_evidence$returnedRows, 0) > 0) {
+    predictivity_present <- c(predictivity_present, "performanceMetadata")
+  } else {
+    predictivity_missing <- c(predictivity_missing, "performanceMetadata")
+  }
+  if (isTRUE(performance_evidence$supportsObservedVsPredictedEvidence) ||
+      isTRUE(performance_evidence$supportsPredictiveDatasetEvidence) ||
+      isTRUE(performance_evidence$supportsExternalQualificationEvidence) ||
+      performance_traceability$goodnessOfFitDatasetRecordCount > 0 ||
+      performance_traceability$predictiveDatasetRecordCount > 0 ||
+      performance_traceability$evaluationDatasetRecordCount > 0) {
+    predictivity_present <- c(predictivity_present, "predictiveDataset")
+  } else {
+    predictivity_missing <- c(predictivity_missing, "predictiveDataset")
+  }
+  if (performance_has_acceptance) {
+    predictivity_present <- c(predictivity_present, "acceptanceCriteria")
+  } else {
+    predictivity_missing <- c(predictivity_missing, "acceptanceCriteria")
+  }
+
+  evaluation_sections <- list(
+    regulatoryPurpose = coverage_item(
+      "table3.2.A.1",
+      "A.1 Regulatory Purpose",
+      status = oecd_dimension_status(regulatory_present, regulatory_missing),
+      mapped_from = c("profile.contextOfUse", "profile.applicabilityDomain.qualificationLevel", "validation.assessment.decision"),
+      missing_elements = regulatory_missing,
+      summary = "Coverage is descriptive only and does not compare PBPK MCP against alternative assessment options unless those are declared explicitly.",
+      oecd_reference = "Table 3.2 A.1",
+      question_numbers = c(1L, 2L)
+    ),
+    documentation = coverage_item(
+      "table3.2.A.2",
+      "A.2 Documentation",
+      status = documentation_status,
+      mapped_from = c(
+        "profile.contextOfUse",
+        "profile.applicabilityDomain",
+        "profile.modelPerformance",
+        "profile.parameterProvenance",
+        "profile.uncertainty",
+        "profile.implementationVerification",
+        "profile.platformQualification",
+        "profile.profileSource",
+        "parameterTable"
+      ),
+      missing_elements = c(
+        if (identical(reporting_sections$modelConceptualisation$status, "missing")) "conceptual model or equation metadata" else character(),
+        if (identical(reporting_sections$referencesAndBackgroundInformation$status, "missing")) "explicit publications or resource links" else character()
+      ),
+      summary = "Documentation coverage aggregates the reporting-template sections rather than creating a second independent score.",
+      oecd_reference = "Table 3.2 A.2",
+      question_numbers = 3L
+    ),
+    softwareImplementationAndVerification = coverage_item(
+      "table3.2.A.3",
+      "A.3 Software Implementation and Verification",
+      status = oecd_dimension_status(software_present, software_missing),
+      mapped_from = c("validation", "verificationEvidence", "executableVerification", "platformQualificationEvidence", "profile.implementationVerification", "profile.platformQualification"),
+      missing_elements = software_missing,
+      summary = "Coverage is based on available executable checks and declared solver/platform metadata. Missing check categories remain explicit.",
+      oecd_reference = "Table 3.2 A.3",
+      question_numbers = 4:12
+    ),
+    peerEngagement = coverage_item(
+      "table3.2.A.4",
+      "A.4 Peer engagement (input/review)",
+      status = checklist$peerReviewAndPriorUse$status %||% "missing",
+      mapped_from = c("profile.peerReview", "oecdChecklist.peerReviewAndPriorUse"),
+      missing_elements = checklist$peerReviewAndPriorUse$missingFields %||% list(),
+      summary = "Coverage is limited to structured peer-review and prior-use metadata declared in the PBPK profile.",
+      oecd_reference = "Table 3.2 A.4",
+      question_numbers = 13L
+    ),
+    biologicalBasis = coverage_item(
+      "table3.2.B.1",
+      "B.1 Biological Basis (Model Structure and Parameters)",
+      status = oecd_dimension_status(biological_present, biological_missing),
+      mapped_from = c("profile.applicabilityDomain", "profile.assumptions", "profile.parameterProvenance", "parameterTable"),
+      missing_elements = biological_missing,
+      summary = "Biological-basis coverage is only marked when the profile explicitly provides domain, assumptions, or parameter-justification metadata.",
+      oecd_reference = "Table 3.2 B.1",
+      question_numbers = 14L
+    ),
+    theoreticalBasisOfModelEquations = coverage_item(
+      "table3.2.B.2",
+      "B.2 Theoretical Basis of Model Equations",
+      status = if (length(equation_values) > 0) "declared" else "missing",
+      mapped_from = c("profile.mathematicalRepresentation", "profile.theoreticalBasis", "profile.equations"),
+      missing_elements = if (length(equation_values) > 0) character() else "explicit equation or theoretical-basis metadata",
+      summary = "Equation-level theoretical basis is only marked when explicit mathematical-representation metadata is declared.",
+      oecd_reference = "Table 3.2 B.2",
+      question_numbers = 15L
+    ),
+    reliabilityOfInputParameters = coverage_item(
+      "table3.2.B.3",
+      "B.3 Reliability of input parameters",
+      status = oecd_dimension_status(input_reliability_present, input_reliability_missing),
+      mapped_from = c("profile.parameterProvenance", "parameterTable", "profile.uncertainty"),
+      missing_elements = input_reliability_missing,
+      summary = "Input-parameter reliability coverage tracks provenance, distributions, and experimental-condition metadata when present.",
+      oecd_reference = "Table 3.2 B.3",
+      question_numbers = 16L
+    ),
+    uncertaintyAndSensitivityAnalysis = coverage_item(
+      "table3.2.B.4",
+      "B.4 Uncertainty and Sensitivity Analysis",
+      status = oecd_dimension_status(uncertainty_present, uncertainty_missing),
+      mapped_from = c("profile.uncertainty", "uncertaintyEvidence", "ngraObjects.uncertaintySummary"),
+      missing_elements = uncertainty_missing,
+      summary = "The coverage map distinguishes local sensitivity, global sensitivity, and variability propagation when those are explicitly declared.",
+      oecd_reference = "Table 3.2 B.4",
+      question_numbers = 17:18
+    ),
+    goodnessOfFitAndPredictivity = coverage_item(
+      "table3.2.B.5",
+      "B.5 Goodness-of-Fit and Predictivity",
+      status = oecd_dimension_status(predictivity_present, predictivity_missing),
+      mapped_from = c("profile.modelPerformance", "performanceEvidence", "oecdChecklist.modelPerformanceAndPredictivity"),
+      missing_elements = predictivity_missing,
+      summary = "Runtime or internal evidence remains visible here but does not satisfy external predictive-dataset coverage by itself.",
+      oecd_reference = "Table 3.2 B.5",
+      question_numbers = 19L
+    )
+  )
+
+  list(
+    coverageVersion = "pbpk-oecd-coverage.v1",
+    sourceGuidance = "OECD PBK Guidance Tables 3.1 and 3.2",
+    affectsChecklistScore = FALSE,
+    affectsQualificationState = FALSE,
+    summary = "Descriptive coverage map only; this block does not alter oecdChecklistScore or qualificationState.",
+    missingEvidence = as.list(unique(normalize_text_values(missing_evidence))),
+    reportingTemplate = list(
+      table = "Table 3.1",
+      sections = reporting_sections
+    ),
+    evaluationChecklist = list(
+      table = "Table 3.2",
+      sections = evaluation_sections
+    )
+  )
+}
+
 profile_missing_evidence <- function(profile, capabilities = list()) {
   missing <- character()
   append_missing <- function(message) {
@@ -1312,6 +2447,7 @@ profile_missing_evidence <- function(profile, capabilities = list()) {
   }
 
   performance <- profile$modelPerformance %||% list()
+  performance_traceability <- performance_traceability_summary(performance)
   if (is_missing_evidence_token(performance$status)) {
     append_missing("Model performance or predictivity evidence")
   }
@@ -1320,6 +2456,17 @@ profile_missing_evidence <- function(profile, capabilities = list()) {
   }
   if (performance_dataset_count(performance) == 0 && performance_evidence_count(performance) == 0) {
     append_missing("Observed-versus-predicted or predictive evaluation datasets")
+  }
+  if (performance_traceability$acceptanceCriterionCount == 0) {
+    append_missing("Explicit performance acceptance criteria")
+  }
+  if (performance_dataset_count(performance) > 0 &&
+      (
+        performance_traceability$goodnessOfFitDatasetRecordCount +
+          performance_traceability$predictiveDatasetRecordCount +
+          performance_traceability$evaluationDatasetRecordCount
+      ) == 0) {
+    append_missing("Structured performance dataset records")
   }
   for (item in normalize_text_values(performance$missingEvidence)) {
     append_missing(item)
@@ -1376,6 +2523,21 @@ profile_missing_evidence <- function(profile, capabilities = list()) {
   review <- profile$peerReview %||% list()
   if (is_unreported_token(review$status)) {
     append_missing("Peer review or prior use record")
+  } else {
+    review_coverage <- peer_review_coverage_summary(review)
+    if (review_coverage$reviewRecordCount == 0) {
+      append_missing("Structured peer-review records")
+    }
+    if (review_coverage$priorUseCount == 0) {
+      append_missing("Prior regulatory or external use traceability")
+    }
+    if (review_coverage$revisionEntryCount == 0 &&
+        !isTRUE(review_coverage$hasRevisionStatus)) {
+      append_missing("Revision or change history")
+    }
+  }
+  for (item in normalize_text_values(review$missingEvidence)) {
+    append_missing(item)
   }
 
   unique(missing)
@@ -1558,13 +2720,16 @@ profile_assessment_warnings <- function(profile, capabilities = list()) {
   } else if (performance_metric_count(profile$modelPerformance %||% list()) == 0 ||
              (performance_dataset_count(profile$modelPerformance %||% list()) == 0 &&
               performance_evidence_count(profile$modelPerformance %||% list()) == 0) ||
+             performance_traceability_summary(profile$modelPerformance %||% list())$acceptanceCriterionCount == 0 ||
              is_limited_evidence_token(profile$modelPerformance$status) ||
-             is_limited_evidence_token(profile$modelPerformance$predictiveChecks$status)) {
+             is_limited_evidence_token(
+               exact_list_field(profile$modelPerformance %||% list(), "predictiveChecks")$status
+             )) {
     warnings[[length(warnings) + 1]] <- list(
       code = "model_performance_evidence_limited",
       message = paste(
-        "Model-performance metadata are present, but structured fit or predictive evidence",
-        "remain limited for qualification-focused use."
+        "Model-performance metadata are present, but structured fit, predictive-dataset,",
+        "or acceptance-criterion evidence remains limited for qualification-focused use."
       ),
       field = "profile.modelPerformance",
       severity = "warning"
@@ -1616,6 +2781,22 @@ profile_assessment_warnings <- function(profile, capabilities = list()) {
       field = "profile.peerReview",
       severity = "warning"
     )
+  } else {
+    review_coverage <- peer_review_coverage_summary(profile$peerReview %||% list())
+    if (review_coverage$reviewRecordCount == 0 ||
+        review_coverage$priorUseCount == 0 ||
+        (review_coverage$revisionEntryCount == 0 &&
+         !isTRUE(review_coverage$hasRevisionStatus))) {
+      warnings[[length(warnings) + 1]] <- list(
+        code = "peer_review_traceability_limited",
+        message = paste(
+          "Peer-review metadata are present, but structured review records, prior-use traceability,",
+          "or revision-history details remain limited."
+        ),
+        field = "profile.peerReview",
+        severity = "warning"
+      )
+    }
   }
 
   if (!is.null(qualification_token) && qualification_token %in% c(
@@ -1847,6 +3028,16 @@ uncertainty_evidence_sidecar_candidates <- function(file_path) {
   ))
 }
 
+parameter_table_sidecar_candidates <- function(file_path) {
+  stem <- tools::file_path_sans_ext(file_path)
+  unique(c(
+    paste0(stem, ".parameters.json"),
+    paste0(stem, ".parameter-table.json"),
+    paste0(file_path, ".parameters.json"),
+    paste0(file_path, ".parameter-table.json")
+  ))
+}
+
 read_json_file <- function(file_path) {
   tryCatch(
     fromJSON(file_path, simplifyVector = FALSE),
@@ -1914,6 +3105,37 @@ extract_uncertainty_evidence_metadata <- function(payload) {
   metadata <- payload$metadata
   if (is.null(metadata) && is.list(payload$uncertaintyEvidence)) {
     metadata <- payload$uncertaintyEvidence$metadata
+  }
+  if (!is.list(metadata)) {
+    return(NULL)
+  }
+  metadata
+}
+
+extract_parameter_table_rows_payload <- function(payload) {
+  candidate <- payload$rows %||%
+    payload$parameterTable$rows %||%
+    payload$parameters
+
+  if (is.list(candidate) && length(candidate) > 0 && is.null(names(candidate))) {
+    return(candidate)
+  }
+
+  if (is.list(payload) && is.null(names(payload)) && length(payload) > 0) {
+    return(payload)
+  }
+
+  NULL
+}
+
+extract_parameter_table_metadata <- function(payload) {
+  if (!is.list(payload) || is.null(names(payload))) {
+    return(NULL)
+  }
+
+  metadata <- payload$metadata
+  if (is.null(metadata) && is.list(payload$parameterTable)) {
+    metadata <- payload$parameterTable$metadata
   }
   if (!is.list(metadata)) {
     return(NULL)
@@ -1999,6 +3221,52 @@ uncertainty_evidence_sidecar <- function(file_path) {
         code = "uncertainty_sidecar_rows_missing",
         message = sprintf(
           "Uncertainty evidence sidecar '%s' must provide 'rows', 'uncertaintyEvidence.rows', or a top-level row array.",
+          basename(candidate)
+        ),
+        field = candidate,
+        severity = "warning"
+      )
+      return(list(path = candidate, rows = list(), metadata = metadata, issues = issues))
+    }
+
+    return(list(path = candidate, rows = rows, metadata = metadata, issues = issues))
+  }
+
+  list(path = NULL, rows = list(), metadata = NULL, issues = issues)
+}
+
+parameter_table_sidecar <- function(file_path) {
+  issues <- list()
+  for (candidate in parameter_table_sidecar_candidates(file_path)) {
+    if (!file.exists(candidate)) {
+      next
+    }
+
+    payload <- tryCatch(
+      fromJSON(candidate, simplifyVector = FALSE),
+      error = function(exc) exc
+    )
+    if (inherits(payload, "error")) {
+      issues[[length(issues) + 1]] <- list(
+        code = "parameter_table_sidecar_parse_error",
+        message = sprintf(
+          "Failed to parse parameter-table sidecar '%s': %s",
+          basename(candidate),
+          conditionMessage(payload)
+        ),
+        field = candidate,
+        severity = "warning"
+      )
+      return(list(path = candidate, rows = list(), metadata = NULL, issues = issues))
+    }
+
+    rows <- extract_parameter_table_rows_payload(payload)
+    metadata <- extract_parameter_table_metadata(payload)
+    if (is.null(rows)) {
+      issues[[length(issues) + 1]] <- list(
+        code = "parameter_table_sidecar_rows_missing",
+        message = sprintf(
+          "Parameter-table sidecar '%s' must provide 'rows', 'parameterTable.rows', or a top-level row array.",
           basename(candidate)
         ),
         field = candidate,
@@ -2390,17 +3658,65 @@ normalize_parameter_table_rows <- function(rows, fallback_values = list()) {
       value <- fallback_values[[path]]
     }
     row$value <- safe_num(value, 0)
+    row$source <- safe_chr(entry$source)
+    row$sourceType <- safe_chr(entry$sourceType) %||% safe_chr(entry$source_type)
+    row$sourceCitation <- safe_chr(entry$sourceCitation) %||% safe_chr(entry$source_citation)
+    row$sourceTable <- safe_chr(entry$sourceTable) %||% safe_chr(entry$source_table)
+    row$evidenceType <- safe_chr(entry$evidenceType) %||% safe_chr(entry$evidence_type)
+    row$rationale <- safe_chr(entry$rationale) %||% safe_chr(entry$motivation)
+    row$motivation <- safe_chr(entry$motivation)
+    row$distribution <- safe_chr(entry$distribution) %||%
+      safe_chr(entry$distributionType) %||%
+      safe_chr(entry$distribution_type)
+    if (!is.null(entry$mean)) {
+      row$mean <- safe_num(entry$mean, 0)
+    }
+    if (!is.null(entry$sd)) {
+      row$sd <- safe_num(entry$sd, 0)
+    } else if (!is.null(entry$standardDeviation)) {
+      row$sd <- safe_num(entry$standardDeviation, 0)
+    } else if (!is.null(entry$standard_deviation)) {
+      row$sd <- safe_num(entry$standard_deviation, 0)
+    }
+    if (!is.null(entry$lowerBound)) {
+      row$lowerBound <- safe_num(entry$lowerBound, 0)
+    } else if (!is.null(entry$lower_bound)) {
+      row$lowerBound <- safe_num(entry$lower_bound, 0)
+    }
+    if (!is.null(entry$upperBound)) {
+      row$upperBound <- safe_num(entry$upperBound, 0)
+    } else if (!is.null(entry$upper_bound)) {
+      row$upperBound <- safe_num(entry$upper_bound, 0)
+    }
+    experimental_conditions <- normalize_text_values(
+      entry$experimentalConditions %||%
+        entry$testConditions %||%
+        entry$studyConditions
+    )
+    if (length(experimental_conditions) > 0) {
+      row$experimentalConditions <- as.list(experimental_conditions)
+    }
+    notes <- normalize_text_values(entry$notes)
+    if (length(notes) > 0) {
+      row$notes <- as.list(notes)
+    }
 
     row$provenance_status <- safe_chr(entry$provenance_status) %||%
       safe_chr(entry$provenanceStatus) %||%
       if (length(normalize_text_values(list(
-        entry$source,
-        entry$sourceType,
-        entry$sourceCitation,
-        entry$sourceTable,
-        entry$evidenceType,
-        entry$rationale,
-        entry$notes
+        row$source,
+        row$sourceType,
+        row$sourceCitation,
+        row$sourceTable,
+        row$evidenceType,
+        row$rationale,
+        row$distribution,
+        row$mean,
+        row$sd,
+        row$lowerBound,
+        row$upperBound,
+        row$experimentalConditions,
+        row$notes
       ))) > 0) {
         "declared"
       } else {
@@ -3004,6 +4320,7 @@ record_performance_evidence <- function(record, limit = 200L) {
   rows <- normalize_performance_evidence_rows(collected_rows)
   rows <- ensure_unique_evidence_row_ids(rows, prefix = "performance-evidence")
   summary <- performance_evidence_summary(rows)
+  traceability <- performance_traceability_summary(performance, rows)
   metadata_issues <- if (!is.null(sidecar$path)) {
     performance_evidence_metadata_issues(sidecar$metadata, source = "performanceEvidence.bundleMetadata")
   } else {
@@ -3016,6 +4333,7 @@ record_performance_evidence <- function(record, limit = 200L) {
   }
 
   utils::modifyList(summary, list(
+    traceability = traceability,
     source = if (length(unique(sources)) == 1) unique(sources)[[1]] else "combined",
     sources = as.list(unique(sources)),
     sidecarPath = sidecar$path,
@@ -3031,6 +4349,164 @@ record_performance_evidence <- function(record, limit = 200L) {
   ))
 }
 
+merge_parameter_table_rows <- function(primary_rows, supplemental_rows) {
+  merged <- list()
+  row_order <- character()
+
+  add_or_merge <- function(entry) {
+    path <- safe_chr(entry$path)
+    if (is.null(path) || !nzchar(path)) {
+      return(NULL)
+    }
+    if (!(path %in% row_order)) {
+      row_order <<- c(row_order, path)
+    }
+    existing <- merged[[path]] %||% list()
+    merged[[path]] <<- utils::modifyList(existing, entry)
+  }
+
+  for (entry in primary_rows %||% list()) {
+    add_or_merge(entry)
+  }
+  for (entry in supplemental_rows %||% list()) {
+    add_or_merge(entry)
+  }
+
+  unname(merged[row_order])
+}
+
+parameter_table_metadata_issues <- function(metadata, source = "parameterTable.bundleMetadata") {
+  issues <- list()
+  metadata_dict <- metadata %||% list()
+
+  if (is.null(safe_chr(metadata_dict$bundleVersion)) || !nzchar(safe_chr(metadata_dict$bundleVersion, ""))) {
+    issues[[length(issues) + 1]] <- list(
+      code = "parameter_table_bundle_version_missing",
+      message = "Parameter-table bundle metadata should declare bundleVersion.",
+      field = sprintf("%s.bundleVersion", source),
+      severity = "warning"
+    )
+  }
+  if (is.null(safe_chr(metadata_dict$summary)) || !nzchar(safe_chr(metadata_dict$summary, ""))) {
+    issues[[length(issues) + 1]] <- list(
+      code = "parameter_table_bundle_summary_missing",
+      message = "Parameter-table bundle metadata should declare summary.",
+      field = sprintf("%s.summary", source),
+      severity = "warning"
+    )
+  }
+  issues
+}
+
+parameter_table_row_issues <- function(rows, source = "parameterTable.rows") {
+  issues <- list()
+
+  for (index in seq_along(rows %||% list())) {
+    row <- rows[[index]]
+    if (!is.list(row)) {
+      next
+    }
+
+    row_id <- safe_chr(row$path, sprintf("row-%03d", index))
+    row_field_prefix <- sprintf("%s[%d]", source, index)
+    provenance_present <- !identical(safe_chr(row$provenance_status, "unreported"), "unreported") ||
+      length(normalize_text_values(list(
+        row$source,
+        row$sourceType,
+        row$sourceCitation,
+        row$sourceTable,
+        row$evidenceType,
+        row$rationale,
+        row$distribution,
+        row$mean,
+        row$sd,
+        row$lowerBound,
+        row$upperBound,
+        row$experimentalConditions
+      ))) > 0
+
+    if (provenance_present &&
+        length(normalize_text_values(list(row$source, row$sourceCitation, row$sourceTable))) == 0) {
+      issues[[length(issues) + 1]] <- list(
+        code = "parameter_row_source_missing",
+        message = sprintf(
+          "Parameter row '%s' declares provenance metadata but does not identify a source, citation, or source table.",
+          row_id
+        ),
+        field = row_field_prefix,
+        severity = "warning"
+      )
+    }
+
+    if (length(normalize_text_values(row$distribution)) > 0 &&
+        is.null(row$mean) &&
+        is.null(row$sd) &&
+        is.null(row$lowerBound) &&
+        is.null(row$upperBound)) {
+      issues[[length(issues) + 1]] <- list(
+        code = "parameter_row_distribution_details_missing",
+        message = sprintf(
+          "Parameter row '%s' declares a distribution but does not provide supporting statistics or bounds.",
+          row_id
+        ),
+        field = sprintf("%s.distribution", row_field_prefix),
+        severity = "warning"
+      )
+    }
+
+    source_type_token <- normalize_context_token(row$sourceType)
+    evidence_type_token <- normalize_context_token(row$evidenceType)
+    experimental_source <- (!is.null(source_type_token) &&
+      grepl("in-vitro|in-vivo|in-silico|experimental|study|guideline", source_type_token)) ||
+      (!is.null(evidence_type_token) &&
+      grepl("experimental|study|literature", evidence_type_token))
+
+    if (experimental_source &&
+        length(normalize_text_values(list(row$experimentalConditions, row$rationale, row$motivation))) == 0) {
+      issues[[length(issues) + 1]] <- list(
+        code = "parameter_row_conditions_missing",
+        message = sprintf(
+          "Parameter row '%s' looks experimental or study-derived but does not declare study conditions or rationale.",
+          row_id
+        ),
+        field = row_field_prefix,
+        severity = "warning"
+      )
+    }
+  }
+
+  issues
+}
+
+parameter_table_coverage_summary <- function(rows) {
+  entries <- rows %||% list()
+  count_rows <- function(predicate) {
+    as.integer(sum(vapply(entries, predicate, logical(1))))
+  }
+
+  list(
+    rowCount = as.integer(length(entries)),
+    rowsWithUnits = count_rows(function(entry) length(normalize_text_values(entry$unit)) > 0),
+    rowsWithSources = count_rows(function(entry) {
+      length(normalize_text_values(list(entry$source, entry$sourceCitation, entry$sourceTable))) > 0
+    }),
+    rowsWithSourceCitations = count_rows(function(entry) length(normalize_text_values(entry$sourceCitation)) > 0),
+    rowsWithDistributions = count_rows(function(entry) {
+      length(normalize_text_values(entry$distribution)) > 0 ||
+        !is.null(entry$mean) ||
+        !is.null(entry$sd) ||
+        !is.null(entry$lowerBound) ||
+        !is.null(entry$upperBound)
+    }),
+    rowsWithExperimentalConditions = count_rows(function(entry) {
+      length(normalize_text_values(entry$experimentalConditions)) > 0
+    }),
+    rowsWithRationale = count_rows(function(entry) {
+      length(normalize_text_values(list(entry$rationale, entry$motivation))) > 0
+    })
+  )
+}
+
 record_parameter_table <- function(record, pattern = NULL, limit = 200L) {
   pattern_value <- safe_chr(pattern)
   limit_value <- as.integer(safe_num(limit, 200))
@@ -3039,8 +4515,10 @@ record_parameter_table <- function(record, pattern = NULL, limit = 200L) {
   }
 
   raw_rows <- NULL
+  sources <- character(0)
   source <- "runtime-parameter-enumeration"
   fallback_values <- record$parameters %||% list()
+  sidecar <- parameter_table_sidecar(record$file_path)
 
   if (identical(record$backend, "rxode2") &&
       is.environment(record$module_env) &&
@@ -3061,9 +4539,11 @@ record_parameter_table <- function(record, pattern = NULL, limit = 200L) {
       )
     )
     source <- "pbpk_parameter_table"
+    sources <- c(sources, "pbpk_parameter_table")
   } else if (length(record$parameter_catalog %||% list()) > 0) {
     raw_rows <- unname(record$parameter_catalog)
     source <- "parameter_catalog"
+    sources <- c(sources, "parameter_catalog")
   } else if (identical(record$backend, "ospsuite")) {
     ensure_ospsuite()
     paths <- getAllParameterPathsIn(record$simulation)
@@ -3076,6 +4556,7 @@ record_parameter_table <- function(record, pattern = NULL, limit = 200L) {
       row
     })
     source <- "ospsuite-runtime"
+    sources <- c(sources, "ospsuite-runtime")
   } else {
     raw_rows <- lapply(names(fallback_values), function(path) {
       list(
@@ -3088,9 +4569,18 @@ record_parameter_table <- function(record, pattern = NULL, limit = 200L) {
         provenance_status = "unreported"
       )
     })
+    sources <- c(sources, "runtime-parameter-enumeration")
   }
 
   rows <- normalize_parameter_table_rows(raw_rows, fallback_values)
+  if (is.list(sidecar$rows) && length(sidecar$rows) > 0) {
+    sidecar_rows <- normalize_parameter_table_rows(sidecar$rows, fallback_values)
+    rows <- merge_parameter_table_rows(rows, sidecar_rows)
+    sources <- c(sources, "parameter-table-sidecar")
+  }
+  if (length(sources) == 0) {
+    sources <- source
+  }
   total_rows <- length(rows)
 
   if (!is.null(pattern_value) && nzchar(pattern_value)) {
@@ -3099,13 +4589,21 @@ record_parameter_table <- function(record, pattern = NULL, limit = 200L) {
     }, rows)
   }
   matched_rows <- length(rows)
+  coverage <- parameter_table_coverage_summary(rows)
+  metadata_issues <- if (!is.null(sidecar$path)) {
+    parameter_table_metadata_issues(sidecar$metadata, source = "parameterTable.bundleMetadata")
+  } else {
+    list()
+  }
+  quality_issues <- parameter_table_row_issues(rows)
 
   if (matched_rows > limit_value) {
     rows <- rows[seq_len(limit_value)]
   }
 
   list(
-    source = source,
+    source = if (length(unique(sources)) == 1) unique(sources)[[1]] else "combined",
+    sources = as.list(unique(sources)),
     included = TRUE,
     pattern = pattern_value,
     limit = limit_value,
@@ -3113,6 +4611,11 @@ record_parameter_table <- function(record, pattern = NULL, limit = 200L) {
     matchedRows = matched_rows,
     returnedRows = length(rows),
     truncated = matched_rows > limit_value,
+    sidecarPath = sidecar$path,
+    bundleMetadata = sidecar$metadata,
+    issues = c(sidecar$issues %||% list(), metadata_issues, quality_issues),
+    issueCount = length(c(sidecar$issues %||% list(), metadata_issues, quality_issues)),
+    coverage = coverage,
     rows = rows
   )
 }
@@ -3372,6 +4875,8 @@ assessment_context_from_record <- function(record, request = list(), validation 
     objectId = sprintf("%s-assessment-context", record$simulation_id),
     simulationId = record$simulation_id,
     backend = record$backend,
+    assessmentBoundary = "pbpk-context-alignment-only",
+    decisionBoundary = "no-ngra-decision-policy",
     validationDecision = safe_chr(assessment$decision),
     contextOfUse = list(
       regulatoryUse = selection_triplet(
@@ -3432,8 +4937,79 @@ assessment_context_from_record <- function(record, request = list(), validation 
     targetOutput = list(
       requested = requested_target_output,
       declared = as.list(declared_target_outputs)
+    ),
+    supports = list(
+      declaredProfileComparison = TRUE,
+      requestContextAlignment = TRUE,
+      typedNgraHandoff = TRUE,
+      decisionRecommendation = FALSE
     )
   )
+}
+
+qualification_required_external_inputs <- function(
+  qualification_state = list(),
+  performance_evidence = NULL
+) {
+  required <- c(
+    "higher-level NGRA decision policy or orchestrator outside PBPK MCP"
+  )
+
+  boundary <- safe_chr(performance_evidence$qualificationBoundary)
+  if (is.null(boundary) || identical(boundary, "no-bundled-performance-evidence")) {
+    required <- c(
+      required,
+      "predictive or external qualification evidence for stronger regulatory-facing claims"
+    )
+  } else if (identical(boundary, "runtime-or-internal-evidence-only")) {
+    required <- c(
+      required,
+      "observed-vs-predicted, predictive-dataset, or external qualification evidence"
+    )
+  }
+
+  if (!safe_lgl(qualification_state$withinDeclaredContext, TRUE)) {
+    required <- c(required, "request alignment with the declared PBPK context of use")
+  }
+
+  as.list(unique(required))
+}
+
+qualification_limitations_from_record <- function(
+  qualification_state = list(),
+  performance_evidence = NULL,
+  executable_verification = NULL
+) {
+  limitations <- character()
+
+  boundary <- safe_chr(performance_evidence$qualificationBoundary)
+  if (identical(boundary, "runtime-or-internal-evidence-only")) {
+    limitations <- c(
+      limitations,
+      "Bundled performance evidence is limited to runtime or internal supporting evidence."
+    )
+  } else if (identical(boundary, "no-bundled-performance-evidence")) {
+    limitations <- c(
+      limitations,
+      "No bundled predictive-performance evidence is attached to this PBPK context."
+    )
+  }
+
+  if (!isTRUE(executable_verification$included)) {
+    limitations <- c(
+      limitations,
+      "No executable verification snapshot is attached to the current PBPK session."
+    )
+  }
+
+  if (!safe_lgl(qualification_state$withinDeclaredContext, TRUE)) {
+    limitations <- c(
+      limitations,
+      "The current request falls outside the model's declared PBPK context of use."
+    )
+  }
+
+  as.list(unique(limitations))
 }
 
 pbpk_qualification_summary_from_record <- function(
@@ -3457,6 +5033,8 @@ pbpk_qualification_summary_from_record <- function(
     objectId = sprintf("%s-qualification-summary", record$simulation_id),
     simulationId = record$simulation_id,
     backend = record$backend,
+    assessmentBoundary = "pbpk-execution-and-qualification-substrate-only",
+    decisionBoundary = "no-ngra-decision-policy",
     state = safe_chr(qualification_state$state, "unreported"),
     label = safe_chr(qualification_state$label),
     summary = safe_chr(qualification_state$summary),
@@ -3478,7 +5056,26 @@ pbpk_qualification_summary_from_record <- function(
       safe_chr(executable_verification$status, "unreported")
     } else {
       "not-run"
-    }
+    },
+    supports = list(
+      nativeExecution = TRUE,
+      manifestValidation = TRUE,
+      preflightValidation = TRUE,
+      executableVerification = isTRUE(executable_verification$included),
+      oecdDossierExport = TRUE,
+      typedNgraHandoff = TRUE,
+      externalBerHandoff = TRUE,
+      regulatoryDecision = FALSE
+    ),
+    requiredExternalInputs = qualification_required_external_inputs(
+      qualification_state = qualification_state,
+      performance_evidence = performance_evidence
+    ),
+    limitations = qualification_limitations_from_record(
+      qualification_state = qualification_state,
+      performance_evidence = performance_evidence,
+      executable_verification = executable_verification
+    )
   )
 }
 
@@ -3495,11 +5092,54 @@ uncertainty_summary_from_record <- function(record, uncertainty_evidence = NULL)
     character(1)
   )
 
+  has_sensitivity <- any(row_kinds == "sensitivity-analysis")
+  has_variability_approach <- any(row_kinds == "variability-approach")
+  has_variability_propagation <- any(row_kinds == "variability-propagation")
+  has_residual_uncertainty <- any(row_kinds == "residual-uncertainty")
+
+  variability_status <- if (has_variability_propagation) {
+    "propagated"
+  } else if (has_variability_approach) {
+    "characterized"
+  } else if (!identical(safe_chr(uncertainty$status), "unreported")) {
+    "declared-without-structured-variability"
+  } else {
+    "unreported"
+  }
+
+  sensitivity_status <- if (has_sensitivity) {
+    "available"
+  } else if (!identical(safe_chr(uncertainty$status), "unreported")) {
+    "not-bundled"
+  } else {
+    "unreported"
+  }
+
+  residual_status <- if (has_residual_uncertainty) {
+    "declared"
+  } else if (!identical(safe_chr(uncertainty$status), "unreported")) {
+    "not-explicit"
+  } else {
+    "unreported"
+  }
+
+  required_external_inputs <- c(
+    "cross-domain uncertainty synthesis outside PBPK MCP"
+  )
+  if (!has_residual_uncertainty) {
+    required_external_inputs <- c(
+      required_external_inputs,
+      "explicit residual uncertainty register for broader NGRA interpretation"
+    )
+  }
+
   list(
     objectType = "uncertaintySummary.v1",
     objectId = sprintf("%s-uncertainty-summary", record$simulation_id),
     simulationId = record$simulation_id,
     backend = record$backend,
+    assessmentBoundary = "pbpk-side-uncertainty-summary-only",
+    decisionBoundary = "no-ngra-decision-policy",
     status = safe_chr(uncertainty$status, "unreported"),
     summary = safe_chr(uncertainty$summary),
     evidenceSource = safe_chr(evidence$source),
@@ -3507,10 +5147,25 @@ uncertainty_summary_from_record <- function(record, uncertainty_evidence = NULL)
     issueCount = as.integer(safe_num(evidence$issueCount, 0)),
     evidenceRowCount = as.integer(safe_num(evidence$returnedRows, 0)),
     totalEvidenceRows = as.integer(safe_num(evidence$totalRows, 0)),
-    hasSensitivityAnalysis = any(row_kinds == "sensitivity-analysis"),
-    hasVariabilityApproach = any(row_kinds == "variability-approach"),
-    hasVariabilityPropagation = any(row_kinds == "variability-propagation"),
-    hasResidualUncertainty = any(row_kinds == "residual-uncertainty"),
+    hasSensitivityAnalysis = has_sensitivity,
+    hasVariabilityApproach = has_variability_approach,
+    hasVariabilityPropagation = has_variability_propagation,
+    hasResidualUncertainty = has_residual_uncertainty,
+    variabilityStatus = variability_status,
+    sensitivityStatus = sensitivity_status,
+    residualUncertaintyStatus = residual_status,
+    supports = list(
+      qualitativeSummary = !identical(safe_chr(uncertainty$status), "unreported") ||
+        safe_num(evidence$returnedRows, 0) > 0,
+      sensitivityAnalysis = has_sensitivity,
+      variabilityCharacterization = has_variability_approach,
+      quantitativePropagation = has_variability_propagation,
+      residualUncertaintyTracking = has_residual_uncertainty,
+      typedNgraHandoff = TRUE,
+      crossDomainUncertaintyRegister = FALSE,
+      decisionRecommendation = FALSE
+    ),
+    requiredExternalInputs = as.list(unique(required_external_inputs)),
     bundleMetadata = evidence$bundleMetadata %||% NULL
   )
 }
@@ -3595,6 +5250,8 @@ internal_exposure_estimate_from_record <- function(record, request = list(), can
       objectId = sprintf("%s-internal-exposure-estimate", record$simulation_id),
       simulationId = record$simulation_id,
       backend = record$backend,
+      assessmentBoundary = "pbpk-side-internal-exposure-estimate-only",
+      decisionBoundary = "no-ngra-decision-policy",
       status = "not-available",
       resultsId = selected_results_id,
       source = source,
@@ -3602,6 +5259,12 @@ internal_exposure_estimate_from_record <- function(record, request = list(), can
       requestedTargetOutput = requested_target_output,
       candidateOutputCount = 0L,
       candidateOutputs = list(),
+      supports = list(
+        deterministicMetricSelection = FALSE,
+        populationDistributionSummary = FALSE,
+        externalBerHandoff = FALSE,
+        decisionRecommendation = FALSE
+      ),
       warnings = as.list(unique(warnings))
     )
     for (name in names(extra)) {
@@ -3699,6 +5362,8 @@ internal_exposure_estimate_from_record <- function(record, request = list(), can
     objectId = sprintf("%s-internal-exposure-estimate", record$simulation_id),
     simulationId = record$simulation_id,
     backend = record$backend,
+    assessmentBoundary = "pbpk-side-internal-exposure-estimate-only",
+    decisionBoundary = "no-ngra-decision-policy",
     status = "available",
     resultsId = selected_results_id,
     source = source,
@@ -3708,6 +5373,12 @@ internal_exposure_estimate_from_record <- function(record, request = list(), can
     candidateOutputCount = as.integer(candidate_count),
     candidateOutputs = returned_candidates,
     candidateOutputsTruncated = truncated,
+    supports = list(
+      deterministicMetricSelection = !is.null(selected_summary),
+      populationDistributionSummary = FALSE,
+      externalBerHandoff = !is.null(selected_summary),
+      decisionRecommendation = FALSE
+    ),
     warnings = as.list(unique(warnings))
   )
 }
@@ -3769,6 +5440,69 @@ true_dose_adjustment_from_request <- function(request = list()) {
   )
 }
 
+point_of_departure_reference_from_request <- function(record, request = list()) {
+  request_payload <- request %||% list()
+  pod_metadata <- pod_metadata_from_request(request_payload)
+  true_dose_adjustment <- true_dose_adjustment_from_request(request_payload)
+  pod_ref <- safe_chr(pod_metadata$ref)
+  attached <- !is.null(pod_ref) && nzchar(pod_ref)
+  warnings <- character()
+
+  if (attached &&
+      (is.null(pod_metadata$metric) || !nzchar(safe_chr(pod_metadata$metric, "")))) {
+    warnings <- c(
+      warnings,
+      "No explicit PoD metric metadata were attached; downstream BER logic should validate metric compatibility."
+    )
+  }
+
+  if (isTRUE(true_dose_adjustment$applied) &&
+      (is.null(true_dose_adjustment$basis) || !nzchar(safe_chr(true_dose_adjustment$basis, "")))) {
+    warnings <- c(
+      warnings,
+      "True-dose adjustment is marked as applied, but no trueDoseBasis was attached."
+    )
+  }
+
+  required_external_inputs <- c(
+    "PoD interpretation and suitability assessment outside PBPK MCP",
+    "BER calculation and decision policy outside PBPK MCP"
+  )
+  if (!attached) {
+    required_external_inputs <- c(required_external_inputs, "external point-of-departure reference")
+  }
+
+  list(
+    objectType = "pointOfDepartureReference.v1",
+    objectId = sprintf("%s-point-of-departure-reference", record$simulation_id),
+    simulationId = record$simulation_id,
+    backend = record$backend,
+    assessmentBoundary = "external-pod-reference-only",
+    decisionBoundary = "pod-interpretation-and-ber-policy-owned-by-external-orchestrator",
+    decisionOwner = "external-orchestrator",
+    status = if (attached) "attached-external-reference" else "not-attached",
+    podRef = pod_ref,
+    source = safe_chr(pod_metadata$source),
+    metric = safe_chr(pod_metadata$metric),
+    unit = safe_chr(pod_metadata$unit),
+    basis = safe_chr(pod_metadata$basis),
+    summary = safe_chr(pod_metadata$summary),
+    value = pod_metadata$value %||% NULL,
+    trueDoseAdjustment = true_dose_adjustment,
+    trueDoseAdjustmentApplied = safe_lgl(true_dose_adjustment$applied, FALSE),
+    supports = list(
+      typedReference = attached,
+      metricMetadataAttached = !is.null(pod_metadata$metric) && nzchar(safe_chr(pod_metadata$metric, "")),
+      trueDoseMetadataAttached = !isTRUE(true_dose_adjustment$applied) ||
+        (!is.null(true_dose_adjustment$basis) && nzchar(safe_chr(true_dose_adjustment$basis, ""))),
+      externalBerCalculation = FALSE,
+      decisionRecommendation = FALSE
+    ),
+    requiredExternalInputs = as.list(unique(required_external_inputs)),
+    warnings = as.list(unique(warnings))
+  )
+}
+
 resolved_internal_exposure_metric <- function(selected_output, comparison_metric) {
   if (is.null(selected_output) || !is.list(selected_output)) {
     return(NULL)
@@ -3813,6 +5547,7 @@ ber_input_bundle_from_record <- function(
   record,
   request = list(),
   internal_exposure_estimate = NULL,
+  point_of_departure_reference = NULL,
   uncertainty_summary = NULL,
   qualification_summary = NULL
 ) {
@@ -3872,21 +5607,40 @@ ber_input_bundle_from_record <- function(
   }
 
   ready <- (length(blocking_reasons) == 0)
+  required_external_inputs <- c(
+    "BER calculation and decision policy outside PBPK MCP"
+  )
+  if (is.null(pod_ref) || !nzchar(pod_ref)) {
+    required_external_inputs <- c(required_external_inputs, "external point-of-departure reference")
+  }
   list(
     objectType = "berInputBundle.v1",
     objectId = sprintf("%s-ber-input-bundle", record$simulation_id),
     simulationId = record$simulation_id,
     backend = record$backend,
+    assessmentBoundary = "external-ber-calculation-only",
+    decisionBoundary = "ber-calculation-and-decision-owned-by-external-orchestrator",
+    decisionOwner = "external-orchestrator",
     status = if (ready) "ready-for-external-ber-calculation" else "incomplete",
     comparisonMetric = comparison_metric,
     internalExposureEstimateRef = internal_exposure_estimate$objectId %||% NULL,
     internalExposureMetric = internal_metric,
+    pointOfDepartureReferenceRef = point_of_departure_reference$objectId %||% NULL,
     uncertaintySummaryRef = uncertainty_summary$objectId %||% NULL,
     qualificationSummaryRef = qualification_summary$objectId %||% NULL,
     podRef = pod_ref,
     podMetadata = pod_metadata,
     trueDoseAdjustment = true_dose_adjustment,
     trueDoseAdjustmentApplied = safe_lgl(true_dose_adjustment$applied, FALSE),
+    supports = list(
+      internalExposureMetricAttached = !is.null(internal_metric),
+      externalPodReferenceAttached = !is.null(pod_ref) && nzchar(pod_ref),
+      trueDoseMetadataAttached = !isTRUE(true_dose_adjustment$applied) ||
+        (!is.null(true_dose_adjustment$basis) && nzchar(safe_chr(true_dose_adjustment$basis, ""))),
+      externalBerCalculation = ready,
+      decisionRecommendation = FALSE
+    ),
+    requiredExternalInputs = as.list(unique(required_external_inputs)),
     blockingReasons = as.list(unique(blocking_reasons)),
     warnings = as.list(unique(warnings))
   )
@@ -3928,12 +5682,14 @@ build_ngra_objects <- function(
     uncertainty_evidence = resolved_uncertainty_evidence
   )
   internal_exposure_estimate <- internal_exposure_estimate_from_record(record, request)
+  point_of_departure_reference <- point_of_departure_reference_from_request(record, request)
 
   payload <- list(
     assessmentContext = assessment_context,
     pbpkQualificationSummary = qualification_summary,
     uncertaintySummary = uncertainty_summary,
-    internalExposureEstimate = internal_exposure_estimate
+    internalExposureEstimate = internal_exposure_estimate,
+    pointOfDepartureReference = point_of_departure_reference
   )
 
   if (isTRUE(include_ber_bundle)) {
@@ -3941,6 +5697,7 @@ build_ngra_objects <- function(
       record,
       request = request,
       internal_exposure_estimate = internal_exposure_estimate,
+      point_of_departure_reference = point_of_departure_reference,
       uncertainty_summary = uncertainty_summary,
       qualification_summary = qualification_summary
     )
@@ -4796,6 +6553,18 @@ build_oecd_report <- function(
       rows = list()
     )
   }
+  oecd_coverage <- build_oecd_coverage(
+    record,
+    validation = resolved_validation,
+    checklist = checklist,
+    missing_evidence = missing_evidence,
+    performance_evidence = performance_evidence,
+    uncertainty_evidence = uncertainty_evidence,
+    verification_evidence = verification_evidence,
+    platform_qualification_evidence = platform_qualification_evidence,
+    executable_verification = executable_verification,
+    parameter_table = parameter_table
+  )
 
   list(
     reportVersion = "pbpk-oecd-report.v1",
@@ -4816,6 +6585,7 @@ build_oecd_report <- function(
     validation = resolved_validation,
     oecdChecklist = checklist,
     oecdChecklistScore = checklist_score,
+    oecdCoverage = oecd_coverage,
     missingEvidence = missing_evidence,
     performanceEvidence = performance_evidence,
     uncertaintyEvidence = uncertainty_evidence,
