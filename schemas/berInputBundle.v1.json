@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/ToxMCP/pbpk-mcp/main/schemas/berInputBundle.v1.json",
+  "title": "berInputBundle.v1",
+  "description": "Thin BER-ready PBPK-side handoff bundle emitted by PBPK MCP.",
+  "type": "object",
+  "required": [
+    "objectType",
+    "objectId",
+    "backend",
+    "assessmentBoundary",
+    "decisionBoundary",
+    "decisionOwner",
+    "status",
+    "comparisonMetric",
+    "trueDoseAdjustment",
+    "trueDoseAdjustmentApplied",
+    "supports",
+    "requiredExternalInputs",
+    "blockingReasons"
+  ],
+  "properties": {
+    "objectType": {
+      "const": "berInputBundle.v1"
+    },
+    "objectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "simulationId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "backend": {
+      "$ref": "#/$defs/backend"
+    },
+    "sourcePlatform": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "assessmentBoundary": {
+      "const": "external-ber-calculation-only"
+    },
+    "decisionBoundary": {
+      "const": "ber-calculation-and-decision-owned-by-external-orchestrator"
+    },
+    "decisionOwner": {
+      "const": "external-orchestrator"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ready-for-external-ber-calculation",
+        "incomplete"
+      ]
+    },
+    "comparisonMetric": {
+      "type": "string",
+      "minLength": 1
+    },
+    "internalExposureEstimateRef": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "internalExposureMetric": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "metric",
+        "value",
+        "outputPath"
+      ],
+      "properties": {
+        "metric": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outputPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "pointOfDepartureReferenceRef": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "uncertaintySummaryRef": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "qualificationSummaryRef": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "podRef": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "podMetadata": {
+      "type": "object",
+      "properties": {
+        "ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "metric": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "basis": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "summary": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "value": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "trueDoseAdjustment": {
+      "$ref": "#/$defs/trueDoseAdjustment"
+    },
+    "trueDoseAdjustmentApplied": {
+      "type": "boolean"
+    },
+    "supports": {
+      "type": "object",
+      "required": [
+        "internalExposureMetricAttached",
+        "externalPodReferenceAttached",
+        "trueDoseMetadataAttached",
+        "externalBerCalculation",
+        "decisionRecommendation"
+      ],
+      "properties": {
+        "internalExposureMetricAttached": {
+          "type": "boolean"
+        },
+        "externalPodReferenceAttached": {
+          "type": "boolean"
+        },
+        "trueDoseMetadataAttached": {
+          "type": "boolean"
+        },
+        "externalBerCalculation": {
+          "type": "boolean"
+        },
+        "decisionRecommendation": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "requiredExternalInputs": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "blockingReasons": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "warnings": {
+      "$ref": "#/$defs/stringArray"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "backend": {
+      "type": "string",
+      "enum": [
+        "ospsuite",
+        "rxode2",
+        "external-import"
+      ]
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "trueDoseAdjustment": {
+      "type": "object",
+      "required": [
+        "applied"
+      ],
+      "properties": {
+        "applied": {
+          "type": "boolean"
+        },
+        "basis": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "summary": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

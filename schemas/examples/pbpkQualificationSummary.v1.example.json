@@ -1,0 +1,44 @@
+{
+  "objectType": "pbpkQualificationSummary.v1",
+  "objectId": "gastroplus-qualification-summary",
+  "simulationId": null,
+  "backend": "external-import",
+  "sourcePlatform": "GastroPlus",
+  "assessmentBoundary": "external-pbpk-normalization-only",
+  "decisionBoundary": "no-ngra-decision-policy",
+  "state": "research-use",
+  "label": "Research Use",
+  "summary": "External PBPK qualification metadata were normalized without executing the upstream platform.",
+  "qualificationLevel": "L2",
+  "oecdReadiness": "external-imported",
+  "validationDecision": null,
+  "withinDeclaredContext": null,
+  "scientificProfile": true,
+  "riskAssessmentReady": false,
+  "checklistScore": null,
+  "evidenceStatus": "checked",
+  "profileSource": "external-import",
+  "missingEvidenceCount": 0,
+  "performanceEvidenceBoundary": "runtime-or-internal-evidence-only",
+  "executableVerificationStatus": "checked",
+  "platformClass": "commercial",
+  "validationReferences": [],
+  "supports": {
+    "nativeExecution": false,
+    "externalImportNormalization": true,
+    "manifestValidation": false,
+    "preflightValidation": false,
+    "executableVerification": false,
+    "oecdDossierExport": true,
+    "typedNgraHandoff": true,
+    "externalBerHandoff": true,
+    "regulatoryDecision": false
+  },
+  "requiredExternalInputs": [
+    "higher-level NGRA decision policy or orchestrator outside PBPK MCP",
+    "observed-vs-predicted, predictive-dataset, or external qualification evidence"
+  ],
+  "limitations": [
+    "Imported performance evidence is limited to runtime or internal supporting evidence."
+  ]
+}

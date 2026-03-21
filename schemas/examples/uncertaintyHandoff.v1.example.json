@@ -1,0 +1,38 @@
+{
+  "objectType": "uncertaintyHandoff.v1",
+  "objectId": "gastroplus-uncertainty-handoff",
+  "simulationId": null,
+  "backend": "external-import",
+  "sourcePlatform": "GastroPlus",
+  "assessmentBoundary": "pbpk-to-cross-domain-uncertainty-handoff-only",
+  "decisionBoundary": "cross-domain-uncertainty-synthesis-owned-by-external-orchestrator",
+  "decisionOwner": "external-orchestrator",
+  "status": "ready-for-cross-domain-uncertainty-synthesis",
+  "pbpkQualificationSummaryRef": "gastroplus-qualification-summary",
+  "uncertaintySummaryRef": "gastroplus-uncertainty-summary",
+  "internalExposureEstimateRef": "gastroplus-internal-exposure-estimate",
+  "pointOfDepartureReferenceRef": "gastroplus-point-of-departure-reference",
+  "uncertaintyRegisterReferenceRef": "gastroplus-uncertainty-register-reference",
+  "supports": {
+    "pbpkQualificationAttached": true,
+    "pbpkUncertaintySummaryAttached": true,
+    "internalExposureContextAttached": true,
+    "pointOfDepartureReferenceAttached": true,
+    "uncertaintyRegisterReferenceAttached": true,
+    "residualUncertaintyTracked": true,
+    "typedUncertaintySemanticsAttached": true,
+    "classifiedVariabilitySummaryAttached": true,
+    "classifiedResidualUncertaintySummaryAttached": true,
+    "quantifiedPbpkVariability": true,
+    "quantifiedPbpkSensitivity": false,
+    "quantifiedPbpkResidualUncertainty": false,
+    "crossDomainUncertaintySynthesis": false,
+    "decisionRecommendation": false
+  },
+  "requiredExternalInputs": [
+    "cross-domain uncertainty synthesis outside PBPK MCP",
+    "exposure-scenario uncertainty outside PBPK MCP",
+    "PoD or NAM uncertainty outside PBPK MCP"
+  ],
+  "blockingReasons": []
+}

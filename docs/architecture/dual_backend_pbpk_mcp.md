@@ -350,6 +350,8 @@ Validation and dossier export should inform the user clearly, but scientific qua
 
 ## Backend Capability Matrix
 
+For the adoption-facing published matrix, see `docs/architecture/capability_matrix.md` and `docs/architecture/capability_matrix.json`.
+
 Current capability model:
 
 | Capability | Meaning | `ospsuite` | `rxode2` |

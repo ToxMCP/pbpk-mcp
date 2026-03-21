@@ -85,6 +85,8 @@ runtime-patch-check: ## Compile the patch-first runtime files used by the live s
 
 runtime-contract-test: ## Run the patch-first runtime contract tests that do not require the live stack
 	$(PY) -m unittest -v \
+		tests/test_capability_matrix.py \
+		tests/test_ngra_object_schemas.py \
 		tests/test_load_simulation_contract.py \
 		tests/test_model_manifest.py \
 		tests/test_oecd_bridge.py \

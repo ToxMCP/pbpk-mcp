@@ -85,6 +85,16 @@ def poll_job(base_url: str, job_id: str, timeout_seconds: int = 180) -> dict:
 
 def run_bridge_tests() -> None:
     subprocess.run(
+        ["python3", "-m", "unittest", "-v", "tests/test_capability_matrix.py"],
+        cwd=WORKSPACE_ROOT,
+        check=True,
+    )
+    subprocess.run(
+        ["python3", "-m", "unittest", "-v", "tests/test_ngra_object_schemas.py"],
+        cwd=WORKSPACE_ROOT,
+        check=True,
+    )
+    subprocess.run(
         ["python3", "-m", "unittest", "-v", "tests/test_oecd_bridge.py"],
         cwd=WORKSPACE_ROOT,
         check=True,
@@ -153,6 +163,38 @@ def run_release_check(base_url: str, *, skip_unit_tests: bool = False) -> dict:
     summary["toolCatalog"] = {
         "requiredTools": sorted(REQUIRED_TOOLS),
         "missingTools": sorted(REQUIRED_TOOLS - tool_names),
+    }
+
+    full_catalog = call_tool(base_url, "discover_models", {"limit": 200}, timeout=30)
+    catalog_formats = sorted({item["runtimeFormat"] for item in full_catalog["items"]})
+    assert_true(
+        set(catalog_formats).issubset({"pkml", "r"}),
+        f"discover_models exposed unsupported runtime formats: {catalog_formats}",
+    )
+
+    ospsuite_catalog = call_tool(
+        base_url,
+        "discover_models",
+        {"backend": "ospsuite", "limit": 50},
+        timeout=30,
+    )
+    pkml_matches = [
+        item for item in ospsuite_catalog["items"] if item["filePath"] == PREGNANCY_PKML
+    ]
+    assert_true(bool(pkml_matches), "Reference .pkml model not discoverable through ospsuite catalog view")
+    assert_true(
+        not bool(pkml_matches[0]["populationSimulation"]),
+        f"OSPSuite .pkml entry should not advertise generic population support: {pkml_matches[0]}",
+    )
+    assert_true(
+        bool(cisplatin_matches[0]["populationSimulation"]),
+        f"Reference rxode2 model should advertise declared population support: {cisplatin_matches[0]}",
+    )
+    summary["capabilityMatrix"] = {
+        "discoverableRuntimeFormats": catalog_formats,
+        "conversionOnlyFormatsExcludedFromCatalog": True,
+        "ospsuitePkmlPopulationSimulation": bool(pkml_matches[0]["populationSimulation"]),
+        "rxode2ReferencePopulationSimulation": bool(cisplatin_matches[0]["populationSimulation"]),
     }
 
     external_bundle = call_tool(

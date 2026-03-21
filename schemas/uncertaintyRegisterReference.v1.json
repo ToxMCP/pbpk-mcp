@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/ToxMCP/pbpk-mcp/main/schemas/uncertaintyRegisterReference.v1.json",
+  "title": "uncertaintyRegisterReference.v1",
+  "description": "Typed external uncertainty-register reference emitted by PBPK MCP.",
+  "type": "object",
+  "required": [
+    "objectType",
+    "objectId",
+    "backend",
+    "assessmentBoundary",
+    "decisionBoundary",
+    "decisionOwner",
+    "status",
+    "supports",
+    "requiredExternalInputs",
+    "warnings"
+  ],
+  "properties": {
+    "objectType": {
+      "const": "uncertaintyRegisterReference.v1"
+    },
+    "objectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "simulationId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "backend": {
+      "$ref": "#/$defs/backend"
+    },
+    "sourcePlatform": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "assessmentBoundary": {
+      "const": "external-uncertainty-register-reference-only"
+    },
+    "decisionBoundary": {
+      "const": "cross-domain-uncertainty-synthesis-owned-by-external-orchestrator"
+    },
+    "decisionOwner": {
+      "const": "external-orchestrator"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "attached-external-reference",
+        "not-attached"
+      ]
+    },
+    "registerRef": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "summary": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "scope": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "owner": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "supports": {
+      "type": "object",
+      "required": [
+        "typedReference",
+        "crossDomainUncertaintySynthesis",
+        "decisionRecommendation"
+      ],
+      "properties": {
+        "typedReference": {
+          "type": "boolean"
+        },
+        "crossDomainUncertaintySynthesis": {
+          "type": "boolean"
+        },
+        "decisionRecommendation": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "requiredExternalInputs": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "warnings": {
+      "$ref": "#/$defs/stringArray"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "backend": {
+      "type": "string",
+      "enum": [
+        "ospsuite",
+        "rxode2",
+        "external-import"
+      ]
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

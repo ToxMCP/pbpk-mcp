@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/ToxMCP/pbpk-mcp/main/schemas/uncertaintySummary.v1.json",
+  "title": "uncertaintySummary.v1",
+  "description": "PBPK-side uncertainty summary emitted by PBPK MCP.",
+  "type": "object",
+  "required": [
+    "objectType",
+    "objectId",
+    "backend",
+    "assessmentBoundary",
+    "decisionBoundary",
+    "status",
+    "evidenceRowCount",
+    "totalEvidenceRows",
+    "semanticCoverage",
+    "supports",
+    "requiredExternalInputs"
+  ],
+  "properties": {
+    "objectType": {
+      "const": "uncertaintySummary.v1"
+    },
+    "objectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "simulationId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "backend": {
+      "$ref": "#/$defs/backend"
+    },
+    "sourcePlatform": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "assessmentBoundary": {
+      "const": "pbpk-side-uncertainty-summary-only"
+    },
+    "decisionBoundary": {
+      "const": "no-ngra-decision-policy"
+    },
+    "status": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "evidenceSource": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sources": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "issueCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "evidenceRowCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "totalEvidenceRows": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "hasSensitivityAnalysis": {
+      "type": "boolean"
+    },
+    "hasVariabilityApproach": {
+      "type": "boolean"
+    },
+    "hasVariabilityPropagation": {
+      "type": "boolean"
+    },
+    "hasResidualUncertainty": {
+      "type": "boolean"
+    },
+    "semanticCoverage": {
+      "type": "object",
+      "required": [
+        "overallQuantificationStatus",
+        "variabilityType",
+        "sensitivityType",
+        "residualUncertaintyType",
+        "variabilityQuantificationStatus",
+        "sensitivityQuantificationStatus",
+        "residualUncertaintyQuantificationStatus",
+        "quantifiedRowCount",
+        "declaredOnlyRowCount",
+        "quantifiedComponents",
+        "declaredOnlyComponents"
+      ],
+      "properties": {
+        "overallQuantificationStatus": {
+          "type": "string",
+          "minLength": 1
+        },
+        "variabilityType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sensitivityType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "residualUncertaintyType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "variabilityQuantificationStatus": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sensitivityQuantificationStatus": {
+          "type": "string",
+          "minLength": 1
+        },
+        "residualUncertaintyQuantificationStatus": {
+          "type": "string",
+          "minLength": 1
+        },
+        "quantifiedRowCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "declaredOnlyRowCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "quantifiedComponents": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "declaredOnlyComponents": {
+          "$ref": "#/$defs/stringArray"
+        }
+      },
+      "additionalProperties": true
+    },
+    "variabilityStatus": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sensitivityStatus": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "residualUncertaintyStatus": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "supports": {
+      "type": "object",
+      "required": [
+        "typedUncertaintySemantics",
+        "typedNgraHandoff",
+        "decisionRecommendation"
+      ],
+      "properties": {
+        "typedUncertaintySemantics": {
+          "type": "boolean"
+        },
+        "typedNgraHandoff": {
+          "type": "boolean"
+        },
+        "decisionRecommendation": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "requiredExternalInputs": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "bundleMetadata": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "backend": {
+      "type": "string",
+      "enum": [
+        "ospsuite",
+        "rxode2",
+        "external-import"
+      ]
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "objectType": "pointOfDepartureReference.v1",
+  "objectId": "gastroplus-point-of-departure-reference",
+  "simulationId": null,
+  "backend": "external-import",
+  "sourcePlatform": "GastroPlus",
+  "assessmentBoundary": "external-pod-reference-only",
+  "decisionBoundary": "pod-interpretation-and-ber-policy-owned-by-external-orchestrator",
+  "decisionOwner": "external-orchestrator",
+  "status": "attached-external-reference",
+  "podRef": "pod-001",
+  "source": "httr-benchmark",
+  "metric": "cmax",
+  "unit": "uM",
+  "basis": "true-dose-adjusted",
+  "summary": null,
+  "value": null,
+  "trueDoseAdjustment": {
+    "applied": true,
+    "basis": "free-concentration",
+    "summary": "Normalized to free concentration"
+  },
+  "trueDoseAdjustmentApplied": true,
+  "supports": {
+    "typedReference": true,
+    "metricMetadataAttached": true,
+    "trueDoseMetadataAttached": true,
+    "externalBerCalculation": false,
+    "decisionRecommendation": false
+  },
+  "requiredExternalInputs": [
+    "PoD interpretation and suitability assessment outside PBPK MCP",
+    "BER calculation and decision policy outside PBPK MCP"
+  ],
+  "warnings": []
+}

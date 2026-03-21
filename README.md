@@ -76,7 +76,7 @@ The current implementation follows a layered model:
 - `Executable verification` adds lightweight but structured runtime checks on top of qualification metadata, including parameter-unit consistency, structural flow/volume consistency, deterministic smoke, result-integrity, and repeat-run reproducibility checks without conflating them with formal qualification evidence.
 - `Patch-first runtime + smoke tests` keep the documented tool surface synchronized with the live API during the current `v0.3.5` convergence stage.
 
-See `docs/architecture/dual_backend_pbpk_mcp.md` for the fuller architecture narrative, `docs/architecture/mcp_payload_conventions.md` for the response contract, and `docs/deployment/runtime_patch_flow.md` for the operator path behind the current local deployment model.
+See `docs/architecture/dual_backend_pbpk_mcp.md` for the fuller architecture narrative, `docs/architecture/capability_matrix.md` for the published support matrix, `docs/architecture/mcp_payload_conventions.md` for the response contract, and `docs/deployment/runtime_patch_flow.md` for the operator path behind the current local deployment model.
 
 ## What's new in v0.3.5
 
@@ -113,6 +113,7 @@ The PBPK MCP server wraps those workflows in a **single, programmable interface*
 | 🗂️ **Model discovery and curation** | Discover supported model files from `MCP_MODEL_SEARCH_PATHS`, inspect unloaded models, and run static manifest checks before load. |
 | 🛡️ **OECD-oriented qualification** | Keep `capabilities`, `profile`, `validation`, and `qualificationState` explicit; expose applicability, provenance, uncertainty, implementation verification, software-platform qualification, and qualification gaps. |
 | 🧱 **NGRA-ready PBPK objects** | Emit typed PBPK-side objects such as `assessmentContext`, `pbpkQualificationSummary`, `uncertaintySummary`, `uncertaintyHandoff`, `internalExposureEstimate`, a typed `uncertaintyRegisterReference`, a typed `pointOfDepartureReference`, and a thin BER-ready reference bundle in dossier export, with explicit boundary/support flags plus additive uncertainty `semanticCoverage` for downstream NGRA orchestration and without embedding BER decision logic in PBPK MCP. |
+| 📐 **Published object schemas** | Publish machine-readable JSON Schemas and example payloads for the PBPK-side NGRA handoff object family under `schemas/` so downstream tooling can validate the public object layer directly. |
 | 🔌 **External PBPK normalization** | Normalize externally generated PBPK outputs, qualification metadata, and optional PoD references through `ingest_external_pbpk_bundle` without pretending PBPK MCP executed the upstream engine. |
 | ✅ **Executable verification** | Run `run_verification_checks` to capture preflight validation, parameter coverage, parameter-unit consistency, structural flow/volume consistency, deterministic smoke, deterministic result integrity, repeat-run reproducibility, optional population smoke, and verification-evidence summaries in one payload. |
 | 📈 **Deterministic and population jobs** | Submit asynchronous deterministic and population simulations, then retrieve result handles, stored results, and PK summaries. |
@@ -125,21 +126,23 @@ The PBPK MCP server wraps those workflows in a **single, programmable interface*
 ## Table of contents
 
 1. [Architecture](#architecture)
-2. [Quick start](#quick-start)
-3. [Configuration](#configuration)
-4. [Tool catalog](#tool-catalog)
-5. [Running the server](#running-the-server)
-6. [Integrating with coding agents](#integrating-with-coding-agents)
-7. [Output artifacts](#output-artifacts)
-8. [Security checklist](#security-checklist)
-9. [Current limitations](#current-limitations)
-10. [Development notes](#development-notes)
-11. [Contributing](#contributing)
-12. [Security policy](#security-policy)
-13. [Code of conduct](#code-of-conduct)
-14. [Citation](#citation)
-15. [Roadmap](#roadmap)
-16. [License](#license)
+2. [Published schemas](#published-schemas)
+3. [Capability matrix](#capability-matrix)
+4. [Quick start](#quick-start)
+5. [Configuration](#configuration)
+6. [Tool catalog](#tool-catalog)
+7. [Running the server](#running-the-server)
+8. [Integrating with coding agents](#integrating-with-coding-agents)
+9. [Output artifacts](#output-artifacts)
+10. [Security checklist](#security-checklist)
+11. [Current limitations](#current-limitations)
+12. [Development notes](#development-notes)
+13. [Contributing](#contributing)
+14. [Security policy](#security-policy)
+15. [Code of conduct](#code-of-conduct)
+16. [Citation](#citation)
+17. [Roadmap](#roadmap)
+18. [License](#license)
 
 ---
 
@@ -158,6 +161,56 @@ cd pbpk-mcp
 curl -s http://localhost:8000/health | jq .
 curl -s http://localhost:8000/mcp/list_tools | jq '.tools[].name'
 ```
+
+## Published schemas
+
+The PBPK-side NGRA handoff objects are now published as machine-readable JSON Schemas under `schemas/`, with matching examples under `schemas/examples/`.
+
+Published object family:
+
+- `schemas/assessmentContext.v1.json`
+- `schemas/pbpkQualificationSummary.v1.json`
+- `schemas/uncertaintySummary.v1.json`
+- `schemas/uncertaintyHandoff.v1.json`
+- `schemas/uncertaintyRegisterReference.v1.json`
+- `schemas/internalExposureEstimate.v1.json`
+- `schemas/pointOfDepartureReference.v1.json`
+- `schemas/berInputBundle.v1.json`
+
+Design intent:
+
+- require the stable core fields only
+- allow additive convenience fields
+- keep BER calculation and final decision policy outside PBPK MCP
+- make the PBPK-side handoff layer consumable by downstream validators and orchestrators without scraping examples out of tests
+
+See `schemas/README.md` for the short schema guide and `tests/test_ngra_object_schemas.py` for the validation gate that keeps the published schemas aligned with live payload generation.
+
+## Capability matrix
+
+PBPK MCP now publishes a dedicated capability matrix for adopters in:
+
+- `docs/architecture/capability_matrix.md`
+- `docs/architecture/capability_matrix.json`
+
+This matrix is the crisp public answer to:
+
+- what is discoverable
+- what is statically validatable
+- what is loadable
+- what is deterministic-run capable
+- what is population-run capable
+- what is dossier-capable
+
+Current headline boundaries:
+
+- `.pkml` is discoverable, loadable, validatable, verification-capable, deterministic-run capable, and dossier-capable through `ospsuite`
+- contract-complete MCP-ready `.R` is discoverable, loadable, validatable, verification-capable, deterministic-run capable, and dossier-capable through `rxode2`
+- population execution is currently `rxode2`-only and remains conditional on model capability
+- incomplete `.R` files may still be discoverable before they are runnable
+- `.pksim5` and `.mmd` are conversion-only and do not appear as runtime-supported catalog entries
+
+The machine-readable JSON file is intentionally small and stable so downstream tooling can consume it directly without scraping prose from the README.
 
 ## Quick start
 

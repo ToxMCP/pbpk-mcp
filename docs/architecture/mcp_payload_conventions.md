@@ -18,6 +18,19 @@ Applied tools:
 - `get_job_status`
 - `get_results`
 
+Published PBPK-side object schemas:
+
+- `schemas/assessmentContext.v1.json`
+- `schemas/pbpkQualificationSummary.v1.json`
+- `schemas/uncertaintySummary.v1.json`
+- `schemas/uncertaintyHandoff.v1.json`
+- `schemas/uncertaintyRegisterReference.v1.json`
+- `schemas/internalExposureEstimate.v1.json`
+- `schemas/pointOfDepartureReference.v1.json`
+- `schemas/berInputBundle.v1.json`
+
+Those schemas intentionally require only the stable core fields. Additive convenience fields remain allowed under `pbpk-mcp.v1`.
+
 ## Stable Top-Level Fields
 
 All enhanced tool responses now include:

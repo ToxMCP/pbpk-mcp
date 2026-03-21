@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/ToxMCP/pbpk-mcp/main/schemas/uncertaintyHandoff.v1.json",
+  "title": "uncertaintyHandoff.v1",
+  "description": "PBPK-to-cross-domain uncertainty handoff object emitted by PBPK MCP.",
+  "type": "object",
+  "required": [
+    "objectType",
+    "objectId",
+    "backend",
+    "assessmentBoundary",
+    "decisionBoundary",
+    "decisionOwner",
+    "status",
+    "supports",
+    "requiredExternalInputs",
+    "blockingReasons"
+  ],
+  "properties": {
+    "objectType": {
+      "const": "uncertaintyHandoff.v1"
+    },
+    "objectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "simulationId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "backend": {
+      "$ref": "#/$defs/backend"
+    },
+    "sourcePlatform": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "assessmentBoundary": {
+      "const": "pbpk-to-cross-domain-uncertainty-handoff-only"
+    },
+    "decisionBoundary": {
+      "const": "cross-domain-uncertainty-synthesis-owned-by-external-orchestrator"
+    },
+    "decisionOwner": {
+      "const": "external-orchestrator"
+    },
+    "status": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pbpkQualificationSummaryRef": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "uncertaintySummaryRef": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "internalExposureEstimateRef": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "pointOfDepartureReferenceRef": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "uncertaintyRegisterReferenceRef": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "supports": {
+      "type": "object",
+      "required": [
+        "pbpkQualificationAttached",
+        "pbpkUncertaintySummaryAttached",
+        "typedUncertaintySemanticsAttached",
+        "crossDomainUncertaintySynthesis",
+        "decisionRecommendation"
+      ],
+      "properties": {
+        "pbpkQualificationAttached": {
+          "type": "boolean"
+        },
+        "pbpkUncertaintySummaryAttached": {
+          "type": "boolean"
+        },
+        "typedUncertaintySemanticsAttached": {
+          "type": "boolean"
+        },
+        "crossDomainUncertaintySynthesis": {
+          "type": "boolean"
+        },
+        "decisionRecommendation": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "requiredExternalInputs": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "blockingReasons": {
+      "$ref": "#/$defs/stringArray"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "backend": {
+      "type": "string",
+      "enum": [
+        "ospsuite",
+        "rxode2",
+        "external-import"
+      ]
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

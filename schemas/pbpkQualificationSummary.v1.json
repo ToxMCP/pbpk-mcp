@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/ToxMCP/pbpk-mcp/main/schemas/pbpkQualificationSummary.v1.json",
+  "title": "pbpkQualificationSummary.v1",
+  "description": "PBPK-side qualification summary emitted by PBPK MCP.",
+  "type": "object",
+  "required": [
+    "objectType",
+    "objectId",
+    "backend",
+    "assessmentBoundary",
+    "decisionBoundary",
+    "state",
+    "qualificationLevel",
+    "oecdReadiness",
+    "evidenceStatus",
+    "missingEvidenceCount",
+    "supports",
+    "requiredExternalInputs",
+    "limitations"
+  ],
+  "properties": {
+    "objectType": {
+      "const": "pbpkQualificationSummary.v1"
+    },
+    "objectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "simulationId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "backend": {
+      "$ref": "#/$defs/backend"
+    },
+    "sourcePlatform": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "assessmentBoundary": {
+      "type": "string",
+      "enum": [
+        "pbpk-execution-and-qualification-substrate-only",
+        "external-pbpk-normalization-only"
+      ]
+    },
+    "decisionBoundary": {
+      "const": "no-ngra-decision-policy"
+    },
+    "state": {
+      "type": "string",
+      "minLength": 1
+    },
+    "label": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "summary": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "qualificationLevel": {
+      "type": "string",
+      "minLength": 1
+    },
+    "oecdReadiness": {
+      "type": "string",
+      "minLength": 1
+    },
+    "validationDecision": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "withinDeclaredContext": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "scientificProfile": {
+      "type": "boolean"
+    },
+    "riskAssessmentReady": {
+      "type": "boolean"
+    },
+    "checklistScore": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "evidenceStatus": {
+      "type": "string",
+      "minLength": 1
+    },
+    "profileSource": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "missingEvidenceCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "performanceEvidenceBoundary": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "executableVerificationStatus": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "platformClass": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "validationReferences": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "supports": {
+      "type": "object",
+      "required": [
+        "typedNgraHandoff",
+        "oecdDossierExport",
+        "externalBerHandoff",
+        "regulatoryDecision"
+      ],
+      "properties": {
+        "typedNgraHandoff": {
+          "type": "boolean"
+        },
+        "oecdDossierExport": {
+          "type": "boolean"
+        },
+        "externalBerHandoff": {
+          "type": "boolean"
+        },
+        "regulatoryDecision": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "requiredExternalInputs": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "limitations": {
+      "$ref": "#/$defs/stringArray"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "backend": {
+      "type": "string",
+      "enum": [
+        "ospsuite",
+        "rxode2",
+        "external-import"
+      ]
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

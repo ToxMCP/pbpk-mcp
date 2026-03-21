@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/ToxMCP/pbpk-mcp/main/schemas/assessmentContext.v1.json",
+  "title": "assessmentContext.v1",
+  "description": "PBPK-side context-alignment object emitted by PBPK MCP.",
+  "type": "object",
+  "required": [
+    "objectType",
+    "objectId",
+    "backend",
+    "assessmentBoundary",
+    "decisionBoundary",
+    "contextOfUse",
+    "domain",
+    "targetOutput",
+    "supports"
+  ],
+  "properties": {
+    "objectType": {
+      "const": "assessmentContext.v1"
+    },
+    "objectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "simulationId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "backend": {
+      "$ref": "#/$defs/backend"
+    },
+    "sourcePlatform": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "assessmentBoundary": {
+      "const": "pbpk-context-alignment-only"
+    },
+    "decisionBoundary": {
+      "const": "no-ngra-decision-policy"
+    },
+    "validationDecision": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "contextOfUse": {
+      "type": "object",
+      "required": [
+        "regulatoryUse",
+        "scientificPurpose",
+        "decisionContext"
+      ],
+      "properties": {
+        "regulatoryUse": {
+          "$ref": "#/$defs/selectionTriplet"
+        },
+        "scientificPurpose": {
+          "$ref": "#/$defs/selectionTriplet"
+        },
+        "decisionContext": {
+          "$ref": "#/$defs/selectionTriplet"
+        }
+      },
+      "additionalProperties": true
+    },
+    "domain": {
+      "type": "object",
+      "required": [
+        "species",
+        "route",
+        "lifeStage",
+        "population",
+        "compound"
+      ],
+      "properties": {
+        "species": {
+          "$ref": "#/$defs/selectionTriplet"
+        },
+        "route": {
+          "$ref": "#/$defs/selectionTriplet"
+        },
+        "lifeStage": {
+          "$ref": "#/$defs/selectionTriplet"
+        },
+        "population": {
+          "$ref": "#/$defs/selectionTriplet"
+        },
+        "compound": {
+          "$ref": "#/$defs/selectionTriplet"
+        }
+      },
+      "additionalProperties": true
+    },
+    "doseScenario": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": true
+    },
+    "targetOutput": {
+      "type": "object",
+      "required": [
+        "requested",
+        "declared"
+      ],
+      "properties": {
+        "requested": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "declared": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "supports": {
+      "type": "object",
+      "required": [
+        "declaredProfileComparison",
+        "requestContextAlignment",
+        "typedNgraHandoff",
+        "decisionRecommendation"
+      ],
+      "properties": {
+        "declaredProfileComparison": {
+          "type": "boolean"
+        },
+        "requestContextAlignment": {
+          "type": "boolean"
+        },
+        "typedNgraHandoff": {
+          "type": "boolean"
+        },
+        "decisionRecommendation": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "backend": {
+      "type": "string",
+      "enum": [
+        "ospsuite",
+        "rxode2",
+        "external-import"
+      ]
+    },
+    "selectionTriplet": {
+      "type": "object",
+      "required": [
+        "effective"
+      ],
+      "properties": {
+        "requested": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "declared": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "effective": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

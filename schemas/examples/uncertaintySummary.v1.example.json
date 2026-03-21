@@ -1,0 +1,60 @@
+{
+  "objectType": "uncertaintySummary.v1",
+  "objectId": "gastroplus-uncertainty-summary",
+  "simulationId": null,
+  "backend": "external-import",
+  "sourcePlatform": "GastroPlus",
+  "assessmentBoundary": "pbpk-side-uncertainty-summary-only",
+  "decisionBoundary": "no-ngra-decision-policy",
+  "status": "declared",
+  "summary": "Imported uncertainty summary",
+  "evidenceSource": "external-import",
+  "sources": [],
+  "issueCount": 0,
+  "evidenceRowCount": 2,
+  "totalEvidenceRows": 2,
+  "hasSensitivityAnalysis": false,
+  "hasVariabilityApproach": false,
+  "hasVariabilityPropagation": true,
+  "hasResidualUncertainty": true,
+  "semanticCoverage": {
+    "overallQuantificationStatus": "partially-quantified",
+    "variabilityType": "aleatoric-or-population-variability",
+    "sensitivityType": "unreported",
+    "residualUncertaintyType": "declared-residual-uncertainty",
+    "variabilityQuantificationStatus": "quantified",
+    "sensitivityQuantificationStatus": "unreported",
+    "residualUncertaintyQuantificationStatus": "declared-only",
+    "quantifiedRowCount": 1,
+    "declaredOnlyRowCount": 1,
+    "quantifiedComponents": [
+      "variability"
+    ],
+    "declaredOnlyComponents": [
+      "residual-uncertainty"
+    ]
+  },
+  "variabilityStatus": "propagated",
+  "sensitivityStatus": "not-bundled",
+  "residualUncertaintyStatus": "declared",
+  "supports": {
+    "qualitativeSummary": true,
+    "sensitivityAnalysis": false,
+    "variabilityCharacterization": false,
+    "quantitativePropagation": true,
+    "residualUncertaintyTracking": true,
+    "typedUncertaintySemantics": true,
+    "classifiedVariability": true,
+    "classifiedResidualUncertainty": true,
+    "quantifiedVariability": true,
+    "quantifiedSensitivity": false,
+    "quantifiedResidualUncertainty": false,
+    "typedNgraHandoff": true,
+    "crossDomainUncertaintyRegister": false,
+    "decisionRecommendation": false
+  },
+  "requiredExternalInputs": [
+    "cross-domain uncertainty synthesis outside PBPK MCP"
+  ],
+  "bundleMetadata": null
+}

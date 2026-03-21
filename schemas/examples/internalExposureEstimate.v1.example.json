@@ -1,0 +1,49 @@
+{
+  "objectType": "internalExposureEstimate.v1",
+  "objectId": "gastroplus-internal-exposure-estimate",
+  "simulationId": null,
+  "backend": "external-import",
+  "sourcePlatform": "GastroPlus",
+  "assessmentBoundary": "pbpk-side-internal-exposure-estimate-only",
+  "decisionBoundary": "no-ngra-decision-policy",
+  "status": "available",
+  "resultsId": null,
+  "source": "external-import",
+  "requestedTargetOutput": "Plasma|Parent|Concentration",
+  "selectionStatus": "explicit",
+  "selectedOutput": {
+    "outputPath": "Plasma|Parent|Concentration",
+    "unit": "uM",
+    "pointCount": 0,
+    "cmax": 3.2,
+    "tmax": 1.5,
+    "auc0Tlast": 10.5,
+    "aucUnitBasis": "uM*h"
+  },
+  "candidateOutputCount": 1,
+  "candidateOutputs": [
+    {
+      "outputPath": "Plasma|Parent|Concentration",
+      "unit": "uM",
+      "pointCount": 0,
+      "cmax": 3.2,
+      "tmax": 1.5,
+      "auc0Tlast": 10.5,
+      "aucUnitBasis": "uM*h"
+    }
+  ],
+  "candidateOutputsTruncated": false,
+  "distribution": null,
+  "analyte": null,
+  "species": "human",
+  "population": "adult",
+  "route": "oral",
+  "doseScenario": null,
+  "supports": {
+    "deterministicMetricSelection": true,
+    "populationDistributionSummary": false,
+    "externalBerHandoff": true,
+    "decisionRecommendation": false
+  },
+  "warnings": []
+}

@@ -1,0 +1,50 @@
+{
+  "objectType": "berInputBundle.v1",
+  "objectId": "gastroplus-ber-input-bundle",
+  "simulationId": null,
+  "backend": "external-import",
+  "sourcePlatform": "GastroPlus",
+  "assessmentBoundary": "external-ber-calculation-only",
+  "decisionBoundary": "ber-calculation-and-decision-owned-by-external-orchestrator",
+  "decisionOwner": "external-orchestrator",
+  "status": "ready-for-external-ber-calculation",
+  "comparisonMetric": "cmax",
+  "internalExposureEstimateRef": "gastroplus-internal-exposure-estimate",
+  "internalExposureMetric": {
+    "metric": "cmax",
+    "value": 3.2,
+    "unit": "uM",
+    "outputPath": "Plasma|Parent|Concentration"
+  },
+  "pointOfDepartureReferenceRef": "gastroplus-point-of-departure-reference",
+  "uncertaintySummaryRef": "gastroplus-uncertainty-summary",
+  "qualificationSummaryRef": "gastroplus-qualification-summary",
+  "podRef": "pod-001",
+  "podMetadata": {
+    "ref": "pod-001",
+    "source": "httr-benchmark",
+    "metric": "cmax",
+    "unit": "uM",
+    "basis": "true-dose-adjusted",
+    "summary": null,
+    "value": null
+  },
+  "trueDoseAdjustment": {
+    "applied": true,
+    "basis": "free-concentration",
+    "summary": "Normalized to free concentration"
+  },
+  "trueDoseAdjustmentApplied": true,
+  "supports": {
+    "internalExposureMetricAttached": true,
+    "externalPodReferenceAttached": true,
+    "trueDoseMetadataAttached": true,
+    "externalBerCalculation": true,
+    "decisionRecommendation": false
+  },
+  "requiredExternalInputs": [
+    "BER calculation and decision policy outside PBPK MCP"
+  ],
+  "blockingReasons": [],
+  "warnings": []
+}

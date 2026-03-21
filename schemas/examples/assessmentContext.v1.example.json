@@ -1,0 +1,67 @@
+{
+  "objectType": "assessmentContext.v1",
+  "objectId": "gastroplus-assessment-context",
+  "simulationId": null,
+  "backend": "external-import",
+  "sourcePlatform": "GastroPlus",
+  "assessmentBoundary": "pbpk-context-alignment-only",
+  "decisionBoundary": "no-ngra-decision-policy",
+  "validationDecision": null,
+  "contextOfUse": {
+    "regulatoryUse": {
+      "requested": "research-only",
+      "declared": null,
+      "effective": "research-only"
+    },
+    "scientificPurpose": {
+      "requested": "Tier 1 internal exposure screening",
+      "declared": null,
+      "effective": "Tier 1 internal exposure screening"
+    },
+    "decisionContext": {
+      "requested": "BER handoff",
+      "declared": null,
+      "effective": "BER handoff"
+    }
+  },
+  "domain": {
+    "species": {
+      "requested": "human",
+      "declared": "human",
+      "effective": "human"
+    },
+    "route": {
+      "requested": "oral",
+      "declared": "oral",
+      "effective": "oral"
+    },
+    "lifeStage": {
+      "requested": null,
+      "declared": null,
+      "effective": null
+    },
+    "population": {
+      "requested": "adult",
+      "declared": "adult",
+      "effective": "adult"
+    },
+    "compound": {
+      "requested": null,
+      "declared": null,
+      "effective": null
+    }
+  },
+  "doseScenario": null,
+  "targetOutput": {
+    "requested": "Plasma|Parent|Concentration",
+    "declared": [
+      "Plasma|Parent|Concentration"
+    ]
+  },
+  "supports": {
+    "declaredProfileComparison": true,
+    "requestContextAlignment": true,
+    "typedNgraHandoff": true,
+    "decisionRecommendation": false
+  }
+}

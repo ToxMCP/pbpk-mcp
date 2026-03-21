@@ -4,6 +4,17 @@ All notable changes to this project should be documented in this file.
 
 ## Unreleased
 
+### Added
+
+- published versioned JSON Schemas plus example payloads for the PBPK-side NGRA object family under `schemas/` and `schemas/examples/`
+- `tests/test_ngra_object_schemas.py` so the published schema layer is validated against both example payloads and the live external-bundle normalization output
+
+### Changed
+
+- README and payload-contract docs now link the published PBPK-side object schemas directly instead of leaving the object layer defined only by code and prose
+- package metadata now describes PBPK MCP as a dual-backend PBPK qualification and reporting server rather than an OSPSuite-only bridge
+- published a dedicated capability matrix in `docs/architecture/capability_matrix.md` and `docs/architecture/capability_matrix.json`, so adopters can see exact discover/load/validate/run/report boundaries without inferring them from scattered docs
+
 ## v0.3.5 - 2026-03-21
 
 ### Added

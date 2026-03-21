@@ -1,0 +1,115 @@
+{
+  "contractVersion": "pbpk-mcp.v1",
+  "statusLegend": {
+    "yes": "Supported directly by the published PBPK MCP workflow.",
+    "conditional": "Supported only when the model or request satisfies declared capability conditions.",
+    "no": "Not part of the published workflow for this input class."
+  },
+  "entries": [
+    {
+      "id": "pkml-transfer-file",
+      "label": "PK-Sim / MoBi transfer file (.pkml)",
+      "backend": "ospsuite",
+      "runtimeFormat": "pkml",
+      "policy": "runtime-supported",
+      "catalogDiscovery": "yes",
+      "staticManifestValidation": "yes",
+      "loadIntoSession": "yes",
+      "requestValidation": "yes",
+      "verification": "yes",
+      "deterministicExecution": "yes",
+      "populationExecution": "no",
+      "deterministicResults": "yes",
+      "populationResults": "no",
+      "oecdDossierExport": "yes",
+      "notes": [
+        "Optional sidecars can enrich qualification metadata and parameter provenance.",
+        "Population simulation is not exposed as a generic OSPSuite .pkml capability in the current public contract."
+      ]
+    },
+    {
+      "id": "contract-complete-r-model",
+      "label": "Contract-complete MCP-ready R model (.R)",
+      "backend": "rxode2",
+      "runtimeFormat": "r",
+      "policy": "runtime-supported",
+      "catalogDiscovery": "yes",
+      "staticManifestValidation": "yes",
+      "loadIntoSession": "yes",
+      "requestValidation": "yes",
+      "verification": "yes",
+      "deterministicExecution": "yes",
+      "populationExecution": "conditional",
+      "deterministicResults": "yes",
+      "populationResults": "conditional",
+      "oecdDossierExport": "yes",
+      "notes": [
+        "Population workflows depend on the model declaring the population capability and implementing the required runtime hook.",
+        "Richer OECD-oriented evidence can be supplied through module hooks and companion bundles."
+      ]
+    },
+    {
+      "id": "discoverable-incomplete-r-model",
+      "label": "Discoverable but incomplete R module (.R)",
+      "backend": "rxode2",
+      "runtimeFormat": "r",
+      "policy": "discoverable-but-not-runnable",
+      "catalogDiscovery": "yes",
+      "staticManifestValidation": "yes",
+      "loadIntoSession": "no",
+      "requestValidation": "no",
+      "verification": "no",
+      "deterministicExecution": "no",
+      "populationExecution": "no",
+      "deterministicResults": "no",
+      "populationResults": "no",
+      "oecdDossierExport": "no",
+      "notes": [
+        "An .R file may still appear in discovery before it satisfies the expected PBPK MCP hook contract.",
+        "validate_model_manifest is the intended pre-load surface for diagnosing missing hooks and dossier gaps."
+      ]
+    },
+    {
+      "id": "pksim5-project",
+      "label": "PK-Sim project file (.pksim5)",
+      "backend": null,
+      "runtimeFormat": "pksim5",
+      "policy": "conversion-only",
+      "catalogDiscovery": "no",
+      "staticManifestValidation": "no",
+      "loadIntoSession": "no",
+      "requestValidation": "no",
+      "verification": "no",
+      "deterministicExecution": "no",
+      "populationExecution": "no",
+      "deterministicResults": "no",
+      "populationResults": "no",
+      "oecdDossierExport": "no",
+      "notes": [
+        "Direct .pksim5 loading is rejected early.",
+        "Export the project to .pkml before runtime use."
+      ]
+    },
+    {
+      "id": "berkeley-madonna-source",
+      "label": "Berkeley Madonna source model (.mmd)",
+      "backend": null,
+      "runtimeFormat": "mmd",
+      "policy": "conversion-only",
+      "catalogDiscovery": "no",
+      "staticManifestValidation": "no",
+      "loadIntoSession": "no",
+      "requestValidation": "no",
+      "verification": "no",
+      "deterministicExecution": "no",
+      "populationExecution": "no",
+      "deterministicResults": "no",
+      "populationResults": "no",
+      "oecdDossierExport": "no",
+      "notes": [
+        "Direct .mmd loading is rejected early.",
+        "Convert the model to .pkml or an MCP-ready .R module before runtime use."
+      ]
+    }
+  ]
+}

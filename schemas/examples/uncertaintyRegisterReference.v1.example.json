@@ -1,0 +1,25 @@
+{
+  "objectType": "uncertaintyRegisterReference.v1",
+  "objectId": "gastroplus-uncertainty-register-reference",
+  "simulationId": null,
+  "backend": "external-import",
+  "sourcePlatform": "GastroPlus",
+  "assessmentBoundary": "external-uncertainty-register-reference-only",
+  "decisionBoundary": "cross-domain-uncertainty-synthesis-owned-by-external-orchestrator",
+  "decisionOwner": "external-orchestrator",
+  "status": "attached-external-reference",
+  "registerRef": "unc-reg-001",
+  "source": "assessment-workbench",
+  "summary": null,
+  "scope": "tier-1-systemic",
+  "owner": null,
+  "supports": {
+    "typedReference": true,
+    "crossDomainUncertaintySynthesis": false,
+    "decisionRecommendation": false
+  },
+  "requiredExternalInputs": [
+    "cross-domain uncertainty synthesis outside PBPK MCP"
+  ],
+  "warnings": []
+}

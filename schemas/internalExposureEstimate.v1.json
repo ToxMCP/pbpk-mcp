@@ -1,0 +1,294 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/ToxMCP/pbpk-mcp/main/schemas/internalExposureEstimate.v1.json",
+  "title": "internalExposureEstimate.v1",
+  "description": "PBPK-side deterministic internal-exposure estimate emitted by PBPK MCP.",
+  "type": "object",
+  "required": [
+    "objectType",
+    "objectId",
+    "backend",
+    "assessmentBoundary",
+    "decisionBoundary",
+    "status",
+    "source",
+    "candidateOutputCount",
+    "candidateOutputs",
+    "supports",
+    "warnings"
+  ],
+  "properties": {
+    "objectType": {
+      "const": "internalExposureEstimate.v1"
+    },
+    "objectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "simulationId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "backend": {
+      "$ref": "#/$defs/backend"
+    },
+    "sourcePlatform": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "assessmentBoundary": {
+      "const": "pbpk-side-internal-exposure-estimate-only"
+    },
+    "decisionBoundary": {
+      "const": "no-ngra-decision-policy"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "available",
+        "not-available"
+      ]
+    },
+    "resultsId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "selectionReason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "requestedTargetOutput": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "selectionStatus": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "selectedOutput": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "outputPath",
+        "pointCount",
+        "cmax",
+        "tmax",
+        "auc0Tlast",
+        "aucUnitBasis"
+      ],
+      "properties": {
+        "outputPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pointCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cmax": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "tmax": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "auc0Tlast": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "aucUnitBasis": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "candidateOutputCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "candidateOutputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/outputSummary"
+      }
+    },
+    "candidateOutputsTruncated": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "distribution": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": true
+    },
+    "analyte": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "species": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "population": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "route": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "doseScenario": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": true
+    },
+    "supports": {
+      "type": "object",
+      "required": [
+        "deterministicMetricSelection",
+        "populationDistributionSummary",
+        "externalBerHandoff",
+        "decisionRecommendation"
+      ],
+      "properties": {
+        "deterministicMetricSelection": {
+          "type": "boolean"
+        },
+        "populationDistributionSummary": {
+          "type": "boolean"
+        },
+        "externalBerHandoff": {
+          "type": "boolean"
+        },
+        "decisionRecommendation": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "warnings": {
+      "$ref": "#/$defs/stringArray"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "backend": {
+      "type": "string",
+      "enum": [
+        "ospsuite",
+        "rxode2",
+        "external-import"
+      ]
+    },
+    "outputSummary": {
+      "type": "object",
+      "required": [
+        "outputPath",
+        "pointCount",
+        "cmax",
+        "tmax",
+        "auc0Tlast",
+        "aucUnitBasis"
+      ],
+      "properties": {
+        "outputPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pointCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cmax": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "tmax": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "auc0Tlast": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "aucUnitBasis": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
