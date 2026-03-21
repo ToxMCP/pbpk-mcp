@@ -4,6 +4,8 @@ All notable changes to this project should be documented in this file.
 
 ## Unreleased
 
+## v0.3.5 - 2026-03-21
+
 ### Added
 
 - additive `uncertaintyHandoff.v1` PBPK-side NGRA object in both native and external-normalization flows, so downstream orchestrators can consume a typed PBPK uncertainty handoff without giving PBPK MCP ownership of cross-domain uncertainty synthesis

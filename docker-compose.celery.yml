@@ -35,7 +35,7 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/1
       ADAPTER_TIMEOUT_SECONDS: "10"
       R_MAX_VSIZE: 2G
-      SERVICE_VERSION: "0.3.4"
+      SERVICE_VERSION: "0.3.5"
     volumes:
       - ./scripts:/app/scripts
       - ./src:/app/src

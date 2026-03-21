@@ -74,17 +74,17 @@ The current implementation follows a layered model:
 - `Execution backends` route `.pkml` files to `ospsuite` and MCP-ready `.R` modules to `rxode2`, while treating `.pksim5` and `.mmd` as conversion-only inputs.
 - `Qualification metadata` keeps `capabilities`, `profile`, `validation`, and `qualificationState` separate so runnable does not get conflated with scientifically qualified.
 - `Executable verification` adds lightweight but structured runtime checks on top of qualification metadata, including parameter-unit consistency, structural flow/volume consistency, deterministic smoke, result-integrity, and repeat-run reproducibility checks without conflating them with formal qualification evidence.
-- `Patch-first runtime + smoke tests` keep the documented tool surface synchronized with the live API during the current `v0.3.4` convergence stage.
+- `Patch-first runtime + smoke tests` keep the documented tool surface synchronized with the live API during the current `v0.3.5` convergence stage.
 
 See `docs/architecture/dual_backend_pbpk_mcp.md` for the fuller architecture narrative, `docs/architecture/mcp_payload_conventions.md` for the response contract, and `docs/deployment/runtime_patch_flow.md` for the operator path behind the current local deployment model.
 
-## What's new in v0.3.4
+## What's new in v0.3.5
 
-- Strengthened OECD dossier traceability for parameter provenance, peer review, prior regulatory use, revision history, and model-performance support.
-- Added generic parameter-table companion bundle authoring for `.pkml` and MCP-ready `.R` models.
-- Added descriptive `oecdCoverage` mapping to OECD PBK Guidance Tables 3.1 and 3.2 without changing qualification scoring.
+- Added typed external uncertainty handoff references and stricter PBPK-side uncertainty semantics for quantified versus declared-only uncertainty evidence.
+- Strengthened predictive-evidence traceability with supplement consistency checks against declared datasets, target outputs, and acceptance criteria.
+- Added deploy-path readiness stabilization so patch-first redeploys wait for stable `/health` and `/mcp/list_tools` responses before returning.
 - Preserved the explicit PBPK/NGRA boundary: PBPK MCP exports qualified PBPK-side objects and evidence, but still does not calculate BER or make assessment decisions.
-- Re-verified the release against the live stack, the clean-clone contract suite, and a full workspace model smoke run across both backends.
+- Re-verified the release against the live stack and the clean-clone contract suite.
 
 ## Why this project exists
 
@@ -169,7 +169,7 @@ cd pbpk-mcp
 ./scripts/deploy_rxode2_stack.sh
 ```
 
-> **Heads-up:** The current local deployment is intentionally patch-first. `./scripts/deploy_rxode2_stack.sh` recreates the stack and reapplies the current runtime patch set so the live API matches the documented `v0.3.4` contract.
+> **Heads-up:** The current local deployment is intentionally patch-first. `./scripts/deploy_rxode2_stack.sh` recreates the stack and reapplies the current runtime patch set so the live API matches the documented `v0.3.5` contract.
 > It now also waits for stable `/health` and `/mcp/list_tools` responses before returning, so immediate live-stack checks do not race a restarting API process.
 
 Once the server is running:
@@ -238,7 +238,7 @@ The default local stack is defined in `docker-compose.celery.yml`. Key environme
 | `R_PATH` / `R_HOME` | container defaults | Point the bridge to the R runtime used by `rxode2` and OSPSuite tooling. |
 | `R_MAX_VSIZE` | `2G` | Caps R virtual memory use inside the current local worker setup. |
 | `DOTNET_GCHeapLimitPercent` | `60` | Constrains the .NET heap used by the OSPSuite runtime. |
-| `SERVICE_VERSION` | `0.3.4` | Exposed through `/health` and compose-level runtime metadata. |
+| `SERVICE_VERSION` | `0.3.5` | Exposed through `/health` and compose-level runtime metadata. |
 | `AUTH_ALLOW_ANONYMOUS` | `true` | Development-friendly local default; do not expose beyond localhost without hardening. |
 
 See `docker-compose.celery.yml`, `docs/deployment/runtime_patch_flow.md`, and `docs/deployment/rxode2_worker_image.md` for the current operator-facing deployment surface.
@@ -483,7 +483,7 @@ Important boundaries:
 - `scripts/deploy_rxode2_stack.sh` is the preferred local operator entrypoint.
 - `scripts/apply_rxode2_patch.py` is the lower-level recovery tool if you need to reapply the current contract without a full recreate.
 - `scripts/install_runtime_patches.py` and `scripts/runtime_patch_manifest.py` define the shared patch set used by both the worker image build and the runtime patch flow.
-- `patches/` is still the canonical implementation layer for the current `v0.3.4` stage; pure `src/` packaging migration is intentionally deferred.
+- `patches/` is still the canonical implementation layer for the current `v0.3.5` stage; pure `src/` packaging migration is intentionally deferred.
 
 ### Useful repository guideposts
 
