@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 import sys
@@ -15,6 +16,7 @@ from uuid import uuid4
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
 CONTRACT_VERSION = "pbpk-mcp.v1"
+PUBLISHED_CONTRACT_MANIFEST = WORKSPACE_ROOT / "docs" / "architecture" / "contract_manifest.json"
 CISPLATIN_MODEL = "/app/var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R"
 PREGNANCY_PKML = "/app/var/models/esqlabs/pregnancy-neonates-batch-run/Pregnant_simulation_PKSim.pkml"
 PKSIM5_PROJECT = "/app/var/demos/cimetidine/Cimetidine-Model.pksim5"
@@ -131,6 +133,10 @@ def assert_true(condition: bool, message: str) -> None:
         raise RuntimeError(message)
 
 
+def file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def run_release_check(base_url: str, *, skip_unit_tests: bool = False) -> dict:
     if not skip_unit_tests:
         run_bridge_tests()
@@ -193,9 +199,15 @@ def run_release_check(base_url: str, *, skip_unit_tests: bool = False) -> dict:
     capability_resource = http_json(f"{base_url}/mcp/resources/capability-matrix", timeout=30)
     matrix = capability_resource["matrix"]
     matrix_entries = {entry["id"]: entry for entry in matrix["entries"]}
+    published_contract_manifest = json.loads(PUBLISHED_CONTRACT_MANIFEST.read_text(encoding="utf-8"))
     assert_true(
         matrix.get("contractVersion") == CONTRACT_VERSION,
         f"Capability matrix resource should advertise {CONTRACT_VERSION}: {matrix}",
+    )
+    assert_true(
+        capability_resource.get("sha256")
+        == (published_contract_manifest.get("capabilityMatrix") or {}).get("sha256"),
+        "Capability matrix resource should expose the published capability-matrix SHA-256 from the contract manifest",
     )
     assert_true(
         matrix_entries["pksim5-project"]["policy"] == "conversion-only",
@@ -208,6 +220,10 @@ def run_release_check(base_url: str, *, skip_unit_tests: bool = False) -> dict:
         f"Contract manifest resource should advertise {CONTRACT_VERSION}: {manifest}",
     )
     assert_true(
+        contract_manifest_resource.get("sha256") == file_sha256(PUBLISHED_CONTRACT_MANIFEST),
+        "Contract manifest resource should expose the SHA-256 of the published contract manifest artifact",
+    )
+    assert_true(
         int((manifest.get("artifactCounts") or {}).get("schemas") or 0) == len(REQUIRED_SCHEMA_IDS),
         "Contract manifest should inventory the full published PBPK-side schema family",
     )
@@ -215,6 +231,17 @@ def run_release_check(base_url: str, *, skip_unit_tests: bool = False) -> dict:
     assert_true(
         REQUIRED_SCHEMA_IDS.issubset(manifest_schema_ids),
         f"Contract manifest is missing published schema ids: {sorted(REQUIRED_SCHEMA_IDS - manifest_schema_ids)}",
+    )
+    assessment_manifest_entry = next(
+        entry for entry in manifest.get("schemas") or [] if entry["schemaId"] == "assessmentContext.v1"
+    )
+    assert_true(
+        assessment_schema.get("sha256") == assessment_manifest_entry.get("sha256"),
+        "Assessment schema resource should expose the published schema SHA-256 from the contract manifest",
+    )
+    assert_true(
+        assessment_schema.get("exampleSha256") == assessment_manifest_entry.get("exampleSha256"),
+        "Assessment schema resource should expose the published example SHA-256 from the contract manifest",
     )
     assert_true(
         "schemas/extraction-record.json" in (manifest.get("legacyArtifactsExcluded") or []),

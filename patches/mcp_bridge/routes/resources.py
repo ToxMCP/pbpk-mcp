@@ -129,7 +129,9 @@ class SchemaResource(CamelModel):
     version: str
     title: Optional[str] = None
     description: Optional[str] = None
+    sha256: Optional[str] = None
     relative_path: str = Field(alias="relativePath")
+    example_sha256: Optional[str] = Field(default=None, alias="exampleSha256")
     example_relative_path: Optional[str] = Field(default=None, alias="exampleRelativePath")
 
 
@@ -146,7 +148,9 @@ class SchemaDocumentResource(CamelModel):
     version: str
     title: Optional[str] = None
     description: Optional[str] = None
+    sha256: Optional[str] = None
     relative_path: str = Field(alias="relativePath")
+    example_sha256: Optional[str] = Field(default=None, alias="exampleSha256")
     example_relative_path: Optional[str] = Field(default=None, alias="exampleRelativePath")
     schema: dict[str, Any]
     example: Optional[dict[str, Any]] = None
@@ -155,6 +159,7 @@ class SchemaDocumentResource(CamelModel):
 class CapabilityMatrixResource(CamelModel):
     id: str
     contract_version: Optional[str] = Field(default=None, alias="contractVersion")
+    sha256: Optional[str] = None
     relative_path: str = Field(alias="relativePath")
     entry_count: int = Field(alias="entryCount")
     matrix: dict[str, Any]
@@ -163,6 +168,7 @@ class CapabilityMatrixResource(CamelModel):
 class ContractManifestResource(CamelModel):
     id: str
     contract_version: Optional[str] = Field(default=None, alias="contractVersion")
+    sha256: Optional[str] = None
     relative_path: str = Field(alias="relativePath")
     schema_count: int = Field(alias="schemaCount")
     manifest: dict[str, Any]
@@ -223,14 +229,49 @@ def _load_json_file(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _sha256_path(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _sha256_document(document: dict[str, Any]) -> str:
+    return hashlib.sha256(
+        (json.dumps(document, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    ).hexdigest()
+
+
+def _contract_manifest_document() -> tuple[dict[str, Any], str, float]:
+    if CONTRACT_MANIFEST_PATH.exists():
+        return (
+            _load_json_file(CONTRACT_MANIFEST_PATH),
+            _sha256_path(CONTRACT_MANIFEST_PATH),
+            CONTRACT_MANIFEST_PATH.stat().st_mtime,
+        )
+
+    if packaged_contract_manifest_document is None:
+        raise FileNotFoundError(CONTRACT_MANIFEST_PATH)
+
+    manifest = packaged_contract_manifest_document()
+    return (manifest, _sha256_document(manifest), 0.0)
+
+
 def _schema_index() -> list[dict[str, Any]]:
     resources: list[dict[str, Any]] = []
+    contract_manifest: dict[str, Any] | None = None
+    try:
+        contract_manifest, _, _ = _contract_manifest_document()
+    except FileNotFoundError:
+        contract_manifest = None
+    manifest_schema_index = {
+        entry["schemaId"]: entry for entry in (contract_manifest or {}).get("schemas") or []
+    }
+
     if SCHEMA_ROOT.exists():
         for schema_path in sorted(SCHEMA_ROOT.glob("*.v*.json")):
             document = _load_json_file(schema_path)
             schema_id = schema_path.stem
             version = schema_id.rsplit(".", 1)[-1] if "." in schema_id else "v1"
             example_path = SCHEMA_EXAMPLES_ROOT / f"{schema_id}.example.json"
+            manifest_entry = manifest_schema_index.get(schema_id, {})
             resources.append(
                 {
                     "id": schema_id,
@@ -238,7 +279,12 @@ def _schema_index() -> list[dict[str, Any]]:
                     "version": version,
                     "title": document.get("title"),
                     "description": document.get("description"),
+                    "sha256": manifest_entry.get("sha256") or _sha256_path(schema_path),
                     "relativePath": f"schemas/{schema_path.name}",
+                    "exampleSha256": (
+                        manifest_entry.get("exampleSha256")
+                        or (_sha256_path(example_path) if example_path.exists() else None)
+                    ),
                     "exampleRelativePath": (
                         f"schemas/examples/{example_path.name}" if example_path.exists() else None
                     ),
@@ -261,6 +307,7 @@ def _schema_index() -> list[dict[str, Any]]:
     for schema_id, document in sorted(documents.items()):
         version = schema_id.rsplit(".", 1)[-1] if "." in schema_id else "v1"
         example = examples.get(schema_id)
+        manifest_entry = manifest_schema_index.get(schema_id, {})
         resources.append(
             {
                 "id": schema_id,
@@ -268,7 +315,12 @@ def _schema_index() -> list[dict[str, Any]]:
                 "version": version,
                 "title": document.get("title"),
                 "description": document.get("description"),
+                "sha256": manifest_entry.get("sha256") or _sha256_document(document),
                 "relativePath": f"schemas/{schema_id}.json",
+                "exampleSha256": (
+                    manifest_entry.get("exampleSha256")
+                    or (_sha256_document(example) if example is not None else None)
+                ),
                 "exampleRelativePath": (
                     f"schemas/examples/{schema_id}.example.json" if example is not None else None
                 ),
@@ -610,6 +662,10 @@ async def get_capability_matrix_resource(
     request: Request,
     response: Response,
 ) -> CapabilityMatrixResource:
+    try:
+        contract_manifest, _, _ = _contract_manifest_document()
+    except FileNotFoundError:
+        contract_manifest = {}
     if CAPABILITY_MATRIX_PATH.exists():
         try:
             matrix = _load_json_file(CAPABILITY_MATRIX_PATH)
@@ -631,6 +687,10 @@ async def get_capability_matrix_resource(
             "ETag": etag,
             "Last-Modified": _isoformat(CAPABILITY_MATRIX_PATH.stat().st_mtime),
         }
+        matrix_sha256 = (
+            (contract_manifest.get("capabilityMatrix") or {}).get("sha256")
+            or _sha256_path(CAPABILITY_MATRIX_PATH)
+        )
     else:
         if packaged_capability_matrix_document is None:
             raise _http_error(
@@ -648,6 +708,10 @@ async def get_capability_matrix_resource(
             ]
         )
         headers = {"ETag": etag}
+        matrix_sha256 = (
+            (contract_manifest.get("capabilityMatrix") or {}).get("sha256")
+            or _sha256_document(matrix)
+        )
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=headers)
 
@@ -655,6 +719,7 @@ async def get_capability_matrix_resource(
     return CapabilityMatrixResource(
         id="capability-matrix",
         contractVersion=matrix.get("contractVersion"),
+        sha256=matrix_sha256,
         relativePath="docs/architecture/capability_matrix.json",
         entryCount=len(matrix.get("entries", [])),
         matrix=matrix,
@@ -666,44 +731,32 @@ async def get_contract_manifest_resource(
     request: Request,
     response: Response,
 ) -> ContractManifestResource:
-    if CONTRACT_MANIFEST_PATH.exists():
-        try:
-            manifest = _load_json_file(CONTRACT_MANIFEST_PATH)
-        except json.JSONDecodeError as exc:
-            raise _http_error(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="Contract manifest resource is malformed",
-                code=ErrorCode.INTERNAL_ERROR,
-            ) from exc
+    try:
+        manifest, manifest_sha256, manifest_last_modified = _contract_manifest_document()
+    except json.JSONDecodeError as exc:
+        raise _http_error(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Contract manifest resource is malformed",
+            code=ErrorCode.INTERNAL_ERROR,
+        ) from exc
+    except FileNotFoundError:
+        raise _http_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Contract manifest resource is not available in the current runtime",
+            code=ErrorCode.NOT_FOUND,
+            hint="Install the packaged contract artifacts or provide the runtime patch manifest copy.",
+        )
 
-        etag = _weak_etag(
-            [
-                str(CONTRACT_MANIFEST_PATH.stat().st_mtime),
-                manifest.get("contractVersion", ""),
-                str((manifest.get("artifactCounts") or {}).get("schemas", 0)),
-            ]
-        )
-        headers = {
-            "ETag": etag,
-            "Last-Modified": _isoformat(CONTRACT_MANIFEST_PATH.stat().st_mtime),
-        }
-    else:
-        if packaged_contract_manifest_document is None:
-            raise _http_error(
-                status_code=status.HTTP_404_NOT_FOUND,
-                message="Contract manifest resource is not available in the current runtime",
-                code=ErrorCode.NOT_FOUND,
-                hint="Install the packaged contract artifacts or provide the runtime patch manifest copy.",
-            )
-        manifest = packaged_contract_manifest_document()
-        etag = _weak_etag(
-            [
-                hashlib.sha1(json.dumps(manifest, sort_keys=True).encode("utf-8")).hexdigest(),
-                manifest.get("contractVersion", ""),
-                str((manifest.get("artifactCounts") or {}).get("schemas", 0)),
-            ]
-        )
-        headers = {"ETag": etag}
+    etag = _weak_etag(
+        [
+            manifest_sha256,
+            manifest.get("contractVersion", ""),
+            str((manifest.get("artifactCounts") or {}).get("schemas", 0)),
+        ]
+    )
+    headers = {"ETag": etag}
+    if manifest_last_modified > 0:
+        headers["Last-Modified"] = _isoformat(manifest_last_modified)
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=headers)
 
@@ -711,6 +764,7 @@ async def get_contract_manifest_resource(
     return ContractManifestResource(
         id="contract-manifest",
         contractVersion=manifest.get("contractVersion"),
+        sha256=manifest_sha256,
         relativePath="docs/architecture/contract_manifest.json",
         schemaCount=int((manifest.get("artifactCounts") or {}).get("schemas") or 0),
         manifest=manifest,

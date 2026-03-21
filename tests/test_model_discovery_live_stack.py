@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import shutil
 import subprocess
 import tempfile
@@ -15,6 +16,15 @@ from uuid import uuid4
 API_BASE_URL = "http://127.0.0.1:8000"
 API_CONTAINER = "pbpk_mcp-api-1"
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
+CONTRACT_MANIFEST_PATH = WORKSPACE_ROOT / "docs" / "architecture" / "contract_manifest.json"
+
+
+def _load_json(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def api_json(path: str, payload: dict | None = None):
@@ -44,6 +54,7 @@ class ModelDiscoveryLiveStackTests(unittest.TestCase):
         )
         if probe.returncode != 0:
             raise unittest.SkipTest(f"{API_CONTAINER} is not available")
+        cls.contract_manifest = _load_json(CONTRACT_MANIFEST_PATH)
 
     def test_resource_endpoint_discovers_cisplatin(self) -> None:
         payload = api_json("/mcp/resources/models?search=cisplatin&limit=20")
@@ -68,21 +79,32 @@ class ModelDiscoveryLiveStackTests(unittest.TestCase):
         self.assertIn("assessmentContext.v1", schema_ids)
         self.assertIn("uncertaintyHandoff.v1", schema_ids)
         assessment_item = next(item for item in payload["items"] if item["schemaId"] == "assessmentContext.v1")
+        manifest_entry = next(
+            entry for entry in self.contract_manifest["schemas"] if entry["schemaId"] == "assessmentContext.v1"
+        )
         self.assertEqual(assessment_item["relativePath"], "schemas/assessmentContext.v1.json")
+        self.assertEqual(assessment_item["sha256"], manifest_entry["sha256"])
         self.assertEqual(
             assessment_item["exampleRelativePath"],
             "schemas/examples/assessmentContext.v1.example.json",
         )
+        self.assertEqual(assessment_item["exampleSha256"], manifest_entry["exampleSha256"])
 
     def test_schema_resource_detail_returns_schema_and_example(self) -> None:
         payload = api_json("/mcp/resources/schemas/assessmentContext.v1")
+        manifest_entry = next(
+            entry for entry in self.contract_manifest["schemas"] if entry["schemaId"] == "assessmentContext.v1"
+        )
         self.assertEqual(payload["schemaId"], "assessmentContext.v1")
         self.assertEqual(payload["schema"]["title"], "assessmentContext.v1")
         self.assertEqual(payload["example"]["objectType"], "assessmentContext.v1")
+        self.assertEqual(payload["sha256"], manifest_entry["sha256"])
+        self.assertEqual(payload["exampleSha256"], manifest_entry["exampleSha256"])
 
     def test_capability_matrix_resource_exposes_published_contract(self) -> None:
         payload = api_json("/mcp/resources/capability-matrix")
         self.assertEqual(payload["contractVersion"], "pbpk-mcp.v1")
+        self.assertEqual(payload["sha256"], self.contract_manifest["capabilityMatrix"]["sha256"])
         self.assertEqual(payload["relativePath"], "docs/architecture/capability_matrix.json")
         self.assertGreaterEqual(payload["entryCount"], 5)
         entries = payload["matrix"]["entries"]
@@ -93,6 +115,7 @@ class ModelDiscoveryLiveStackTests(unittest.TestCase):
     def test_contract_manifest_resource_exposes_artifact_inventory(self) -> None:
         payload = api_json("/mcp/resources/contract-manifest")
         self.assertEqual(payload["contractVersion"], "pbpk-mcp.v1")
+        self.assertEqual(payload["sha256"], _sha256(CONTRACT_MANIFEST_PATH))
         self.assertEqual(payload["relativePath"], "docs/architecture/contract_manifest.json")
         self.assertEqual(payload["schemaCount"], 8)
         self.assertEqual(payload["manifest"]["artifactCounts"]["schemas"], 8)

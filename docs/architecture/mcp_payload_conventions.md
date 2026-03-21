@@ -44,6 +44,8 @@ The machine-readable contract manifest is exposed at:
 
 - `/mcp/resources/contract-manifest`
 
+Those contract resources now expose SHA-256 values for the published artifacts so downstream clients can verify integrity against the contract manifest instead of trusting filenames alone.
+
 ## Stable Top-Level Fields
 
 All enhanced tool responses now include:

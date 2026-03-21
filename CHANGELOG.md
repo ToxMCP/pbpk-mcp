@@ -28,6 +28,7 @@ All notable changes to this project should be documented in this file.
 - `make runtime-contract-test` now also performs a non-editable local install check of `mcp_bridge.contract`, so the packaged contract fallback is exercised as an installed boundary instead of only as source-tree code
 - `make runtime-contract-test` now also runs `scripts/generate_contract_artifacts.py --check`, so the contract manifest and generated packaged fallback cannot drift silently from the published JSON artifacts
 - the live resource route now prefers the patched runtime copy, but can fall back to packaged contract artifacts when the repo-root JSON files are not present
+- the live schema, capability-matrix, and contract-manifest resources now expose SHA-256 values derived from the published contract inventory, so downstream clients can verify artifact integrity directly from the running API
 - removed the stale `mcp_bridge.schemas` package-data declaration now that the published PBPK-side contract artifacts are carried either as generated Python module content or as patched runtime JSON copies
 
 ## v0.3.5 - 2026-03-21

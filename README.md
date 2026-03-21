@@ -192,6 +192,7 @@ PBPK MCP now also publishes a machine-readable contract manifest in:
 - `/mcp/resources/contract-manifest`
 
 That manifest inventories the published PBPK-side schema family, the capability matrix, the legacy artifacts intentionally excluded from the PBPK-side object family, and the stable resource endpoints that expose the contract.
+The live schema, capability-matrix, and contract-manifest resources now also expose SHA-256 values so downstream clients can verify that the running API matches the published artifact inventory.
 
 ## Capability matrix
 
