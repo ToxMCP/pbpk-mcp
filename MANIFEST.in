@@ -1,0 +1,15 @@
+include README.md
+include pyproject.toml
+include MANIFEST.in
+include docs/architecture/capability_matrix.md
+include docs/architecture/capability_matrix.json
+include docs/architecture/mcp_payload_conventions.md
+include docs/architecture/contract_manifest.json
+include docs/github_publication_checklist.md
+include schemas/README.md
+recursive-include schemas *.json
+include scripts/check_distribution_artifacts.py
+include scripts/check_release_metadata.py
+include scripts/check_installed_package_contract.py
+include scripts/check_runtime_contract_env.py
+include scripts/generate_contract_artifacts.py

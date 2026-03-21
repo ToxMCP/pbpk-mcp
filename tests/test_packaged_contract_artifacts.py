@@ -46,6 +46,23 @@ class PackagedContractArtifactsTests(unittest.TestCase):
         }
         self.assertEqual(module.schema_examples(), expected)
 
+    def test_packaged_contract_manifest_declares_artifact_policy(self) -> None:
+        manifest = module.contract_manifest_document()
+        self.assertEqual(manifest["contractManifest"]["classification"], "normative")
+        self.assertEqual(manifest["capabilityMatrix"]["classification"], "normative")
+        self.assertTrue(all(entry["classification"] == "normative" for entry in manifest["schemas"]))
+        self.assertTrue(all(entry["classification"] == "supporting" for entry in manifest["supportingArtifacts"]))
+        self.assertTrue(
+            any(entry["relativePath"] == "schemas/README.md" for entry in manifest["supportingArtifacts"])
+        )
+        self.assertTrue(
+            any(
+                entry["relativePath"] == "schemas/extraction-record.json"
+                and entry["classification"] == "legacy-excluded"
+                for entry in manifest["legacyArtifactPolicy"]
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

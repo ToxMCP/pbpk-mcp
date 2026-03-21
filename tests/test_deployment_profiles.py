@@ -11,6 +11,7 @@ DEV_COMPOSE = WORKSPACE_ROOT / "docker-compose.celery.yml"
 HARDENED_COMPOSE = WORKSPACE_ROOT / "docker-compose.hardened.yml"
 HARDENED_DEPLOY = WORKSPACE_ROOT / "scripts" / "deploy_hardened_stack.sh"
 PATCH_MANIFEST = WORKSPACE_ROOT / "scripts" / "runtime_patch_manifest.py"
+RELEASE_ARTIFACTS_WORKFLOW = WORKSPACE_ROOT / ".github" / "workflows" / "release-artifacts.yml"
 
 spec = importlib.util.spec_from_file_location("pbpk_runtime_patch_manifest_test", PATCH_MANIFEST)
 if spec is None or spec.loader is None:  # pragma: no cover - import guard
@@ -69,6 +70,22 @@ class DeploymentProfileTests(unittest.TestCase):
             "schemas/examples/uncertaintySummary.v1.example.json",
         }
         self.assertTrue(expected.issubset(manifest_sources))
+
+    def test_release_artifacts_workflow_validates_and_uploads_distribution_boundary(self) -> None:
+        text = RELEASE_ARTIFACTS_WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn('tags: ["v*"]', text)
+        self.assertIn("workflow_dispatch:", text)
+        self.assertIn("python scripts/check_runtime_contract_env.py", text)
+        self.assertIn("python scripts/generate_contract_artifacts.py --check", text)
+        self.assertIn("python scripts/check_release_metadata.py", text)
+        self.assertIn(
+            "python scripts/check_distribution_artifacts.py --artifact-dir dist --report-path dist/release-artifact-report.json",
+            text,
+        )
+        self.assertIn("actions/upload-artifact@v4", text)
+        self.assertIn("dist/*.tar.gz", text)
+        self.assertIn("dist/*.whl", text)
+        self.assertIn("dist/release-artifact-report.json", text)
 
 
 if __name__ == "__main__":

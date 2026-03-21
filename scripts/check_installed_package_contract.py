@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import importlib
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -84,14 +86,51 @@ def _run(command: list[str], *, env: dict[str, str] | None = None, cwd: Path | N
     raise SystemExit(completed.returncode)
 
 
+def _stage_source_tree(source_root: Path, destination: Path) -> Path:
+    staged_root = destination / "source-tree"
+    shutil.copytree(
+        source_root,
+        staged_root,
+        ignore=shutil.ignore_patterns(
+            ".git",
+            ".mypy_cache",
+            ".pytest_cache",
+            ".ruff_cache",
+            "__pycache__",
+            "build",
+            "dist",
+            "src/mcp_bridge.egg-info",
+        ),
+    )
+    return staged_root
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--source",
+        type=Path,
+        default=None,
+        help="Directory or built artifact to install into a temporary target for validation.",
+    )
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=None,
+        help="Published contract root used for comparison. Defaults to the current workspace root.",
+    )
+    args = parser.parse_args()
+
     workspace_root = Path(__file__).resolve().parents[1]
+    repo_root = (args.repo_root or workspace_root).resolve()
+    install_source = (args.source or workspace_root).resolve()
     missing_build_modules: list[tuple[str, str]] = []
 
-    for module_name, purpose in (
-        ("setuptools.build_meta", "local wheel build backend"),
-        ("pip", "local package installer"),
-    ):
+    required_modules = [("pip", "local package installer")]
+    if install_source.is_dir():
+        required_modules.insert(0, ("build", "temporary wheel builder"))
+
+    for module_name, purpose in required_modules:
         try:
             importlib.import_module(module_name)
         except Exception:
@@ -114,8 +153,38 @@ def main() -> int:
         return 1
 
     with tempfile.TemporaryDirectory(prefix="pbpk_installed_contract_") as temp_dir:
+        temp_root = Path(temp_dir)
         target_root = Path(temp_dir) / "site-packages"
         target_root.mkdir(parents=True, exist_ok=True)
+        install_target = install_source
+
+        if install_source.is_dir():
+            staged_root = _stage_source_tree(install_source, temp_root)
+            outdir = temp_root / "dist"
+            runner = temp_root / "runner"
+            outdir.mkdir(parents=True, exist_ok=True)
+            runner.mkdir(parents=True, exist_ok=True)
+            _run(
+                [
+                    sys.executable,
+                    "-m",
+                    "build",
+                    "--wheel",
+                    "--outdir",
+                    str(outdir),
+                    str(staged_root),
+                ],
+                cwd=runner,
+            )
+            wheels = sorted(outdir.glob("*.whl"))
+            if len(wheels) != 1:
+                print("Installed package contract check failed.", file=sys.stderr)
+                print(
+                    f"Expected exactly one wheel from the staged source tree, found {len(wheels)}.",
+                    file=sys.stderr,
+                )
+                return 1
+            install_target = wheels[0]
 
         _run(
             [
@@ -128,15 +197,15 @@ def main() -> int:
                 "--no-build-isolation",
                 "--target",
                 str(target_root),
-                str(workspace_root),
+                str(install_target),
             ]
         )
 
         env = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
-        env["PBPK_CONTRACT_REPO_ROOT"] = str(workspace_root)
+        env["PBPK_CONTRACT_REPO_ROOT"] = str(repo_root)
         env["PYTHONPATH"] = str(target_root)
 
-        _run([sys.executable, "-c", CHECK_SNIPPET], env=env, cwd=Path(temp_dir))
+        _run([sys.executable, "-c", CHECK_SNIPPET], env=env, cwd=temp_root)
 
     return 0
 

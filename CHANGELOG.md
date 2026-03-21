@@ -16,6 +16,11 @@ All notable changes to this project should be documented in this file.
 - `scripts/check_installed_package_contract.py`, so the public contract gate now proves the generated `mcp_bridge.contract` fallback still matches the published JSON artifacts after a non-editable local install
 - `docs/architecture/contract_manifest.json` plus `/mcp/resources/contract-manifest`, so the published `pbpk-mcp.v1` contract now has a machine-readable artifact inventory with hashes and explicit legacy exclusions
 - `scripts/generate_contract_artifacts.py`, so the generated packaged fallback and published contract manifest can be regenerated or checked from a single source of truth
+- `MANIFEST.in` plus `scripts/check_distribution_artifacts.py`, so the contract gate now validates the `sdist` and `wheel` distribution boundary explicitly instead of relying only on an installed checkout
+- `.github/workflows/release-artifacts.yml`, so tag-oriented release validation can build, verify, and retain the exact published `sdist` and wheel artifacts
+- explicit contract-artifact policy metadata in the published manifest, so `pbpk-mcp.v1` now distinguishes normative, supporting, and legacy-excluded files machine-readably
+- `scripts/check_release_metadata.py`, so release prep now fails fast when version markers drift between package metadata, compose/env runtime metadata, README, the changelog, and the matching release note
+- a retained `release-artifact-report.json` from the tag-oriented distribution check, so release evidence now includes `sdist`/wheel hashes plus the linked contract-manifest identity
 
 ### Changed
 
@@ -27,6 +32,11 @@ All notable changes to this project should be documented in this file.
 - `make runtime-contract-test` now runs the dependency preflight before the schema/resource contract tests, so missing `pydantic` or `jsonschema` causes an explicit gate failure instead of a silent skip
 - `make runtime-contract-test` now also performs a non-editable local install check of `mcp_bridge.contract`, so the packaged contract fallback is exercised as an installed boundary instead of only as source-tree code
 - `make runtime-contract-test` now also runs `scripts/generate_contract_artifacts.py --check`, so the contract manifest and generated packaged fallback cannot drift silently from the published JSON artifacts
+- `make runtime-contract-test` now also builds temporary distribution artifacts outside the repo worktree and validates the normative contract files against the resulting `sdist` and wheel, so packaging regressions are caught before release
+- `scripts/check_distribution_artifacts.py` can now retain validated build outputs in a caller-supplied artifact directory, so the same contract check can back both local gating and the public release-artifact workflow
+- the tag-oriented `Release Artifacts` workflow now runs the release-metadata consistency check before building and uploading retained `sdist` and wheel files
+- the tag-oriented `Release Artifacts` workflow now also uploads `release-artifact-report.json`, tying the built distribution hashes back to the published contract manifest
+- the contract manifest now classifies published schemas and the capability matrix as normative, inventories supporting docs/scripts with hashes, and publishes the legacy-excluded extraction-record policy explicitly
 - the live resource route now prefers the patched runtime copy, but can fall back to packaged contract artifacts when the repo-root JSON files are not present
 - the live schema, capability-matrix, and contract-manifest resources now expose SHA-256 values derived from the published contract inventory, so downstream clients can verify artifact integrity directly from the running API
 - removed the stale `mcp_bridge.schemas` package-data declaration now that the published PBPK-side contract artifacts are carried either as generated Python module content or as patched runtime JSON copies

@@ -66,6 +66,8 @@ check: lint type test ## Run full quality gate
 runtime-patch-check: ## Compile the patch-first runtime files used by the live stack
 	$(PY) -m py_compile \
 		scripts/check_runtime_contract_env.py \
+		scripts/check_distribution_artifacts.py \
+		scripts/check_release_metadata.py \
 		scripts/check_installed_package_contract.py \
 		scripts/generate_contract_artifacts.py \
 		scripts/runtime_patch_manifest.py \
@@ -92,11 +94,15 @@ runtime-patch-check: ## Compile the patch-first runtime files used by the live s
 runtime-contract-test: ## Run the patch-first runtime contract tests that do not require the live stack
 	$(PY) scripts/check_runtime_contract_env.py
 	$(PY) scripts/generate_contract_artifacts.py --check
+	$(PY) scripts/check_release_metadata.py
+	$(PY) scripts/check_distribution_artifacts.py
 	$(PY) scripts/check_installed_package_contract.py
 	$(PY) -m unittest -v \
 		tests/test_capability_matrix.py \
 		tests/test_deployment_profiles.py \
+		tests/test_distribution_artifacts.py \
 		tests/test_ngra_object_schemas.py \
+		tests/test_release_metadata.py \
 		tests/test_packaged_contract_artifacts.py \
 		tests/test_load_simulation_contract.py \
 		tests/test_model_manifest.py \

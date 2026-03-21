@@ -247,11 +247,42 @@ def run_release_check(base_url: str, *, skip_unit_tests: bool = False) -> dict:
         "schemas/extraction-record.json" in (manifest.get("legacyArtifactsExcluded") or []),
         "Contract manifest should explicitly exclude the legacy extraction-record schema from the PBPK-side object family",
     )
+    assert_true(
+        (manifest.get("contractManifest") or {}).get("classification") == "normative",
+        "Contract manifest should classify its own JSON artifact as normative",
+    )
+    assert_true(
+        (manifest.get("capabilityMatrix") or {}).get("classification") == "normative",
+        "Contract manifest should classify the capability matrix as normative",
+    )
+    assert_true(
+        all(entry.get("classification") == "normative" for entry in manifest.get("schemas") or []),
+        "Contract manifest should classify published schema entries as normative",
+    )
+    supporting_artifacts = manifest.get("supportingArtifacts") or []
+    assert_true(
+        all(entry.get("classification") == "supporting" for entry in supporting_artifacts),
+        "Contract manifest should classify supporting artifacts explicitly",
+    )
+    assert_true(
+        any(entry.get("relativePath") == "schemas/README.md" for entry in supporting_artifacts),
+        "Contract manifest should inventory supporting schema documentation",
+    )
+    legacy_policy = manifest.get("legacyArtifactPolicy") or []
+    assert_true(
+        any(
+            entry.get("relativePath") == "schemas/extraction-record.json"
+            and entry.get("classification") == "legacy-excluded"
+            for entry in legacy_policy
+        ),
+        "Contract manifest should publish the legacy-excluded extraction-record policy entry",
+    )
     summary["resourceCatalog"] = {
         "schemaCount": schema_catalog["total"],
         "assessmentContextSchemaPublished": "assessmentContext.v1" in schema_ids,
         "capabilityMatrixEntries": capability_resource["entryCount"],
         "contractManifestSchemas": int((manifest.get("artifactCounts") or {}).get("schemas") or 0),
+        "contractManifestSupportingArtifacts": int((manifest.get("artifactCounts") or {}).get("supporting") or 0),
     }
 
     full_catalog = call_tool(base_url, "discover_models", {"limit": 200}, timeout=30)

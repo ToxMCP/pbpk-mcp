@@ -7,6 +7,7 @@ from importlib import metadata
 
 
 REQUIRED_MODULES = (
+    ("build", "sdist and wheel distribution smoke build"),
     ("pydantic", "runtime schema-backed tool models"),
     ("jsonschema", "published contract schema validation"),
 )

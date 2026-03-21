@@ -75,6 +75,8 @@ The current implementation follows a layered model:
 - `Qualification metadata` keeps `capabilities`, `profile`, `validation`, and `qualificationState` separate so runnable does not get conflated with scientifically qualified.
 - `Executable verification` adds lightweight but structured runtime checks on top of qualification metadata, including parameter-unit consistency, structural flow/volume consistency, deterministic smoke, result-integrity, and repeat-run reproducibility checks without conflating them with formal qualification evidence.
 - `Patch-first runtime + smoke tests` keep the documented tool surface synchronized with the live API during the current `v0.3.5` convergence stage.
+- `Release metadata checks` now verify that package version markers, compose/env `SERVICE_VERSION`, README release markers, the top changelog entry, and the matching `docs/releases/` note stay aligned.
+- `Release artifact evidence` now retains a machine-readable report with `sdist`/wheel hashes and the linked contract-manifest identity during tag builds.
 
 See `docs/architecture/dual_backend_pbpk_mcp.md` for the fuller architecture narrative, `docs/architecture/capability_matrix.md` for the published support matrix, `docs/architecture/mcp_payload_conventions.md` for the response contract, and `docs/deployment/runtime_patch_flow.md` for the operator path behind the current local deployment model.
 
@@ -547,12 +549,19 @@ python3 scripts/release_readiness_check.py
 python3 scripts/workspace_model_smoke.py
 ```
 
-`make runtime-contract-test` in the public repository now runs the same dependency preflight first, so missing `pydantic` or `jsonschema` causes an explicit failure instead of a quietly skipped schema-validation gate. It also performs a non-editable local install check of `mcp_bridge.contract`, so the published contract artifacts are validated as an installed package boundary rather than only as source-tree files, and it runs `scripts/generate_contract_artifacts.py --check` so the published contract manifest and generated packaged fallback cannot drift silently.
+`make runtime-contract-test` in the public repository now runs the same dependency preflight first, so missing `build`, `pydantic`, or `jsonschema` causes an explicit failure instead of a quietly skipped schema-validation gate. It also runs `scripts/generate_contract_artifacts.py --check`, builds a temporary `sdist` and `wheel` outside the repo worktree, validates that the normative contract files survive source distribution packaging, and performs an installed-package check of `mcp_bridge.contract` against the built wheel so the published contract artifacts are validated across both source and distribution boundaries.
 
 Repository automation is split intentionally:
 
 - normal CI should catch contract drift in the patch-first runtime layer quickly
+- the dedicated `Release Artifacts` workflow should be used on tags or release-prep runs to validate and retain the exact published `sdist` and wheel
 - the heavier catalog-wide model smoke should run as a dedicated workflow or release gate because it builds the full worker image and executes the live stack
+
+The published `pbpk-mcp.v1` contract manifest now distinguishes:
+
+- `normative` artifacts that define the machine-readable contract
+- `supporting` artifacts that help users adopt and publish the contract correctly
+- `legacy-excluded` artifacts that remain in the repo but are intentionally outside the PBPK-side object family
 
 ### Maintainer workflow
 

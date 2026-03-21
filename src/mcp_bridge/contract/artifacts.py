@@ -122,16 +122,40 @@ _CAPABILITY_MATRIX_JSON = r"""
 
 _CONTRACT_MANIFEST_JSON = r"""
 {
+  "artifactClasses": {
+    "legacy-excluded": {
+      "description": "Historical or non-PBPK-side artifacts that are intentionally outside pbpk-mcp.v1."
+    },
+    "normative": {
+      "description": "Machine-readable artifacts that define the published pbpk-mcp.v1 contract."
+    },
+    "supporting": {
+      "description": "Human-facing or release-facing artifacts that support the contract without defining it."
+    }
+  },
   "artifactCounts": {
     "examples": 8,
-    "schemas": 8
+    "schemas": 8,
+    "supporting": 9
   },
   "capabilityMatrix": {
+    "classification": "normative",
     "relativePath": "docs/architecture/capability_matrix.json",
     "sha256": "bdc2169d99343f38c5a7dea91306d46704104d488442e4161812dfb63ac6da03"
   },
+  "contractManifest": {
+    "classification": "normative",
+    "relativePath": "docs/architecture/contract_manifest.json"
+  },
   "contractVersion": "pbpk-mcp.v1",
   "id": "pbpk-contract-manifest.v1",
+  "legacyArtifactPolicy": [
+    {
+      "classification": "legacy-excluded",
+      "reason": "Legacy literature extraction schema retained outside the PBPK-side pbpk-mcp.v1 object family.",
+      "relativePath": "schemas/extraction-record.json"
+    }
+  ],
   "legacyArtifactsExcluded": [
     "schemas/extraction-record.json"
   ],
@@ -142,6 +166,7 @@ _CONTRACT_MANIFEST_JSON = r"""
   },
   "schemas": [
     {
+      "classification": "normative",
       "exampleRelativePath": "schemas/examples/assessmentContext.v1.example.json",
       "exampleSha256": "316fe3e7b69b1f27ade102c10444540e50fca61725c95b369c4bd48dd52b4fa6",
       "relativePath": "schemas/assessmentContext.v1.json",
@@ -149,6 +174,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "sha256": "e8b4ba287879f7fddc7139c666e057256efa0190e7263721e8685c9331bb5940"
     },
     {
+      "classification": "normative",
       "exampleRelativePath": "schemas/examples/berInputBundle.v1.example.json",
       "exampleSha256": "64399ce683596314bf9d32df20f8c42ffa02673830f477e7e78ea3a0bfa845ff",
       "relativePath": "schemas/berInputBundle.v1.json",
@@ -156,6 +182,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "sha256": "a46c842bfc6dd6f1e1ef4d0f5f65371182c830d478cafae3eef9a599899e9cae"
     },
     {
+      "classification": "normative",
       "exampleRelativePath": "schemas/examples/internalExposureEstimate.v1.example.json",
       "exampleSha256": "559f0118d012d14275141d11dbb0d968ed74a0ce39002ad1094bfe87a034009e",
       "relativePath": "schemas/internalExposureEstimate.v1.json",
@@ -163,6 +190,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "sha256": "830b2cf73661b67dfd0e8493c5e410e276555c05f71221db8e36722bf6cb4857"
     },
     {
+      "classification": "normative",
       "exampleRelativePath": "schemas/examples/pbpkQualificationSummary.v1.example.json",
       "exampleSha256": "2305d9887725aac70de57e2893599aa4446ea0e81013da1f80ecf344a50c04da",
       "relativePath": "schemas/pbpkQualificationSummary.v1.json",
@@ -170,6 +198,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "sha256": "515b371dad39d241a97384a4627eca529636ea5e6378da1f01be8688d08da08d"
     },
     {
+      "classification": "normative",
       "exampleRelativePath": "schemas/examples/pointOfDepartureReference.v1.example.json",
       "exampleSha256": "11185de168163409fb9c22dcfbf7b10c322ff8eddf521d02d1842ee7c4994dbc",
       "relativePath": "schemas/pointOfDepartureReference.v1.json",
@@ -177,6 +206,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "sha256": "58a0e04e48ed716637aae12e972e0f92b858ff6f0cfde918942b97a1daa695aa"
     },
     {
+      "classification": "normative",
       "exampleRelativePath": "schemas/examples/uncertaintyHandoff.v1.example.json",
       "exampleSha256": "ef372636efb1a13dd26151618eaf440bbde90fad5e600b0ab13945187fb0a03c",
       "relativePath": "schemas/uncertaintyHandoff.v1.json",
@@ -184,6 +214,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "sha256": "4547fbcd1014e439abbf5f98ce1e19e0320be8e81eb30102d6a0099fce32d86e"
     },
     {
+      "classification": "normative",
       "exampleRelativePath": "schemas/examples/uncertaintyRegisterReference.v1.example.json",
       "exampleSha256": "652fd3674c30263e5da3e299418327ec4d06811f75f661deff63b2d152b1841f",
       "relativePath": "schemas/uncertaintyRegisterReference.v1.json",
@@ -191,11 +222,68 @@ _CONTRACT_MANIFEST_JSON = r"""
       "sha256": "38808ece8fa55cc3b233f5b3966d480616983d953d0f8f7290cb6191e7222bb6"
     },
     {
+      "classification": "normative",
       "exampleRelativePath": "schemas/examples/uncertaintySummary.v1.example.json",
       "exampleSha256": "9cb008aadd06a2fb4f12dae6ea46023e6f30f30011d851ad76ad9f0f2c9bd181",
       "relativePath": "schemas/uncertaintySummary.v1.json",
       "schemaId": "uncertaintySummary.v1",
       "sha256": "ea1f95e8bd2786468c0a946f0c2dbbba0045411024292affb052efd33c9e00c3"
+    }
+  ],
+  "supportingArtifacts": [
+    {
+      "classification": "supporting",
+      "relativePath": "docs/architecture/capability_matrix.md",
+      "role": "human-readable capability guide",
+      "sha256": "668e616af45a6a1ff89cbda523264ffbc087a79dadfb64c7e3d0e2e56c72f14c"
+    },
+    {
+      "classification": "supporting",
+      "relativePath": "docs/architecture/mcp_payload_conventions.md",
+      "role": "payload contract reference",
+      "sha256": "051b8800193809b7a012a0ec57fd4f5a310c52758c671b377895b12f96d00f8e"
+    },
+    {
+      "classification": "supporting",
+      "relativePath": "docs/github_publication_checklist.md",
+      "role": "publication checklist",
+      "sha256": "263fb00aaf87fe0f8be3d7deb90727c8688b6c25c400a33378247126a38623c1"
+    },
+    {
+      "classification": "supporting",
+      "relativePath": "schemas/README.md",
+      "role": "schema usage guide",
+      "sha256": "0eb43956df6b769bbf3028e0b8b1f2997db397e7618eb1be0d98b7a48847c80a"
+    },
+    {
+      "classification": "supporting",
+      "relativePath": "scripts/check_distribution_artifacts.py",
+      "role": "distribution artifact validation script",
+      "sha256": "4c24be62174cb502895230c210a85593a5eb50c9a835c6ec6ea8e17f634fb2f0"
+    },
+    {
+      "classification": "supporting",
+      "relativePath": "scripts/check_release_metadata.py",
+      "role": "release metadata consistency check",
+      "sha256": "a5c81528c34952d7a51fb32970ac18bc6bc2703a40b4e16db9f669e9b92eecac"
+    },
+    {
+      "classification": "supporting",
+      "relativePath": "scripts/check_installed_package_contract.py",
+      "role": "installed package contract validation script",
+      "sha256": "cbbf79f1bf86a59ffbfef4e28c6cd77d811d9b1f177ca3b1189465415763f401"
+    },
+    {
+      "classification": "supporting",
+      "relativePath": "scripts/check_runtime_contract_env.py",
+      "role": "contract dependency preflight script",
+      "sha256": "82cbd13b4c7c4fef29b06cac4d9552f7db236985c1e7c348391e7f929b35d9a0"
+    },
+    {
+      "classification": "supporting",
+      "relativePath": "scripts/generate_contract_artifacts.py",
+      "role": "contract artifact generator",
+      "sha256": "02429aee7d348e7b63a99ad1f707ebc1d43fbcd2511283ab5f97e97737d95123"
     }
   ]
 }

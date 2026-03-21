@@ -15,6 +15,55 @@ SCHEMA_ROOT = WORKSPACE_ROOT / "schemas"
 SCHEMA_EXAMPLES_ROOT = SCHEMA_ROOT / "examples"
 PACKAGED_MODULE_PATH = WORKSPACE_ROOT / "src" / "mcp_bridge" / "contract" / "artifacts.py"
 LEGACY_EXCLUDED = ["schemas/extraction-record.json"]
+ARTIFACT_CLASSES = {
+    "legacy-excluded": {
+        "description": "Historical or non-PBPK-side artifacts that are intentionally outside pbpk-mcp.v1."
+    },
+    "normative": {
+        "description": "Machine-readable artifacts that define the published pbpk-mcp.v1 contract."
+    },
+    "supporting": {
+        "description": "Human-facing or release-facing artifacts that support the contract without defining it."
+    },
+}
+SUPPORTING_ARTIFACTS = (
+    (
+        "docs/architecture/capability_matrix.md",
+        "human-readable capability guide",
+    ),
+    (
+        "docs/architecture/mcp_payload_conventions.md",
+        "payload contract reference",
+    ),
+    (
+        "docs/github_publication_checklist.md",
+        "publication checklist",
+    ),
+    (
+        "schemas/README.md",
+        "schema usage guide",
+    ),
+    (
+        "scripts/check_distribution_artifacts.py",
+        "distribution artifact validation script",
+    ),
+    (
+        "scripts/check_release_metadata.py",
+        "release metadata consistency check",
+    ),
+    (
+        "scripts/check_installed_package_contract.py",
+        "installed package contract validation script",
+    ),
+    (
+        "scripts/check_runtime_contract_env.py",
+        "contract dependency preflight script",
+    ),
+    (
+        "scripts/generate_contract_artifacts.py",
+        "contract artifact generator",
+    ),
+)
 RESOURCE_ENDPOINTS = {
     "capabilityMatrix": "/mcp/resources/capability-matrix",
     "contractManifest": "/mcp/resources/contract-manifest",
@@ -46,6 +95,7 @@ def _build_contract_manifest(
         schema_path = SCHEMA_ROOT / schema_filename
         example_path = SCHEMA_EXAMPLES_ROOT / example_filename
         entry = {
+            "classification": "normative",
             "schemaId": schema_id,
             "relativePath": f"schemas/{schema_filename}",
             "sha256": _sha256(schema_path),
@@ -54,20 +104,46 @@ def _build_contract_manifest(
         }
         entries.append(entry)
 
+    supporting_artifacts = [
+        {
+            "classification": "supporting",
+            "relativePath": relative_path,
+            "role": role,
+            "sha256": _sha256(WORKSPACE_ROOT / relative_path),
+        }
+        for relative_path, role in SUPPORTING_ARTIFACTS
+    ]
+
     return {
         "id": "pbpk-contract-manifest.v1",
         "contractVersion": capability_matrix["contractVersion"],
+        "artifactClasses": ARTIFACT_CLASSES,
         "artifactCounts": {
             "examples": len(schema_examples),
             "schemas": len(schema_documents),
+            "supporting": len(supporting_artifacts),
+        },
+        "contractManifest": {
+            "classification": "normative",
+            "relativePath": "docs/architecture/contract_manifest.json",
         },
         "capabilityMatrix": {
+            "classification": "normative",
             "relativePath": "docs/architecture/capability_matrix.json",
             "sha256": _sha256(CAPABILITY_MATRIX_PATH),
         },
         "legacyArtifactsExcluded": LEGACY_EXCLUDED,
+        "legacyArtifactPolicy": [
+            {
+                "classification": "legacy-excluded",
+                "reason": "Legacy literature extraction schema retained outside the PBPK-side pbpk-mcp.v1 object family.",
+                "relativePath": relative_path,
+            }
+            for relative_path in LEGACY_EXCLUDED
+        ],
         "resourceEndpoints": RESOURCE_ENDPOINTS,
         "schemas": entries,
+        "supportingArtifacts": supporting_artifacts,
     }
 
 

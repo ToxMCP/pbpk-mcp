@@ -12,11 +12,13 @@
 - run `python3 -m unittest -v tests/test_model_manifest.py`
 - run `python3 -m unittest -v tests/test_model_discovery_live_stack.py`
 - run `python3 -m unittest -v tests/test_oecd_live_stack.py`
+- run `python3 scripts/check_release_metadata.py`
 - run `python3 scripts/validate_model_manifests.py --path var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R --path var/models/esqlabs/pregnancy-neonates-batch-run/Pregnant_simulation_PKSim.pkml`
 - run `python3 scripts/release_readiness_check.py`
 - run `python3 scripts/workspace_model_smoke.py`
 - run `python3 scripts/workspace_model_smoke.py --include-population`
 - if preparing a release, run the repository `Model Smoke` workflow and keep the uploaded smoke JSON artifact with the release evidence
+- if preparing a release tag, run the repository `Release Artifacts` workflow and retain the uploaded `sdist`/`wheel` bundle plus `release-artifact-report.json` with the release evidence
 
 ## Public Positioning
 

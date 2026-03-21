@@ -119,6 +119,23 @@ class ModelDiscoveryLiveStackTests(unittest.TestCase):
         self.assertEqual(payload["relativePath"], "docs/architecture/contract_manifest.json")
         self.assertEqual(payload["schemaCount"], 8)
         self.assertEqual(payload["manifest"]["artifactCounts"]["schemas"], 8)
+        self.assertEqual(payload["manifest"]["contractManifest"]["classification"], "normative")
+        self.assertEqual(payload["manifest"]["capabilityMatrix"]["classification"], "normative")
+        self.assertTrue(all(entry["classification"] == "normative" for entry in payload["manifest"]["schemas"]))
+        self.assertGreaterEqual(payload["manifest"]["artifactCounts"]["supporting"], 4)
+        self.assertTrue(
+            any(
+                entry["relativePath"] == "schemas/README.md" and entry["classification"] == "supporting"
+                for entry in payload["manifest"]["supportingArtifacts"]
+            )
+        )
+        self.assertTrue(
+            any(
+                entry["relativePath"] == "schemas/extraction-record.json"
+                and entry["classification"] == "legacy-excluded"
+                for entry in payload["manifest"]["legacyArtifactPolicy"]
+            )
+        )
         self.assertIn("docs/architecture/capability_matrix.json", payload["manifest"]["capabilityMatrix"]["relativePath"])
         self.assertIn("/mcp/resources/contract-manifest", payload["manifest"]["resourceEndpoints"]["contractManifest"])
         self.assertIn("schemas/extraction-record.json", payload["manifest"]["legacyArtifactsExcluded"])
