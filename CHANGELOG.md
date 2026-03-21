@@ -4,6 +4,8 @@ All notable changes to this project should be documented in this file.
 
 ## Unreleased
 
+## v0.3.4 - 2026-03-21
+
 ### Changed
 
 - tightened the PBPK-side NGRA handoff objects so `pbpkQualificationSummary`, `uncertaintySummary`, `internalExposureEstimate`, and `berInputBundle` now expose explicit boundary/support metadata for downstream orchestration
