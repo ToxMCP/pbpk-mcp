@@ -184,7 +184,7 @@ Design intent:
 - keep BER calculation and final decision policy outside PBPK MCP
 - make the PBPK-side handoff layer consumable by downstream validators and orchestrators without scraping examples out of tests
 
-See `schemas/README.md` for the short schema guide and `tests/test_ngra_object_schemas.py` for the validation gate that keeps the published schemas aligned with live payload generation. The same schema family is also exposed through the live MCP resource surface at `/mcp/resources/schemas`.
+See `schemas/README.md` for the short schema guide and `tests/test_ngra_object_schemas.py` for the validation gate that keeps the published schemas aligned with live payload generation. The same schema family is also exposed through the live MCP resource surface at `/mcp/resources/schemas`. In the current patch-first runtime, those contract artifacts are copied through the shared runtime patch manifest, so the live resource surface does not depend on extra documentation bind mounts.
 
 ## Capability matrix
 

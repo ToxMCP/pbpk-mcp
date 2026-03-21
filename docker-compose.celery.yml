@@ -37,8 +37,6 @@ services:
       R_MAX_VSIZE: 2G
       SERVICE_VERSION: "0.3.5"
     volumes:
-      - ./docs:/app/docs:ro
-      - ./schemas:/app/schemas:ro
       - ./scripts:/app/scripts
       - ./src:/app/src
       - ./var:/app/var

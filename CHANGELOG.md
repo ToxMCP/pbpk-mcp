@@ -18,7 +18,7 @@ All notable changes to this project should be documented in this file.
 - package metadata now describes PBPK MCP as a dual-backend PBPK qualification and reporting server rather than an OSPSuite-only bridge
 - published a dedicated capability matrix in `docs/architecture/capability_matrix.md` and `docs/architecture/capability_matrix.json`, so adopters can see exact discover/load/validate/run/report boundaries without inferring them from scattered docs
 - deployment docs now distinguish the development compose stack from the hardened overlay profile, including bind-host/bind-port settings and readiness waits against the configured base URL
-- the base API compose service now mounts `schemas/` and `docs/` read-only so the published contract artifacts remain available through the live MCP resource surface
+- the shared runtime patch manifest now carries the published capability matrix plus schema/example JSON artifacts, so the live MCP resource surface no longer depends on dedicated `docs/` or `schemas/` bind mounts
 
 ## v0.3.5 - 2026-03-21
 

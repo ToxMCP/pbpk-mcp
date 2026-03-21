@@ -39,6 +39,11 @@ That manifest is consumed by:
 - `scripts/apply_rxode2_patch.py`
 - `docker/rxode2-worker.Dockerfile`
 
+It now carries both:
+
+- patched runtime code
+- published contract artifacts such as the capability matrix and PBPK-side object schemas/examples used by the live MCP resource surface
+
 The important rule is:
 
 - do not duplicate the runtime patch file list in new places

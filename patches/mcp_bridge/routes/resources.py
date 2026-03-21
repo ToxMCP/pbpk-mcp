@@ -152,21 +152,28 @@ def _isoformat(timestamp: float) -> str:
     return datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _repo_root_candidates() -> tuple[Path, ...]:
-    return (Path("/app"), Path(__file__).resolve().parents[3])
-
-
-def _resolve_repo_root() -> Path:
-    for candidate in _repo_root_candidates():
-        if (candidate / "schemas").exists():
+def _resolve_existing_path(candidates: Sequence[Path]) -> Path:
+    for candidate in candidates:
+        if candidate.exists():
             return candidate
-    return _repo_root_candidates()[-1]
+    return candidates[-1]
 
 
-REPO_ROOT = _resolve_repo_root()
-SCHEMA_ROOT = REPO_ROOT / "schemas"
+SCHEMA_ROOT = _resolve_existing_path(
+    (
+        Path("/app/var/contract/schemas"),
+        Path("/app/schemas"),
+        Path(__file__).resolve().parents[3] / "schemas",
+    )
+)
 SCHEMA_EXAMPLES_ROOT = SCHEMA_ROOT / "examples"
-CAPABILITY_MATRIX_PATH = REPO_ROOT / "docs" / "architecture" / "capability_matrix.json"
+CAPABILITY_MATRIX_PATH = _resolve_existing_path(
+    (
+        Path("/app/var/contract/capability_matrix.json"),
+        Path("/app/docs/architecture/capability_matrix.json"),
+        Path(__file__).resolve().parents[3] / "docs" / "architecture" / "capability_matrix.json",
+    )
+)
 
 
 def _weak_etag(tokens: Sequence[str]) -> str:
@@ -183,13 +190,6 @@ def _fingerprint_metadata(metadata: dict[str, Any]) -> str:
     except TypeError:
         serialised = str(sorted(metadata.items()))
     return hashlib.sha1(serialised.encode("utf-8")).hexdigest()
-
-
-def _relative_path(path: Path) -> str:
-    try:
-        return path.relative_to(REPO_ROOT).as_posix()
-    except ValueError:
-        return path.name
 
 
 def _load_json_file(path: Path) -> dict[str, Any]:
@@ -213,8 +213,10 @@ def _schema_index() -> list[dict[str, Any]]:
                 "version": version,
                 "title": document.get("title"),
                 "description": document.get("description"),
-                "relativePath": _relative_path(schema_path),
-                "exampleRelativePath": _relative_path(example_path) if example_path.exists() else None,
+                "relativePath": f"schemas/{schema_path.name}",
+                "exampleRelativePath": (
+                    f"schemas/examples/{example_path.name}" if example_path.exists() else None
+                ),
                 "schema": document,
                 "example": _load_json_file(example_path) if example_path.exists() else None,
                 "_fingerprint": f"{schema_id}:{schema_path.stat().st_mtime}:{example_path.stat().st_mtime if example_path.exists() else 'none'}",
@@ -585,7 +587,7 @@ async def get_capability_matrix_resource(
     return CapabilityMatrixResource(
         id="capability-matrix",
         contractVersion=matrix.get("contractVersion"),
-        relativePath=_relative_path(CAPABILITY_MATRIX_PATH),
+        relativePath="docs/architecture/capability_matrix.json",
         entryCount=len(matrix.get("entries", [])),
         matrix=matrix,
     )
