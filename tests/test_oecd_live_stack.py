@@ -126,6 +126,14 @@ class OecdLiveStackTests(unittest.TestCase):
             validation_payload["ngraObjects"]["uncertaintyHandoff"]["status"],
             "ready-for-cross-domain-uncertainty-synthesis",
         )
+        self.assertIn(
+            validation_payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["overallQuantificationStatus"],
+            {
+                "declared-without-complete-quantification",
+                "partially-quantified",
+                "quantified",
+            },
+        )
         self.assertEqual(
             validation_payload["ngraObjects"]["uncertaintyHandoff"]["decisionOwner"],
             "external-orchestrator",
@@ -274,6 +282,14 @@ class OecdLiveStackTests(unittest.TestCase):
         self.assertEqual(
             report["ngraObjects"]["uncertaintyHandoff"]["status"],
             "ready-for-cross-domain-uncertainty-synthesis",
+        )
+        self.assertIn(
+            report["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["overallQuantificationStatus"],
+            {
+                "declared-without-complete-quantification",
+                "partially-quantified",
+                "quantified",
+            },
         )
         self.assertFalse(
             report["ngraObjects"]["uncertaintyHandoff"]["supports"]["crossDomainUncertaintySynthesis"],

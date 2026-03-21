@@ -127,6 +127,15 @@ def _safe_text(value: Any) -> str | None:
     return str(value)
 
 
+def _safe_float(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _issue(code: str, message: str, *, field: str | None = None, severity: str = "error") -> dict[str, Any]:
     return {
         "code": code,
@@ -211,6 +220,74 @@ def _performance_profile_supplement_coverage(
         "evaluationDatasetRecordCount": _record_entry_count(_performance_section_dataset_records(evaluation if isinstance(evaluation, Mapping) else None)),
         "acceptanceCriterionCount": len(deduped_acceptance),
         "hasExplicitAcceptanceCriteria": bool(deduped_acceptance),
+    }
+
+
+def _performance_traceability_reference_sets(
+    performance: Mapping[str, Any] | None,
+) -> dict[str, list[str]]:
+    if not isinstance(performance, Mapping):
+        return {"datasets": [], "targetOutputs": [], "acceptanceCriteria": []}
+
+    goodness = performance.get("goodnessOfFit") if isinstance(performance.get("goodnessOfFit"), Mapping) else None
+    predictive = performance.get("predictiveChecks") if isinstance(performance.get("predictiveChecks"), Mapping) else None
+    evaluation = performance.get("evaluationData") if isinstance(performance.get("evaluationData"), Mapping) else None
+
+    datasets = _normalize_text_values(
+        [
+            _performance_section_dataset_records(goodness),
+            _performance_section_dataset_records(predictive),
+            _performance_section_dataset_records(evaluation),
+            goodness.get("datasets") if isinstance(goodness, Mapping) else None,
+            goodness.get("datasetIds") if isinstance(goodness, Mapping) else None,
+            goodness.get("datasetNames") if isinstance(goodness, Mapping) else None,
+            predictive.get("datasets") if isinstance(predictive, Mapping) else None,
+            predictive.get("datasetIds") if isinstance(predictive, Mapping) else None,
+            predictive.get("datasetNames") if isinstance(predictive, Mapping) else None,
+            evaluation.get("datasets") if isinstance(evaluation, Mapping) else None,
+            evaluation.get("datasetIds") if isinstance(evaluation, Mapping) else None,
+            evaluation.get("datasetNames") if isinstance(evaluation, Mapping) else None,
+        ]
+    )
+
+    for section in (goodness, predictive, evaluation):
+        records = _performance_section_dataset_records(section if isinstance(section, Mapping) else None)
+        if isinstance(records, Sequence) and not isinstance(records, (str, bytes, bytearray)):
+            for entry in records:
+                if isinstance(entry, Mapping):
+                    datasets.extend(
+                        _normalize_text_values(
+                            entry.get("dataset")
+                            or entry.get("datasetId")
+                            or entry.get("datasetName")
+                            or entry.get("study")
+                            or entry.get("studyId")
+                            or entry.get("id")
+                        )
+                    )
+        elif isinstance(records, Mapping):
+            datasets.extend(
+                _normalize_text_values(
+                    records.get("dataset")
+                    or records.get("datasetId")
+                    or records.get("datasetName")
+                    or records.get("study")
+                    or records.get("studyId")
+                    or records.get("id")
+                )
+            )
+
+    return {
+        "datasets": _normalize_text_values(datasets),
+        "targetOutputs": _normalize_text_values(performance.get("targetOutputs")),
+        "acceptanceCriteria": _normalize_text_values(
+            [
+                performance.get("acceptanceCriteria"),
+                _performance_section_acceptance_criteria(goodness),
+                _performance_section_acceptance_criteria(predictive),
+                _performance_section_acceptance_criteria(evaluation),
+            ]
+        ),
     }
 
 
@@ -559,7 +636,12 @@ def _validate_performance_evidence_rows(rows: Sequence[Any], *, field_prefix: st
     for index, entry in enumerate(rows, start=1):
         if not isinstance(entry, Mapping):
             continue
-        evidence_class = _safe_text(entry.get("evidenceClass") or entry.get("evidence_class")) or "other"
+        evidence_class = _safe_text(
+            entry.get("evidenceClass")
+            or entry.get("evidence_class")
+            or entry.get("kind")
+            or entry.get("type")
+        ) or "other"
         row_id = _safe_text(entry.get("id")) or f"row-{index:03d}"
         row_field_prefix = f"{field_prefix}[{index}]"
 
@@ -637,6 +719,64 @@ def _validate_performance_evidence_rows(rows: Sequence[Any], *, field_prefix: st
     return issues
 
 
+def _validate_performance_traceability_consistency(
+    rows: Sequence[Any],
+    *,
+    performance: Mapping[str, Any] | None,
+    field_prefix: str,
+) -> list[dict[str, Any]]:
+    references = _performance_traceability_reference_sets(performance)
+    issues: list[dict[str, Any]] = []
+    if not any(references.values()):
+        return issues
+
+    for index, entry in enumerate(rows, start=1):
+        if not isinstance(entry, Mapping):
+            continue
+        evidence_class = _safe_text(
+            entry.get("evidenceClass")
+            or entry.get("evidence_class")
+            or entry.get("kind")
+            or entry.get("type")
+        ) or "other"
+        row_id = _safe_text(entry.get("id")) or f"row-{index:03d}"
+        row_field_prefix = f"{field_prefix}[{index}]"
+        dataset = _safe_text(entry.get("dataset") or entry.get("datasetId") or entry.get("study"))
+        target_output = _safe_text(entry.get("targetOutput") or entry.get("target_output") or entry.get("output"))
+        acceptance = _safe_text(entry.get("acceptanceCriterion") or entry.get("acceptance_criterion"))
+        dataset_relevant = evidence_class in {"observed-vs-predicted", "predictive-dataset", "external-qualification"}
+        target_relevant = evidence_class in {"observed-vs-predicted", "predictive-dataset"}
+
+        if dataset_relevant and dataset and references["datasets"] and dataset not in references["datasets"]:
+            issues.append(
+                _issue(
+                    "performance_row_dataset_traceability_missing",
+                    f"Performance evidence row '{row_id}' names dataset '{dataset}', but that dataset is not declared in the current performance traceability.",
+                    field=f"{row_field_prefix}.dataset",
+                    severity="warning",
+                )
+            )
+        if target_relevant and target_output and references["targetOutputs"] and target_output not in references["targetOutputs"]:
+            issues.append(
+                _issue(
+                    "performance_row_target_output_traceability_missing",
+                    f"Performance evidence row '{row_id}' names targetOutput '{target_output}', but that output is not declared in the current performance traceability.",
+                    field=f"{row_field_prefix}.targetOutput",
+                    severity="warning",
+                )
+            )
+        if dataset_relevant and acceptance and references["acceptanceCriteria"] and acceptance not in references["acceptanceCriteria"]:
+            issues.append(
+                _issue(
+                    "performance_row_acceptance_traceability_missing",
+                    f"Performance evidence row '{row_id}' declares acceptanceCriterion '{acceptance}', but that criterion is not declared in the current performance traceability.",
+                    field=f"{row_field_prefix}.acceptanceCriterion",
+                    severity="warning",
+                )
+            )
+    return issues
+
+
 def _validate_performance_evidence_metadata(
     metadata: Mapping[str, Any] | None,
     *,
@@ -690,6 +830,10 @@ def _validate_uncertainty_evidence_rows(rows: Sequence[Any], *, field_prefix: st
         target_output = _safe_text(entry.get("targetOutput") or entry.get("target_output") or entry.get("output"))
         varied_parameters = entry.get("variedParameters") or entry.get("parameters")
         has_varied_parameters = isinstance(varied_parameters, Sequence) and not isinstance(varied_parameters, (str, bytes, bytearray)) and len(varied_parameters) > 0
+        has_quantitative_signal = any(
+            _safe_float(entry.get(field)) is not None
+            for field in ("value", "lowerBound", "upperBound", "mean", "sd")
+        )
 
         if kind == "variability-approach":
             if not summary and not method:
@@ -709,6 +853,12 @@ def _validate_uncertainty_evidence_rows(rows: Sequence[Any], *, field_prefix: st
                 add_issue(
                     "uncertainty_row_scope_missing",
                     f"Uncertainty row '{row_id}' should declare a metric, targetOutput, or variedParameters.",
+                    row_field_prefix,
+                )
+            if kind == "variability-propagation" and not has_quantitative_signal:
+                add_issue(
+                    "uncertainty_row_quantitative_signal_missing",
+                    f"Variability-propagation row '{row_id}' should include quantitative outputs such as bounds, summary statistics, or values.",
                     row_field_prefix,
                 )
         elif kind == "residual-uncertainty":
@@ -897,6 +1047,13 @@ def _load_performance_evidence_sidecar(
             return [], metadata, profile_supplement, str(candidate), issues
         issues.extend(_validate_performance_evidence_metadata(metadata, field_prefix=f"{candidate}:metadata"))
         issues.extend(_validate_performance_evidence_rows(rows, field_prefix=f"{candidate}:rows"))
+        issues.extend(
+            _validate_performance_traceability_consistency(
+                rows,
+                performance=profile_supplement,
+                field_prefix=f"{candidate}:rows",
+            )
+        )
         return rows, metadata, profile_supplement, str(candidate), issues
 
     return [], None, None, None, issues

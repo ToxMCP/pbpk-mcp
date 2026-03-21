@@ -53,7 +53,26 @@ class ExternalPbpkBundleTests(unittest.TestCase):
                     "verificationStatus": "checked",
                     "platformClass": "commercial",
                 },
-                uncertainty={"status": "declared", "summary": "Imported uncertainty summary"},
+                uncertainty={
+                    "status": "declared",
+                    "summary": "Imported uncertainty summary",
+                    "evidenceRows": [
+                        {
+                            "kind": "variability-propagation",
+                            "status": "declared",
+                            "method": "population simulation",
+                            "metric": "cmax",
+                            "targetOutput": "Plasma|Parent|Concentration",
+                            "lowerBound": 2.7,
+                            "upperBound": 3.8,
+                        },
+                        {
+                            "kind": "residual-uncertainty",
+                            "status": "declared",
+                            "summary": "Residual external-dose mapping uncertainty",
+                        },
+                    ],
+                },
                 uncertaintyRegister={
                     "ref": "unc-reg-001",
                     "source": "assessment-workbench",
@@ -106,6 +125,30 @@ class ExternalPbpkBundleTests(unittest.TestCase):
             "no-ngra-decision-policy",
         )
         self.assertEqual(
+            payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["overallQuantificationStatus"],
+            "partially-quantified",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["quantifiedRowCount"],
+            1,
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["declaredOnlyRowCount"],
+            1,
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["variabilityType"],
+            "aleatoric-or-population-variability",
+        )
+        self.assertIn(
+            "variability",
+            payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["quantifiedComponents"],
+        )
+        self.assertIn(
+            "residual-uncertainty",
+            payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["declaredOnlyComponents"],
+        )
+        self.assertEqual(
             payload["ngraObjects"]["uncertaintyHandoff"]["status"],
             "ready-for-cross-domain-uncertainty-synthesis",
         )
@@ -115,6 +158,15 @@ class ExternalPbpkBundleTests(unittest.TestCase):
         )
         self.assertTrue(
             payload["ngraObjects"]["uncertaintyHandoff"]["supports"]["pbpkUncertaintySummaryAttached"],
+        )
+        self.assertTrue(
+            payload["ngraObjects"]["uncertaintyHandoff"]["supports"]["typedUncertaintySemanticsAttached"],
+        )
+        self.assertTrue(
+            payload["ngraObjects"]["uncertaintyHandoff"]["supports"]["quantifiedPbpkVariability"],
+        )
+        self.assertFalse(
+            payload["ngraObjects"]["uncertaintyHandoff"]["supports"]["quantifiedPbpkResidualUncertainty"],
         )
         self.assertTrue(
             payload["ngraObjects"]["uncertaintyHandoff"]["supports"]["uncertaintyRegisterReferenceAttached"],
@@ -170,6 +222,14 @@ class ExternalPbpkBundleTests(unittest.TestCase):
         self.assertEqual(
             payload["ngraObjects"]["uncertaintyHandoff"]["status"],
             "partial-pbpk-uncertainty-handoff",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["overallQuantificationStatus"],
+            "unreported",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["quantifiedRowCount"],
+            0,
         )
         self.assertEqual(
             payload["ngraObjects"]["uncertaintyRegisterReference"]["status"],

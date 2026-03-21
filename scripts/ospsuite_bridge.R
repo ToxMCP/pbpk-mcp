@@ -989,6 +989,166 @@ uncertainty_evidence_count <- function(uncertainty) {
   as.integer(length(uncertainty_evidence_rows_from_profile(uncertainty)))
 }
 
+uncertainty_rows_for_kind <- function(rows, kind) {
+  Filter(function(entry) identical(safe_chr(entry$kind), kind), rows %||% list())
+}
+
+uncertainty_row_has_quantitative_signal <- function(row) {
+  if (!is.list(row)) {
+    return(FALSE)
+  }
+  numeric_fields <- c("value", "lowerBound", "upperBound", "mean", "sd")
+  any(vapply(numeric_fields, function(field) {
+    value <- row[[field]]
+    !is.null(value) && is.finite(safe_num(value, NA_real_))
+  }, logical(1)))
+}
+
+uncertainty_semantic_coverage <- function(rows, status = "unreported") {
+  variability_approach_rows <- uncertainty_rows_for_kind(rows, "variability-approach")
+  variability_propagation_rows <- uncertainty_rows_for_kind(rows, "variability-propagation")
+  sensitivity_rows <- uncertainty_rows_for_kind(rows, "sensitivity-analysis")
+  residual_rows <- uncertainty_rows_for_kind(rows, "residual-uncertainty")
+
+  has_variability_approach <- length(variability_approach_rows) > 0
+  has_variability_propagation <- length(variability_propagation_rows) > 0
+  has_sensitivity <- length(sensitivity_rows) > 0
+  has_residual_uncertainty <- length(residual_rows) > 0
+
+  variability_type <- if (has_variability_approach || has_variability_propagation) {
+    "aleatoric-or-population-variability"
+  } else {
+    "unreported"
+  }
+  sensitivity_type <- if (has_sensitivity) {
+    "parameter-influence-analysis"
+  } else {
+    "unreported"
+  }
+  residual_type <- if (has_residual_uncertainty) {
+    "epistemic-or-unresolved-uncertainty"
+  } else {
+    "unreported"
+  }
+
+  quantified_variability <- any(vapply(
+    variability_propagation_rows,
+    uncertainty_row_has_quantitative_signal,
+    logical(1)
+  ))
+  quantified_sensitivity <- any(vapply(
+    sensitivity_rows,
+    uncertainty_row_has_quantitative_signal,
+    logical(1)
+  ))
+  quantified_residual <- any(vapply(
+    residual_rows,
+    uncertainty_row_has_quantitative_signal,
+    logical(1)
+  ))
+
+  variability_quantification_status <- if (quantified_variability) {
+    "quantified"
+  } else if (has_variability_approach || has_variability_propagation) {
+    "declared-or-characterized"
+  } else if (!identical(safe_chr(status), "unreported")) {
+    "not-reported"
+  } else {
+    "unreported"
+  }
+
+  sensitivity_quantification_status <- if (quantified_sensitivity) {
+    "quantified"
+  } else if (has_sensitivity) {
+    "structured-analysis-without-quantitative-output"
+  } else if (!identical(safe_chr(status), "unreported")) {
+    "not-bundled"
+  } else {
+    "unreported"
+  }
+
+  residual_quantification_status <- if (quantified_residual) {
+    "quantified"
+  } else if (has_residual_uncertainty) {
+    "declared-only"
+  } else if (!identical(safe_chr(status), "unreported")) {
+    "not-explicit"
+  } else {
+    "unreported"
+  }
+
+  quantified_components <- character()
+  if (quantified_variability) {
+    quantified_components <- c(quantified_components, "variability")
+  }
+  if (quantified_sensitivity) {
+    quantified_components <- c(quantified_components, "sensitivity-analysis")
+  }
+  if (quantified_residual) {
+    quantified_components <- c(quantified_components, "residual-uncertainty")
+  }
+
+  declared_only_components <- character()
+  if ((has_variability_approach || has_variability_propagation) && !quantified_variability) {
+    declared_only_components <- c(declared_only_components, "variability")
+  }
+  if (has_sensitivity && !quantified_sensitivity) {
+    declared_only_components <- c(declared_only_components, "sensitivity-analysis")
+  }
+  if (has_residual_uncertainty && !quantified_residual) {
+    declared_only_components <- c(declared_only_components, "residual-uncertainty")
+  }
+
+  missing_components <- character()
+  if (!(has_variability_approach || has_variability_propagation)) {
+    missing_components <- c(missing_components, "variability")
+  }
+  if (!has_sensitivity) {
+    missing_components <- c(missing_components, "sensitivity-analysis")
+  }
+  if (!has_residual_uncertainty) {
+    missing_components <- c(missing_components, "residual-uncertainty")
+  }
+
+  overall_quantification_status <- if (length(quantified_components) > 0 &&
+      length(declared_only_components) == 0 &&
+      length(missing_components) == 0) {
+    "quantified"
+  } else if (length(quantified_components) > 0) {
+    "partially-quantified"
+  } else if (length(declared_only_components) > 0) {
+    "declared-without-complete-quantification"
+  } else if (!identical(safe_chr(status), "unreported")) {
+    "declared-without-structured-quantification"
+  } else {
+    "unreported"
+  }
+
+  list(
+    variabilityType = variability_type,
+    variabilityEvidenceRowCount = as.integer(length(variability_approach_rows) + length(variability_propagation_rows)),
+    variabilityQuantificationStatus = variability_quantification_status,
+    sensitivityType = sensitivity_type,
+    sensitivityEvidenceRowCount = as.integer(length(sensitivity_rows)),
+    sensitivityQuantificationStatus = sensitivity_quantification_status,
+    residualUncertaintyType = residual_type,
+    residualUncertaintyEvidenceRowCount = as.integer(length(residual_rows)),
+    residualUncertaintyQuantificationStatus = residual_quantification_status,
+    overallQuantificationStatus = overall_quantification_status,
+    quantifiedRowCount = as.integer(
+      sum(vapply(rows %||% list(), uncertainty_row_has_quantitative_signal, logical(1)))
+    ),
+    declaredOnlyRowCount = as.integer(
+      sum(vapply(rows %||% list(), function(entry) {
+        is.list(entry) && !uncertainty_row_has_quantitative_signal(entry)
+      }, logical(1)))
+    ),
+    quantifiedComponents = as.list(unique(quantified_components)),
+    declaredOnlyComponents = as.list(unique(declared_only_components)),
+    missingComponents = as.list(unique(missing_components))
+  )
+}
+
 implementation_verification_count <- function(verification) {
   explicit_count <- safe_num(verification$evidenceCount, 0)
   if (is.finite(explicit_count) && explicit_count > 0) {
@@ -1569,6 +1729,136 @@ performance_acceptance_criteria_values <- function(performance, rows = list()) {
     normalize_text_values(entry$acceptanceCriterion)
   }), use.names = FALSE))
   unique(c(section_values, row_values))
+}
+
+performance_traceability_reference_sets <- function(performance) {
+  performance_section <- if (is.list(performance)) performance else list()
+  goodness <- exact_list_field(performance_section, "goodnessOfFit") %||% list()
+  predictive <- exact_list_field(performance_section, "predictiveChecks") %||% list()
+  evaluation <- exact_list_field(performance_section, "evaluationData") %||% list()
+
+  list(
+    datasets = unique(c(
+      performance_section_dataset_names(goodness),
+      performance_section_dataset_record_names(goodness),
+      performance_section_dataset_names(predictive),
+      performance_section_dataset_record_names(predictive),
+      performance_section_dataset_names(evaluation),
+      performance_section_dataset_record_names(evaluation)
+    )),
+    targetOutputs = unique(normalize_text_values(
+      exact_list_field(performance_section, "targetOutputs")
+    )),
+    acceptanceCriteria = unique(performance_acceptance_criteria_values(performance_section, list()))
+  )
+}
+
+performance_row_traceability_consistency <- function(rows, performance, source = "performanceEvidence") {
+  references <- performance_traceability_reference_sets(performance)
+  summary <- list(
+    referenceDatasetCount = as.integer(length(references$datasets)),
+    referenceTargetOutputCount = as.integer(length(references$targetOutputs)),
+    referenceAcceptanceCriterionCount = as.integer(length(references$acceptanceCriteria)),
+    datasetReferenceMatchedRowCount = 0L,
+    datasetReferenceUnmatchedRowCount = 0L,
+    targetOutputMatchedRowCount = 0L,
+    targetOutputUnmatchedRowCount = 0L,
+    acceptanceCriterionMatchedRowCount = 0L,
+    acceptanceCriterionUnmatchedRowCount = 0L
+  )
+  issues <- list()
+
+  append_issue <- function(code, message, field, row_id = NULL) {
+    issues[[length(issues) + 1]] <<- list(
+      code = code,
+      message = message,
+      field = field,
+      severity = "warning",
+      rowId = row_id
+    )
+  }
+
+  for (index in seq_along(rows %||% list())) {
+    row <- rows[[index]]
+    if (!is.list(row)) {
+      next
+    }
+
+    row_id <- safe_chr(row$id, sprintf("row-%03d", index))
+    field_prefix <- sprintf("%s.rows[%d]", source, index)
+    evidence_class <- safe_chr(row$evidenceClass, "other")
+    dataset <- safe_chr(row$dataset %||% row$datasetId %||% row$study)
+    target_output <- safe_chr(row$targetOutput)
+    acceptance <- safe_chr(row$acceptanceCriterion)
+    dataset_relevant <- evidence_class %in% c(
+      "observed-vs-predicted",
+      "predictive-dataset",
+      "external-qualification"
+    )
+    target_relevant <- evidence_class %in% c(
+      "observed-vs-predicted",
+      "predictive-dataset"
+    )
+
+    if (dataset_relevant && length(references$datasets) > 0 &&
+        !is.null(dataset) && nzchar(dataset)) {
+      if (dataset %in% references$datasets) {
+        summary$datasetReferenceMatchedRowCount <- summary$datasetReferenceMatchedRowCount + 1L
+      } else {
+        summary$datasetReferenceUnmatchedRowCount <- summary$datasetReferenceUnmatchedRowCount + 1L
+        append_issue(
+          "performance_row_dataset_traceability_missing",
+          sprintf(
+            "Performance evidence row '%s' names dataset '%s', but that dataset is not declared in the current performance traceability.",
+            row_id,
+            dataset
+          ),
+          paste0(field_prefix, ".dataset"),
+          row_id
+        )
+      }
+    }
+
+    if (target_relevant && length(references$targetOutputs) > 0 &&
+        !is.null(target_output) && nzchar(target_output)) {
+      if (target_output %in% references$targetOutputs) {
+        summary$targetOutputMatchedRowCount <- summary$targetOutputMatchedRowCount + 1L
+      } else {
+        summary$targetOutputUnmatchedRowCount <- summary$targetOutputUnmatchedRowCount + 1L
+        append_issue(
+          "performance_row_target_output_traceability_missing",
+          sprintf(
+            "Performance evidence row '%s' names targetOutput '%s', but that output is not declared in the current performance traceability.",
+            row_id,
+            target_output
+          ),
+          paste0(field_prefix, ".targetOutput"),
+          row_id
+        )
+      }
+    }
+
+    if (dataset_relevant && length(references$acceptanceCriteria) > 0 &&
+        !is.null(acceptance) && nzchar(acceptance)) {
+      if (acceptance %in% references$acceptanceCriteria) {
+        summary$acceptanceCriterionMatchedRowCount <- summary$acceptanceCriterionMatchedRowCount + 1L
+      } else {
+        summary$acceptanceCriterionUnmatchedRowCount <- summary$acceptanceCriterionUnmatchedRowCount + 1L
+        append_issue(
+          "performance_row_acceptance_traceability_missing",
+          sprintf(
+            "Performance evidence row '%s' declares acceptanceCriterion '%s', but that criterion is not declared in the current performance traceability.",
+            row_id,
+            acceptance
+          ),
+          paste0(field_prefix, ".acceptanceCriterion"),
+          row_id
+        )
+      }
+    }
+  }
+
+  list(summary = summary, issues = issues)
 }
 
 performance_traceability_summary <- function(performance, rows = list()) {
@@ -4287,6 +4577,15 @@ uncertainty_evidence_row_issues <- function(rows, source = "uncertaintyEvidence"
           row_id
         )
       }
+      if (identical(kind, "variability-propagation") &&
+          !uncertainty_row_has_quantitative_signal(row)) {
+        append_issue(
+          "uncertainty_row_quantitative_signal_missing",
+          "Variability-propagation rows should include quantitative outputs such as bounds, summary statistics, or values.",
+          field_prefix,
+          row_id
+        )
+      }
     } else if (identical(kind, "residual-uncertainty")) {
       if (is.null(summary) || !nzchar(summary)) {
         append_issue(
@@ -4484,6 +4783,10 @@ record_performance_evidence <- function(record, limit = 200L) {
     list()
   }
   quality_issues <- performance_evidence_row_issues(rows)
+  traceability_consistency <- performance_row_traceability_consistency(
+    rows,
+    supplemented_performance
+  )
   total_rows <- length(rows)
   if (total_rows > limit_value) {
     rows <- rows[seq_len(limit_value)]
@@ -4491,14 +4794,25 @@ record_performance_evidence <- function(record, limit = 200L) {
 
   utils::modifyList(summary, list(
     traceability = traceability,
+    traceabilityConsistency = traceability_consistency$summary,
     predictiveDatasetSummary = predictive_dataset_summary,
     source = if (length(unique(sources)) == 1) unique(sources)[[1]] else "combined",
     sources = as.list(unique(sources)),
     sidecarPath = sidecar$path,
     bundleMetadata = sidecar$metadata,
     profileSupplement = sidecar$profileSupplement,
-    issues = c(sidecar$issues %||% list(), metadata_issues, quality_issues),
-    issueCount = length(c(sidecar$issues %||% list(), metadata_issues, quality_issues)),
+    issues = c(
+      sidecar$issues %||% list(),
+      metadata_issues,
+      quality_issues,
+      traceability_consistency$issues
+    ),
+    issueCount = length(c(
+      sidecar$issues %||% list(),
+      metadata_issues,
+      quality_issues,
+      traceability_consistency$issues
+    )),
     included = TRUE,
     limit = limit_value,
     totalRows = total_rows,
@@ -5250,15 +5564,27 @@ uncertainty_summary_from_record <- function(record, uncertainty_evidence = NULL)
     function(entry) safe_chr(entry$kind, "unspecified"),
     character(1)
   )
-
-  has_sensitivity <- any(row_kinds == "sensitivity-analysis")
+  semantic_coverage <- uncertainty_semantic_coverage(
+    evidence$rows %||% list(),
+    status = safe_chr(uncertainty$status, "unreported")
+  )
+  has_sensitivity <- !identical(
+    safe_chr(semantic_coverage$sensitivityType),
+    "unreported"
+  )
   has_variability_approach <- any(row_kinds == "variability-approach")
   has_variability_propagation <- any(row_kinds == "variability-propagation")
-  has_residual_uncertainty <- any(row_kinds == "residual-uncertainty")
+  has_residual_uncertainty <- !identical(
+    safe_chr(semantic_coverage$residualUncertaintyType),
+    "unreported"
+  )
 
-  variability_status <- if (has_variability_propagation) {
+  variability_status <- if (identical(
+    safe_chr(semantic_coverage$variabilityQuantificationStatus),
+    "quantified"
+  )) {
     "propagated"
-  } else if (has_variability_approach) {
+  } else if (has_variability_approach || has_variability_propagation) {
     "characterized"
   } else if (!identical(safe_chr(uncertainty$status), "unreported")) {
     "declared-without-structured-variability"
@@ -5310,6 +5636,7 @@ uncertainty_summary_from_record <- function(record, uncertainty_evidence = NULL)
     hasVariabilityApproach = has_variability_approach,
     hasVariabilityPropagation = has_variability_propagation,
     hasResidualUncertainty = has_residual_uncertainty,
+    semanticCoverage = semantic_coverage,
     variabilityStatus = variability_status,
     sensitivityStatus = sensitivity_status,
     residualUncertaintyStatus = residual_status,
@@ -5318,8 +5645,29 @@ uncertainty_summary_from_record <- function(record, uncertainty_evidence = NULL)
         safe_num(evidence$returnedRows, 0) > 0,
       sensitivityAnalysis = has_sensitivity,
       variabilityCharacterization = has_variability_approach,
-      quantitativePropagation = has_variability_propagation,
+      quantitativePropagation = identical(
+        safe_chr(semantic_coverage$variabilityQuantificationStatus),
+        "quantified"
+      ),
       residualUncertaintyTracking = has_residual_uncertainty,
+      typedUncertaintySemantics = TRUE,
+      classifiedVariability = !identical(safe_chr(semantic_coverage$variabilityType), "unreported"),
+      classifiedResidualUncertainty = !identical(
+        safe_chr(semantic_coverage$residualUncertaintyType),
+        "unreported"
+      ),
+      quantifiedVariability = identical(
+        safe_chr(semantic_coverage$variabilityQuantificationStatus),
+        "quantified"
+      ),
+      quantifiedSensitivity = identical(
+        safe_chr(semantic_coverage$sensitivityQuantificationStatus),
+        "quantified"
+      ),
+      quantifiedResidualUncertainty = identical(
+        safe_chr(semantic_coverage$residualUncertaintyQuantificationStatus),
+        "quantified"
+      ),
       typedNgraHandoff = TRUE,
       crossDomainUncertaintyRegister = FALSE,
       decisionRecommendation = FALSE
@@ -5340,6 +5688,7 @@ uncertainty_handoff_from_record <- function(
   qualification_attached <- !is.null(qualification_summary$objectId) &&
     nzchar(safe_chr(qualification_summary$objectId, ""))
   uncertainty_status <- safe_chr(uncertainty_summary$status, "unreported")
+  semantic_coverage <- uncertainty_summary$semanticCoverage %||% list()
   uncertainty_attached <- !identical(uncertainty_status, "unreported") ||
     safe_num(uncertainty_summary$evidenceRowCount, 0) > 0
   internal_exposure_attached <- identical(
@@ -5356,6 +5705,29 @@ uncertainty_handoff_from_record <- function(
   )
   residual_uncertainty_tracked <- isTRUE(
     uncertainty_summary$supports$residualUncertaintyTracking
+  )
+  typed_uncertainty_semantics_attached <- !is.null(
+    safe_chr(semantic_coverage$overallQuantificationStatus)
+  )
+  classified_variability_attached <- !identical(
+    safe_chr(semantic_coverage$variabilityType),
+    "unreported"
+  )
+  classified_residual_attached <- !identical(
+    safe_chr(semantic_coverage$residualUncertaintyType),
+    "unreported"
+  )
+  quantified_variability <- identical(
+    safe_chr(semantic_coverage$variabilityQuantificationStatus),
+    "quantified"
+  )
+  quantified_sensitivity <- identical(
+    safe_chr(semantic_coverage$sensitivityQuantificationStatus),
+    "quantified"
+  )
+  quantified_residual <- identical(
+    safe_chr(semantic_coverage$residualUncertaintyQuantificationStatus),
+    "quantified"
   )
 
   blocking_reasons <- character()
@@ -5413,6 +5785,12 @@ uncertainty_handoff_from_record <- function(
       pointOfDepartureReferenceAttached = pod_reference_attached,
       uncertaintyRegisterReferenceAttached = uncertainty_register_attached,
       residualUncertaintyTracked = residual_uncertainty_tracked,
+      typedUncertaintySemanticsAttached = typed_uncertainty_semantics_attached,
+      classifiedVariabilitySummaryAttached = classified_variability_attached,
+      classifiedResidualUncertaintySummaryAttached = classified_residual_attached,
+      quantifiedPbpkVariability = quantified_variability,
+      quantifiedPbpkSensitivity = quantified_sensitivity,
+      quantifiedPbpkResidualUncertainty = quantified_residual,
       crossDomainUncertaintySynthesis = FALSE,
       decisionRecommendation = FALSE
     ),

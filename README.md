@@ -95,7 +95,8 @@ The PBPK MCP server wraps those workflows in a **single, programmable interface*
 - **Unified MCP surface** – discovery, manifest checks, load, validation, execution, results, and dossier export share one tool catalog.
 - **Dual-backend execution** – `.pkml` models run on `ospsuite`; MCP-ready `.R` models run on `rxode2`.
 - **Qualification-aware workflows** – runtime capability, scientific profile, preflight validation, and derived `qualificationState` stay separate.
-- **NGRA-ready PBPK objects** – validation and dossier export expose PBPK-side typed objects such as `assessmentContext`, `pbpkQualificationSummary`, `uncertaintySummary`, `uncertaintyHandoff`, `internalExposureEstimate`, a typed external uncertainty-register reference, and a typed external PoD reference handoff, now with explicit boundary/support metadata for downstream orchestration, without collapsing PBPK MCP into a full decision engine.
+- **NGRA-ready PBPK objects** – validation and dossier export expose PBPK-side typed objects such as `assessmentContext`, `pbpkQualificationSummary`, `uncertaintySummary`, `uncertaintyHandoff`, `internalExposureEstimate`, a typed external uncertainty-register reference, and a typed external PoD reference handoff, now with explicit boundary/support metadata plus additive `semanticCoverage` for PBPK-side uncertainty semantics, without collapsing PBPK MCP into a full decision engine.
+- **Traceable predictive evidence** – performance bundles can now carry traceability supplements, and the report path now warns when bundled benchmark rows do not actually line up with the declared datasets, target outputs, or acceptance criteria.
 - **Discovery before execution** – models are discoverable from disk before they are loaded into a live session.
 - **Release-tested local deployment** – the patch-first runtime is continuously exercised with unit tests, live-stack tests, and a readiness check.
 - **Model-specific executable qualification checks** – MCP-ready models can add runtime verification hooks for checks such as flow/volume consistency, mass balance, or numerical stability without overstating regulatory qualification.
@@ -111,7 +112,7 @@ The PBPK MCP server wraps those workflows in a **single, programmable interface*
 | 🧬 **Dual-backend PBPK execution** | Route `.pkml` models to `ospsuite` and MCP-ready `.R` models to `rxode2` through one MCP surface. |
 | 🗂️ **Model discovery and curation** | Discover supported model files from `MCP_MODEL_SEARCH_PATHS`, inspect unloaded models, and run static manifest checks before load. |
 | 🛡️ **OECD-oriented qualification** | Keep `capabilities`, `profile`, `validation`, and `qualificationState` explicit; expose applicability, provenance, uncertainty, implementation verification, software-platform qualification, and qualification gaps. |
-| 🧱 **NGRA-ready PBPK objects** | Emit typed PBPK-side objects such as `assessmentContext`, `pbpkQualificationSummary`, `uncertaintySummary`, `uncertaintyHandoff`, `internalExposureEstimate`, a typed `uncertaintyRegisterReference`, a typed `pointOfDepartureReference`, and a thin BER-ready reference bundle in dossier export, with explicit boundary/support flags for downstream NGRA orchestration and without embedding BER decision logic in PBPK MCP. |
+| 🧱 **NGRA-ready PBPK objects** | Emit typed PBPK-side objects such as `assessmentContext`, `pbpkQualificationSummary`, `uncertaintySummary`, `uncertaintyHandoff`, `internalExposureEstimate`, a typed `uncertaintyRegisterReference`, a typed `pointOfDepartureReference`, and a thin BER-ready reference bundle in dossier export, with explicit boundary/support flags plus additive uncertainty `semanticCoverage` for downstream NGRA orchestration and without embedding BER decision logic in PBPK MCP. |
 | 🔌 **External PBPK normalization** | Normalize externally generated PBPK outputs, qualification metadata, and optional PoD references through `ingest_external_pbpk_bundle` without pretending PBPK MCP executed the upstream engine. |
 | ✅ **Executable verification** | Run `run_verification_checks` to capture preflight validation, parameter coverage, parameter-unit consistency, structural flow/volume consistency, deterministic smoke, deterministic result integrity, repeat-run reproducibility, optional population smoke, and verification-evidence summaries in one payload. |
 | 📈 **Deterministic and population jobs** | Submit asynchronous deterministic and population simulations, then retrieve result handles, stored results, and PK summaries. |
@@ -169,6 +170,7 @@ cd pbpk-mcp
 ```
 
 > **Heads-up:** The current local deployment is intentionally patch-first. `./scripts/deploy_rxode2_stack.sh` recreates the stack and reapplies the current runtime patch set so the live API matches the documented `v0.3.4` contract.
+> It now also waits for stable `/health` and `/mcp/list_tools` responses before returning, so immediate live-stack checks do not race a restarting API process.
 
 Once the server is running:
 
@@ -299,6 +301,7 @@ PBPK MCP keeps these concepts separate:
 - `validation` for preflight applicability and guardrail assessment
 - `qualificationState` for the derived summary label
 - `ngraObjects` for PBPK-side typed NGRA-ready objects such as `assessmentContext`, `pbpkQualificationSummary`, `uncertaintySummary`, `uncertaintyHandoff`, `internalExposureEstimate`, and `uncertaintyRegisterReference`
+  - `uncertaintySummary` now also carries additive `semanticCoverage` so downstream consumers can distinguish declared-only versus quantified PBPK-side variability, sensitivity, and residual uncertainty without inferring that from raw evidence rows alone; it now includes `quantifiedRowCount`, `declaredOnlyRowCount`, and a stricter `variabilityQuantificationStatus`
 - `oecdCoverage` for a descriptive mapping from exported dossier fields onto OECD reporting-template and evaluation-checklist sections; it does not modify `oecdChecklistScore` or qualification state
 
 Current derived qualification states include:
@@ -333,7 +336,7 @@ Researchers can also attach generic companion performance bundles next to either
 
 `modelPerformance` can now also declare structured `datasetRecords` and `acceptanceCriteria` inside `goodnessOfFit`, `predictiveChecks`, or `evaluationData`. The bridge normalizes those fields and exposes additive traceability counts so predictive support is not reduced to a single status token.
 
-The same pattern now exists for uncertainty evidence. See [uncertainty_evidence_bundles.md](/Volumes/Storage/topotox_offload/20260220_space_relief/manual_offload/PBPK_MCP/docs/integration_guides/uncertainty_evidence_bundles.md) and [uncertainty_evidence_bundle.template.json](/Volumes/Storage/topotox_offload/20260220_space_relief/manual_offload/PBPK_MCP/examples/uncertainty_evidence_bundle.template.json). The MCP surfaces warnings when uncertainty rows are missing method/summary or scope information.
+The same pattern now exists for uncertainty evidence. See [uncertainty_evidence_bundles.md](/Volumes/Storage/topotox_offload/20260220_space_relief/manual_offload/PBPK_MCP/docs/integration_guides/uncertainty_evidence_bundles.md) and [uncertainty_evidence_bundle.template.json](/Volumes/Storage/topotox_offload/20260220_space_relief/manual_offload/PBPK_MCP/examples/uncertainty_evidence_bundle.template.json). The MCP surfaces warnings when uncertainty rows are missing method/summary or scope information, and `variability-propagation` rows are only treated as quantified propagation evidence when they actually include quantitative outputs such as `value`, `lowerBound`, `upperBound`, `mean`, or `sd`.
 
 The same companion-bundle pattern now exists for richer parameter tables. See [parameter_table_bundles.md](/Volumes/Storage/topotox_offload/20260220_space_relief/manual_offload/PBPK_MCP/docs/integration_guides/parameter_table_bundles.md) and [parameter_table_bundle.template.json](/Volumes/Storage/topotox_offload/20260220_space_relief/manual_offload/PBPK_MCP/examples/parameter_table_bundle.template.json). `export_oecd_report` and `validate_model_manifest` now surface row-level coverage for sources, citations, distributions, study conditions, and rationale so dossier gaps are visible without custom bridge code.
 
@@ -387,6 +390,7 @@ The server currently produces and exposes:
 - static manifest validation reports
 - load-time model metadata with `backend`, `capabilities`, `profile`, `validation`, and `qualificationState`
 - validation/report payloads with typed PBPK-side NGRA-ready objects such as `assessmentContext`, `pbpkQualificationSummary`, `uncertaintySummary`, `uncertaintyHandoff`, `internalExposureEstimate`, `uncertaintyRegisterReference`, and `pointOfDepartureReference`
+  - uncertainty objects now include machine-readable PBPK-side uncertainty semantics for quantified variability, declared-only residual uncertainty, and still-missing components
 - a BER-ready reference bundle in dossier export that can become `ready-for-external-ber-calculation` when an external `podRef` and a resolved PBPK exposure target are both available
 - imported external PBPK run records and NGRA-ready object bundles from `ingest_external_pbpk_bundle`
 - executable verification summaries with structured check results, smoke-run artifact handles, parameter-unit consistency, result-integrity/reproducibility checks, and verification-evidence snapshots

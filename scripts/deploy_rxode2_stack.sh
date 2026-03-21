@@ -10,3 +10,4 @@ docker compose \
   up -d --force-recreate --remove-orphans redis api worker
 
 python3 "${workspace_root}/scripts/apply_rxode2_patch.py" --restart
+python3 "${workspace_root}/scripts/wait_for_runtime_ready.py"

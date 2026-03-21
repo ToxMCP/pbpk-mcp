@@ -72,6 +72,134 @@ def _coerce_section(value: object | None, *, scalar_key: str | None = None) -> d
     return {scalar_key: scalar}
 
 
+def _extract_uncertainty_rows(uncertainty: Mapping[str, Any]) -> list[dict[str, Any]]:
+    for key in ("rows", "evidence", "evidenceRows", "evidenceTable"):
+        value = uncertainty.get(key)
+        if isinstance(value, (list, tuple)):
+            return [_as_mapping(entry) for entry in value if isinstance(entry, Mapping)]
+    return []
+
+
+def _uncertainty_rows_for_kind(rows: list[Mapping[str, Any]], kind: str) -> list[Mapping[str, Any]]:
+    return [entry for entry in rows if _safe_text(entry.get("kind")) == kind]
+
+
+def _uncertainty_row_has_quantitative_signal(row: Mapping[str, Any]) -> bool:
+    for field in ("value", "lowerBound", "upperBound", "mean", "sd"):
+        if _safe_float(row.get(field)) is not None:
+            return True
+    return False
+
+
+def _build_uncertainty_semantic_coverage(
+    *,
+    status: str,
+    has_variability_approach: bool,
+    has_variability_propagation: bool,
+    has_sensitivity: bool,
+    has_residual_uncertainty: bool,
+    variability_row_count: int,
+    sensitivity_row_count: int,
+    residual_row_count: int,
+    quantified_variability: bool,
+    quantified_row_count: int,
+    declared_only_row_count: int,
+    quantified_sensitivity: bool,
+    quantified_residual: bool,
+) -> dict[str, Any]:
+    variability_type = (
+        "aleatoric-or-population-variability"
+        if has_variability_approach or has_variability_propagation
+        else "unreported"
+    )
+    sensitivity_type = "parameter-influence-analysis" if has_sensitivity else "unreported"
+    residual_type = (
+        "epistemic-or-unresolved-uncertainty"
+        if has_residual_uncertainty
+        else "unreported"
+    )
+
+    if quantified_variability:
+        variability_quantification_status = "quantified"
+    elif has_variability_approach or has_variability_propagation:
+        variability_quantification_status = "declared-or-characterized"
+    elif status != "unreported":
+        variability_quantification_status = "not-reported"
+    else:
+        variability_quantification_status = "unreported"
+
+    if quantified_sensitivity:
+        sensitivity_quantification_status = "quantified"
+    elif has_sensitivity:
+        sensitivity_quantification_status = "structured-analysis-without-quantitative-output"
+    elif status != "unreported":
+        sensitivity_quantification_status = "not-bundled"
+    else:
+        sensitivity_quantification_status = "unreported"
+
+    if quantified_residual:
+        residual_quantification_status = "quantified"
+    elif has_residual_uncertainty:
+        residual_quantification_status = "declared-only"
+    elif status != "unreported":
+        residual_quantification_status = "not-explicit"
+    else:
+        residual_quantification_status = "unreported"
+
+    quantified_components: list[str] = []
+    if quantified_variability:
+        quantified_components.append("variability")
+    if quantified_sensitivity:
+        quantified_components.append("sensitivity-analysis")
+    if quantified_residual:
+        quantified_components.append("residual-uncertainty")
+
+    declared_only_components: list[str] = []
+    if (has_variability_approach or has_variability_propagation) and not quantified_variability:
+        declared_only_components.append("variability")
+    if has_sensitivity and not quantified_sensitivity:
+        declared_only_components.append("sensitivity-analysis")
+    if has_residual_uncertainty and not quantified_residual:
+        declared_only_components.append("residual-uncertainty")
+
+    missing_components: list[str] = []
+    if not (has_variability_approach or has_variability_propagation):
+        missing_components.append("variability")
+    if not has_sensitivity:
+        missing_components.append("sensitivity-analysis")
+    if not has_residual_uncertainty:
+        missing_components.append("residual-uncertainty")
+
+    if quantified_components and not declared_only_components and not missing_components:
+        overall_quantification_status = "quantified"
+    elif quantified_components:
+        overall_quantification_status = "partially-quantified"
+    elif declared_only_components:
+        overall_quantification_status = "declared-without-complete-quantification"
+    elif status != "unreported":
+        overall_quantification_status = "declared-without-structured-quantification"
+    else:
+        overall_quantification_status = "unreported"
+
+    return {
+        "variabilityType": variability_type,
+        "variabilityEvidenceRowCount": variability_row_count,
+        "variabilityQuantificationStatus": variability_quantification_status,
+        "sensitivityType": sensitivity_type,
+        "sensitivityEvidenceRowCount": sensitivity_row_count,
+        "sensitivityQuantificationStatus": sensitivity_quantification_status,
+        "residualUncertaintyType": residual_type,
+        "residualUncertaintyEvidenceRowCount": residual_row_count,
+        "residualUncertaintyQuantificationStatus": residual_quantification_status,
+        "overallQuantificationStatus": overall_quantification_status,
+        "quantifiedRowCount": quantified_row_count,
+        "declaredOnlyRowCount": declared_only_row_count,
+        "quantifiedComponents": list(dict.fromkeys(quantified_components)),
+        "declaredOnlyComponents": list(dict.fromkeys(declared_only_components)),
+        "missingComponents": list(dict.fromkeys(missing_components)),
+    }
+
+
 def _selection_triplet(requested: object | None, declared: object | None) -> dict[str, Any]:
     requested_text = _safe_text(requested)
     declared_text = _safe_text(declared)
@@ -303,19 +431,65 @@ def _build_pbpk_qualification_summary(payload: IngestExternalPbpkBundleRequest) 
 
 def _build_uncertainty_summary(payload: IngestExternalPbpkBundleRequest) -> dict[str, Any]:
     uncertainty = _as_mapping(payload.uncertainty)
+    uncertainty_rows = _extract_uncertainty_rows(uncertainty)
+    variability_approach_rows = _uncertainty_rows_for_kind(uncertainty_rows, "variability-approach")
+    variability_propagation_rows = _uncertainty_rows_for_kind(uncertainty_rows, "variability-propagation")
+    sensitivity_rows = _uncertainty_rows_for_kind(uncertainty_rows, "sensitivity-analysis")
+    residual_rows = _uncertainty_rows_for_kind(uncertainty_rows, "residual-uncertainty")
     has_sensitivity = bool(
-        uncertainty.get("hasSensitivityAnalysis") or uncertainty.get("sensitivityAnalysis")
+        uncertainty.get("hasSensitivityAnalysis")
+        or uncertainty.get("sensitivityAnalysis")
+        or sensitivity_rows
     )
     has_variability_approach = bool(
-        uncertainty.get("hasVariabilityApproach") or uncertainty.get("variabilityApproach")
+        uncertainty.get("hasVariabilityApproach")
+        or uncertainty.get("variabilityApproach")
+        or variability_approach_rows
     )
     has_variability_propagation = bool(
-        uncertainty.get("hasVariabilityPropagation") or uncertainty.get("variabilityPropagation")
+        uncertainty.get("hasVariabilityPropagation")
+        or uncertainty.get("variabilityPropagation")
+        or variability_propagation_rows
     )
     has_residual_uncertainty = bool(
-        uncertainty.get("hasResidualUncertainty") or uncertainty.get("residualUncertainty")
+        uncertainty.get("hasResidualUncertainty")
+        or uncertainty.get("residualUncertainty")
+        or residual_rows
     )
     status = _safe_text(uncertainty.get("status")) or "unreported"
+    evidence_row_count = int(uncertainty.get("evidenceRowCount") or len(uncertainty_rows))
+    total_evidence_rows = int(uncertainty.get("totalEvidenceRows") or len(uncertainty_rows))
+    quantified_sensitivity = any(
+        _uncertainty_row_has_quantitative_signal(entry) for entry in sensitivity_rows
+    )
+    quantified_residual = any(
+        _uncertainty_row_has_quantitative_signal(entry) for entry in residual_rows
+    )
+    quantified_variability = any(
+        _uncertainty_row_has_quantitative_signal(entry)
+        for entry in variability_propagation_rows
+    )
+    quantified_row_count = sum(
+        1 for entry in uncertainty_rows if _uncertainty_row_has_quantitative_signal(entry)
+    )
+    declared_only_row_count = sum(
+        1 for entry in uncertainty_rows if not _uncertainty_row_has_quantitative_signal(entry)
+    )
+    semantic_coverage = _build_uncertainty_semantic_coverage(
+        status=status,
+        has_variability_approach=has_variability_approach,
+        has_variability_propagation=has_variability_propagation,
+        has_sensitivity=has_sensitivity,
+        has_residual_uncertainty=has_residual_uncertainty,
+        variability_row_count=len(variability_approach_rows) + len(variability_propagation_rows),
+        sensitivity_row_count=len(sensitivity_rows),
+        residual_row_count=len(residual_rows),
+        quantified_variability=quantified_variability,
+        quantified_row_count=quantified_row_count,
+        declared_only_row_count=declared_only_row_count,
+        quantified_sensitivity=quantified_sensitivity,
+        quantified_residual=quantified_residual,
+    )
     if has_variability_propagation:
         variability_status = "propagated"
     elif has_variability_approach:
@@ -358,21 +532,30 @@ def _build_uncertainty_summary(payload: IngestExternalPbpkBundleRequest) -> dict
         "evidenceSource": uncertainty.get("source") or "external-import",
         "sources": _normalize_text_list(uncertainty.get("sources")),
         "issueCount": int(uncertainty.get("issueCount") or 0),
-        "evidenceRowCount": int(uncertainty.get("evidenceRowCount") or 0),
-        "totalEvidenceRows": int(uncertainty.get("totalEvidenceRows") or 0),
+        "evidenceRowCount": evidence_row_count,
+        "totalEvidenceRows": total_evidence_rows,
         "hasSensitivityAnalysis": has_sensitivity,
         "hasVariabilityApproach": has_variability_approach,
         "hasVariabilityPropagation": has_variability_propagation,
         "hasResidualUncertainty": has_residual_uncertainty,
+        "semanticCoverage": semantic_coverage,
         "variabilityStatus": variability_status,
         "sensitivityStatus": sensitivity_status,
         "residualUncertaintyStatus": residual_status,
         "supports": {
-            "qualitativeSummary": status != "unreported" or int(uncertainty.get("evidenceRowCount") or 0) > 0,
+            "qualitativeSummary": status != "unreported" or evidence_row_count > 0,
             "sensitivityAnalysis": has_sensitivity,
             "variabilityCharacterization": has_variability_approach,
             "quantitativePropagation": has_variability_propagation,
             "residualUncertaintyTracking": has_residual_uncertainty,
+            "typedUncertaintySemantics": True,
+            "classifiedVariability": semantic_coverage["variabilityType"] != "unreported",
+            "classifiedResidualUncertainty": semantic_coverage["residualUncertaintyType"] != "unreported",
+            "quantifiedVariability": semantic_coverage["variabilityQuantificationStatus"] == "quantified",
+            "quantifiedSensitivity": semantic_coverage["sensitivityQuantificationStatus"] == "quantified",
+            "quantifiedResidualUncertainty": (
+                semantic_coverage["residualUncertaintyQuantificationStatus"] == "quantified"
+            ),
             "typedNgraHandoff": True,
             "crossDomainUncertaintyRegister": False,
             "decisionRecommendation": False,
@@ -393,6 +576,7 @@ def _build_uncertainty_handoff(
 ) -> dict[str, Any]:
     qualification_attached = bool(_safe_text(qualification_summary.get("objectId")))
     uncertainty_status = _safe_text(uncertainty_summary.get("status")) or "unreported"
+    semantic_coverage = _as_mapping(uncertainty_summary.get("semanticCoverage"))
     uncertainty_attached = bool(
         uncertainty_status != "unreported"
         or _safe_float(uncertainty_summary.get("evidenceRowCount")) not in (None, 0.0)
@@ -408,6 +592,24 @@ def _build_uncertainty_handoff(
     )
     residual_uncertainty_tracked = bool(
         _as_mapping(uncertainty_summary.get("supports")).get("residualUncertaintyTracking")
+    )
+    typed_uncertainty_semantics_attached = bool(
+        _safe_text(semantic_coverage.get("overallQuantificationStatus"))
+    )
+    classified_variability_attached = (
+        _safe_text(semantic_coverage.get("variabilityType")) != "unreported"
+    )
+    classified_residual_attached = (
+        _safe_text(semantic_coverage.get("residualUncertaintyType")) != "unreported"
+    )
+    quantified_variability = (
+        _safe_text(semantic_coverage.get("variabilityQuantificationStatus")) == "quantified"
+    )
+    quantified_sensitivity = (
+        _safe_text(semantic_coverage.get("sensitivityQuantificationStatus")) == "quantified"
+    )
+    quantified_residual = (
+        _safe_text(semantic_coverage.get("residualUncertaintyQuantificationStatus")) == "quantified"
     )
 
     blocking_reasons: list[str] = []
@@ -461,6 +663,12 @@ def _build_uncertainty_handoff(
             "pointOfDepartureReferenceAttached": pod_reference_attached,
             "uncertaintyRegisterReferenceAttached": uncertainty_register_attached,
             "residualUncertaintyTracked": residual_uncertainty_tracked,
+            "typedUncertaintySemanticsAttached": typed_uncertainty_semantics_attached,
+            "classifiedVariabilitySummaryAttached": classified_variability_attached,
+            "classifiedResidualUncertaintySummaryAttached": classified_residual_attached,
+            "quantifiedPbpkVariability": quantified_variability,
+            "quantifiedPbpkSensitivity": quantified_sensitivity,
+            "quantifiedPbpkResidualUncertainty": quantified_residual,
             "crossDomainUncertaintySynthesis": False,
             "decisionRecommendation": False,
         },

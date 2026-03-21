@@ -97,10 +97,13 @@ The report then computes conservative summary fields such as:
 - `supportsExternalQualificationEvidence`
 - `traceability`
 - `predictiveDatasetSummary`
+ - `traceabilityConsistency`
 
 `traceability` is additive. It summarizes whether the declared `modelPerformance` profile and exported evidence rows actually carry structured dataset records and explicit acceptance criteria.
 
 If a companion `profileSupplement` is present, `traceability` and `predictiveDatasetSummary` will also count its dataset records, acceptance criteria, target outputs, and declared metrics. This keeps predictive traceability reusable for authors who do not want to hard-code those declarations into the model hook itself.
+
+`traceabilityConsistency` is stricter. When traceability references are declared, it reports how many bundled evidence rows actually match those declared datasets, target outputs, and acceptance criteria. Mismatches are surfaced as warnings instead of being silently treated as fully traceable.
 
 This is meant to prevent runtime smoke or internal reference rows from being mistaken for predictive validation.
 
@@ -160,6 +163,8 @@ Examples:
 If the scientific profile already declares `goodnessOfFit.datasetRecords`, `predictiveChecks.datasetRecords`, or section-level `acceptanceCriteria`, the bridge now preserves those as traceability counts in the exported performance summary even when the companion bundle is the only explicit row source.
 
 If you use `profileSupplement`, treat it as a traceability supplement, not as a second hidden profile. It should add benchmark dataset records, acceptance criteria, and target outputs that are relevant to the bundled evidence rows without contradicting the declared scientific profile.
+
+If you declare a `profileSupplement`, keep the row-level `dataset`, `targetOutput`, and `acceptanceCriterion` fields aligned with it. The runtime and static manifest paths now warn when bundled evidence rows refer to undeclared datasets, target outputs, or acceptance criteria.
 
 ## Template
 

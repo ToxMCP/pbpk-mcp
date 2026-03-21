@@ -889,8 +889,53 @@ class OecdBridgeTests(unittest.TestCase):
             payload["ngraObjects"]["uncertaintySummary"]["decisionBoundary"],
             "no-ngra-decision-policy",
         )
+        self.assertEqual(
+            payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["overallQuantificationStatus"],
+            "declared-without-complete-quantification",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["quantifiedRowCount"],
+            0,
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["declaredOnlyRowCount"],
+            2,
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["variabilityType"],
+            "unreported",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["sensitivityType"],
+            "parameter-influence-analysis",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["residualUncertaintyType"],
+            "epistemic-or-unresolved-uncertainty",
+        )
+        self.assertIn(
+            "sensitivity-analysis",
+            payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["declaredOnlyComponents"],
+        )
+        self.assertIn(
+            "residual-uncertainty",
+            payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["declaredOnlyComponents"],
+        )
+        self.assertIn(
+            "variability",
+            payload["ngraObjects"]["uncertaintySummary"]["semanticCoverage"]["missingComponents"],
+        )
         self.assertFalse(
             payload["ngraObjects"]["uncertaintySummary"]["supports"]["crossDomainUncertaintyRegister"],
+        )
+        self.assertTrue(
+            payload["ngraObjects"]["uncertaintySummary"]["supports"]["typedUncertaintySemantics"],
+        )
+        self.assertFalse(
+            payload["ngraObjects"]["uncertaintySummary"]["supports"]["quantifiedVariability"],
+        )
+        self.assertFalse(
+            payload["ngraObjects"]["uncertaintySummary"]["supports"]["quantifiedSensitivity"],
         )
         self.assertEqual(
             payload["ngraObjects"]["uncertaintyHandoff"]["status"],
@@ -905,6 +950,15 @@ class OecdBridgeTests(unittest.TestCase):
         )
         self.assertTrue(
             payload["ngraObjects"]["uncertaintyHandoff"]["supports"]["pbpkUncertaintySummaryAttached"],
+        )
+        self.assertTrue(
+            payload["ngraObjects"]["uncertaintyHandoff"]["supports"]["typedUncertaintySemanticsAttached"],
+        )
+        self.assertFalse(
+            payload["ngraObjects"]["uncertaintyHandoff"]["supports"]["quantifiedPbpkVariability"],
+        )
+        self.assertFalse(
+            payload["ngraObjects"]["uncertaintyHandoff"]["supports"]["quantifiedPbpkSensitivity"],
         )
         self.assertFalse(
             payload["ngraObjects"]["uncertaintyHandoff"]["supports"]["uncertaintyRegisterReferenceAttached"],
@@ -1273,6 +1327,22 @@ class OecdBridgeTests(unittest.TestCase):
         self.assertEqual(payload["predictiveDatasetSummary"]["acceptanceCriterionCount"], 2)
         self.assertIn("adult-iv-study", payload["predictiveDatasetSummary"]["datasets"])
         self.assertIn("external-benchmark", payload["predictiveDatasetSummary"]["datasets"])
+        self.assertEqual(
+            payload["traceabilityConsistency"]["datasetReferenceMatchedRowCount"],
+            1,
+        )
+        self.assertEqual(
+            payload["traceabilityConsistency"]["datasetReferenceUnmatchedRowCount"],
+            0,
+        )
+        self.assertEqual(
+            payload["traceabilityConsistency"]["acceptanceCriterionMatchedRowCount"],
+            1,
+        )
+        self.assertEqual(
+            payload["traceabilityConsistency"]["targetOutputMatchedRowCount"],
+            1,
+        )
         self.assertIn(
             "Plasma|Compound|Concentration",
             payload["predictiveDatasetSummary"]["targetOutputs"],
@@ -1280,6 +1350,77 @@ class OecdBridgeTests(unittest.TestCase):
         self.assertEqual(
             payload["profileSupplement"]["predictiveChecks"]["datasetRecords"][0]["dataset"],
             "external-benchmark",
+        )
+
+    def test_record_performance_evidence_warns_for_traceability_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            model_path = root / "example_model.R"
+            model_path.write_text("# example model", encoding="utf-8")
+            (root / "example_model.performance.json").write_text(
+                json.dumps(
+                    {
+                        "metadata": {
+                            "bundleVersion": "pbpk-performance-evidence.v1",
+                            "summary": "Traceability mismatch bundle",
+                        },
+                        "profileSupplement": {
+                            "predictiveChecks": {
+                                "datasetRecords": [
+                                    {"dataset": "declared-benchmark", "route": "iv"}
+                                ],
+                                "acceptanceCriteria": [
+                                    "GMFE within 2-fold across the benchmark set"
+                                ],
+                            },
+                            "targetOutputs": ["Plasma|Compound|Concentration"],
+                        },
+                        "rows": [
+                            {
+                                "id": "mismatched-predictive-row",
+                                "kind": "predictive-dataset",
+                                "status": "declared",
+                                "dataset": "undeclared-benchmark",
+                                "targetOutput": "Kidney|Compound|Concentration",
+                                "acceptanceCriterion": "AUC within 10% of observed benchmark",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = run_r_json(
+                f"""
+                record <- list(
+                  backend = "rxode2",
+                  simulation_id = "example-traceability-mismatch",
+                  file_path = {json.dumps(str(model_path))},
+                  metadata = list(name = "Example model"),
+                  profile = list(modelPerformance = list(status = "limited-internal-evaluation")),
+                  capabilities = list(scientificProfile = TRUE),
+                  parameters = list(),
+                  parameter_catalog = list()
+                )
+                record_performance_evidence(record, limit = 10)
+                """
+            )
+
+        issue_codes = {entry["code"] for entry in payload["issues"]}
+        self.assertIn("performance_row_dataset_traceability_missing", issue_codes)
+        self.assertIn("performance_row_target_output_traceability_missing", issue_codes)
+        self.assertIn("performance_row_acceptance_traceability_missing", issue_codes)
+        self.assertEqual(
+            payload["traceabilityConsistency"]["datasetReferenceUnmatchedRowCount"],
+            1,
+        )
+        self.assertEqual(
+            payload["traceabilityConsistency"]["targetOutputUnmatchedRowCount"],
+            1,
+        )
+        self.assertEqual(
+            payload["traceabilityConsistency"]["acceptanceCriterionUnmatchedRowCount"],
+            1,
         )
 
     def test_record_performance_evidence_reports_profile_traceability(self) -> None:
@@ -1440,6 +1581,8 @@ class OecdBridgeTests(unittest.TestCase):
                                 "status": "declared",
                                 "method": "bounded sampling",
                                 "metric": "AUC0-tlast",
+                                "lowerBound": 9.2,
+                                "upperBound": 12.4,
                             }
                         ]
                     }
@@ -1512,6 +1655,63 @@ class OecdBridgeTests(unittest.TestCase):
         self.assertIn("uncertainty_row_summary_missing", issue_codes)
         self.assertIn("uncertainty_row_scope_missing", issue_codes)
         self.assertGreaterEqual(payload["issueCount"], 4)
+
+    def test_record_uncertainty_evidence_warns_for_unquantified_variability_propagation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            model_path = root / "example_model.R"
+            model_path.write_text("# example model", encoding="utf-8")
+            (root / "example_model.uncertainty.json").write_text(
+                json.dumps(
+                    {
+                        "metadata": {
+                            "bundleVersion": "pbpk-uncertainty-evidence.v1",
+                            "summary": "Unquantified variability propagation",
+                        },
+                        "rows": [
+                            {
+                                "id": "bad-variability-propagation-row",
+                                "kind": "variability-propagation",
+                                "status": "declared",
+                                "method": "population simulation",
+                                "metric": "cmax",
+                                "targetOutput": "Plasma|Compound|Concentration",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = run_r_json(
+                f"""
+                record <- list(
+                  backend = "rxode2",
+                  simulation_id = "example-sidecar-quant-gap",
+                  file_path = {json.dumps(str(model_path))},
+                  metadata = list(name = "Example model"),
+                  profile = list(uncertainty = list(status = "partially-characterized")),
+                  capabilities = list(scientificProfile = TRUE),
+                  parameters = list(),
+                  parameter_catalog = list()
+                )
+                evidence <- record_uncertainty_evidence(record, limit = 10)
+                summary <- uncertainty_summary_from_record(record, evidence)
+                list(
+                  issues = evidence$issues,
+                  semanticCoverage = summary$semanticCoverage
+                )
+                """
+            )
+
+        issue_codes = {entry["code"] for entry in payload["issues"]}
+        self.assertIn("uncertainty_row_quantitative_signal_missing", issue_codes)
+        self.assertEqual(
+            payload["semanticCoverage"]["overallQuantificationStatus"],
+            "declared-without-complete-quantification",
+        )
+        self.assertEqual(payload["semanticCoverage"]["quantifiedRowCount"], 0)
+        self.assertEqual(payload["semanticCoverage"]["declaredOnlyRowCount"], 1)
 
     def test_cisplatin_uncertainty_evidence_includes_variability_propagation(self) -> None:
         if not has_r_package("rxode2"):

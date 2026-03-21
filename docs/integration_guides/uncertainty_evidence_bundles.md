@@ -98,11 +98,27 @@ PBPK MCP now validates these rows conservatively. For example:
 
 - `variability-approach` rows should include `method` or `summary`
 - `variability-propagation` rows should include `method` or `summary`, plus `metric`, `targetOutput`, or `variedParameters`
+- `variability-propagation` rows should also include at least one quantitative signal such as `value`, `lowerBound`, `upperBound`, `mean`, or `sd`; otherwise the row is treated as declared propagation scope rather than quantified propagation evidence
 - `sensitivity-analysis` rows should include `method` or `summary`, plus `metric`, `targetOutput`, or `variedParameters`
 - `residual-uncertainty` rows should include `summary`
 - companion bundle metadata should include at least `bundleVersion` and `summary`
 
 Missing fields are surfaced as warnings in both `validate_model_manifest` and `export_oecd_report`; the MCP does not silently upgrade weak rows into stronger uncertainty claims.
+
+## Quantified vs Declared-Only Coverage
+
+`uncertaintySummary.semanticCoverage` now exposes additive counters so downstream consumers do not need to infer quantification state from raw rows alone:
+
+- `quantifiedRowCount`
+- `declaredOnlyRowCount`
+- `variabilityQuantificationStatus`
+
+The intended interpretation is:
+
+- `quantifiedRowCount` counts uncertainty rows that carry quantitative outputs recognized by the bridge
+- `declaredOnlyRowCount` counts uncertainty rows that describe scope, method, or unresolved uncertainty without quantitative outputs
+- `variabilityQuantificationStatus = quantified` is reserved for cases where `variability-propagation` rows actually include quantitative outputs
+- `variabilityQuantificationStatus = declared-or-characterized` means variability was described, scoped, or bounded qualitatively, but not exported as quantified propagation evidence
 
 ## Template
 

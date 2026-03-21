@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`v0.3.2` keeps a patch-first runtime on purpose.
+`v0.3.1` keeps a patch-first runtime on purpose.
 
 That means the authoritative live MCP contract is defined in:
 
@@ -65,6 +65,7 @@ What it does:
 - recreates `redis`, `api`, and `worker`
 - reapplies the shared runtime patch set to `pbpk_mcp-api-1` and `pbpk_mcp-worker-1`
 - restarts the patched containers
+- waits for stable `/health` and `/mcp/list_tools` responses before returning so follow-on live checks do not race a still-settling API process
 
 ### 2. Patch-only recovery
 
@@ -115,6 +116,8 @@ These checks should confirm:
 - discovery, validation, deterministic results, and OECD report export still work
 - `.pksim5` rejection still carries explicit conversion guidance
 - the currently discovered runtime-supported models still load and execute through the live API
+
+`./scripts/deploy_rxode2_stack.sh` now includes a built-in readiness wait through `scripts/wait_for_runtime_ready.py`. That helper requires several consecutive successful `/health` and `/mcp/list_tools` probes before the deploy command exits, which reduces transient connection resets immediately after patch-driven restarts.
 
 When you specifically want to exercise declared `rxode2` population support too, run:
 

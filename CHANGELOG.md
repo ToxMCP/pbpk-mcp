@@ -9,12 +9,19 @@ All notable changes to this project should be documented in this file.
 - additive `uncertaintyHandoff.v1` PBPK-side NGRA object in both native and external-normalization flows, so downstream orchestrators can consume a typed PBPK uncertainty handoff without giving PBPK MCP ownership of cross-domain uncertainty synthesis
 - additive `uncertaintyRegisterReference.v1` handoff object for optional external uncertainty-register provenance in both native and external-normalization flows
 - companion performance bundles can now add a traceability-only `profileSupplement` so predictive dataset records, acceptance criteria, and target outputs can be documented without writing new bridge code
+- additive `uncertaintySummary.semanticCoverage` semantics in both native and external-normalization flows, so PBPK-side variability, sensitivity, and residual uncertainty can be distinguished as quantified, declared-only, or still missing without inferring that from raw evidence rows
+- additive `performanceEvidence.traceabilityConsistency` reporting, so bundled predictive evidence can be checked against declared datasets, target outputs, and acceptance criteria instead of only being counted
+- additive `uncertaintySummary.semanticCoverage` counters for `quantifiedRowCount` and `declaredOnlyRowCount`, plus stricter quantitative-signal handling for `variability-propagation` rows
+- `scripts/wait_for_runtime_ready.py` plus deploy-path readiness stabilization, so local patch-first redeploys now wait for stable `/health` and `/mcp/list_tools` responses before returning
 
 ### Changed
 
 - release-readiness and live-stack tests now assert the new uncertainty handoff boundary alongside BER and PoD handoff semantics
 - removed product-specific downstream-orchestrator references from the public documentation in favor of generic integration language
 - `performanceEvidence` now reports a `predictiveDatasetSummary` and merges companion `profileSupplement` content into traceability counts without changing qualification scoring
+- `uncertaintyHandoff.supports` now exposes whether typed uncertainty semantics are attached and whether PBPK-side variability, sensitivity, or residual uncertainty are actually quantified
+- uncertainty bundle validation now warns when `variability-propagation` rows declare propagation scope without exporting any quantitative outputs
+- performance bundle validation now warns when row-level dataset, target-output, or acceptance-criterion fields do not match the declared traceability supplement
 
 ## v0.3.4 - 2026-03-21
 
