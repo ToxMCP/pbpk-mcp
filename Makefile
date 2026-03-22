@@ -81,10 +81,11 @@ runtime-patch-check: ## Compile the patch-first runtime files used by the live s
 		src/mcp/tools/get_job_status.py \
 		src/mcp/tools/get_results.py \
 		src/mcp/tools/ingest_external_pbpk_bundle.py \
+		src/mcp/tools/export_oecd_report.py \
 		src/mcp/tools/run_population_simulation.py \
+		src/mcp/tools/run_verification_checks.py \
 		src/mcp/tools/validate_model_manifest.py \
-		patches/mcp/tools/validate_simulation_request.py \
-		patches/mcp/tools/export_oecd_report.py \
+		src/mcp/tools/validate_simulation_request.py \
 		src/mcp_bridge/contract/__init__.py \
 		src/mcp_bridge/contract/artifacts.py \
 		src/mcp_bridge/model_catalog.py \

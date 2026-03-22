@@ -22,7 +22,7 @@ PATCHES: tuple[RuntimePatch, ...] = (
         "/usr/local/lib/python3.11/site-packages/mcp_bridge/adapter/ospsuite.py",
     ),
     RuntimePatch(
-        "patches/mcp/tools/run_verification_checks.py",
+        "src/mcp/tools/run_verification_checks.py",
         "/usr/local/lib/python3.11/site-packages/mcp/tools/run_verification_checks.py",
     ),
     RuntimePatch(
@@ -62,7 +62,7 @@ PATCHES: tuple[RuntimePatch, ...] = (
         "/usr/local/lib/python3.11/site-packages/mcp/tools/discover_models.py",
     ),
     RuntimePatch(
-        "patches/mcp/tools/export_oecd_report.py",
+        "src/mcp/tools/export_oecd_report.py",
         "/usr/local/lib/python3.11/site-packages/mcp/tools/export_oecd_report.py",
     ),
     RuntimePatch(
@@ -82,7 +82,7 @@ PATCHES: tuple[RuntimePatch, ...] = (
         "/usr/local/lib/python3.11/site-packages/mcp/tools/ingest_external_pbpk_bundle.py",
     ),
     RuntimePatch(
-        "patches/mcp/tools/validate_simulation_request.py",
+        "src/mcp/tools/validate_simulation_request.py",
         "/usr/local/lib/python3.11/site-packages/mcp/tools/validate_simulation_request.py",
     ),
     RuntimePatch(

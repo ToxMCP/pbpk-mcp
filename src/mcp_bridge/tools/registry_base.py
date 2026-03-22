@@ -32,6 +32,11 @@ from mcp.tools.get_population_results import (
     GetPopulationResultsResponse,
     get_population_results,
 )
+from mcp.tools.export_oecd_report import (
+    ExportOecdReportRequest,
+    ExportOecdReportResponse,
+    export_oecd_report,
+)
 from mcp.tools.list_parameters import (
     ListParametersRequest,
     ListParametersResponse,
@@ -47,6 +52,11 @@ from mcp.tools.run_population_simulation import (
     RunPopulationSimulationResponse,
     run_population_simulation,
 )
+from mcp.tools.run_verification_checks import (
+    RunVerificationChecksRequest,
+    RunVerificationChecksResponse,
+    run_verification_checks,
+)
 from mcp.tools.run_sensitivity_analysis import (
     RunSensitivityAnalysisRequest,
     RunSensitivityAnalysisResponse,
@@ -61,6 +71,11 @@ from mcp.tools.set_parameter_value import (
     SetParameterValueRequest,
     SetParameterValueResponse,
     set_parameter_value,
+)
+from mcp.tools.validate_simulation_request import (
+    ValidateSimulationRequestRequest,
+    ValidateSimulationRequestResponse,
+    validate_simulation_request,
 )
 
 
@@ -182,6 +197,24 @@ def get_base_tool_registry(
             critical=True,
             requires_confirmation=True,
         ),
+        "validate_simulation_request": ToolDescriptor(
+            name="validate_simulation_request",
+            description="Run a preflight OECD-style applicability and guardrail assessment for a loaded model.",
+            request_model=ValidateSimulationRequestRequest,
+            response_model=ValidateSimulationRequestResponse,
+            handler=validate_simulation_request,
+            dependencies=("adapter",),
+            roles=standard_roles("viewer", "operator", "admin"),
+        ),
+        "run_verification_checks": ToolDescriptor(
+            name="run_verification_checks",
+            description="Run executable verification checks for a loaded model, including deterministic smoke tests and optional population smoke where supported.",
+            request_model=RunVerificationChecksRequest,
+            response_model=RunVerificationChecksResponse,
+            handler=run_verification_checks,
+            dependencies=("adapter",),
+            roles=standard_roles("viewer", "operator", "admin"),
+        ),
         "get_population_results": ToolDescriptor(
             name="get_population_results",
             description="Fetch aggregated results and chunk handles for a completed population simulation.",
@@ -210,6 +243,15 @@ def get_base_tool_registry(
             roles=standard_roles("operator", "admin"),
             critical=True,
             requires_confirmation=True,
+        ),
+        "export_oecd_report": ToolDescriptor(
+            name="export_oecd_report",
+            description="Export an OECD-style model dossier/report for a loaded simulation, including profile, assessment, and parameter provenance.",
+            request_model=ExportOecdReportRequest,
+            response_model=ExportOecdReportResponse,
+            handler=export_oecd_report,
+            dependencies=("adapter",),
+            roles=standard_roles("viewer", "operator", "admin"),
         ),
     }
 

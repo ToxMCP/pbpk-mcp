@@ -32,9 +32,12 @@ class PackagedToolRegistryTests(unittest.TestCase):
             "get_job_status",
             "calculate_pk_parameters",
             "run_population_simulation",
+            "validate_simulation_request",
+            "run_verification_checks",
             "get_population_results",
             "cancel_job",
             "run_sensitivity_analysis",
+            "export_oecd_report",
         }
         self.assertTrue(expected.issubset(set(registry)))
 
@@ -44,9 +47,6 @@ class PackagedToolRegistryTests(unittest.TestCase):
         patch_only = {
             "discover_models",
             "validate_model_manifest",
-            "validate_simulation_request",
-            "run_verification_checks",
-            "export_oecd_report",
             "get_results",
             "ingest_external_pbpk_bundle",
         }

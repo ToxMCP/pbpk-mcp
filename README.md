@@ -196,8 +196,8 @@ PBPK MCP now also publishes a machine-readable contract manifest in:
 That manifest inventories the published PBPK-side schema family, the capability matrix, the legacy artifacts intentionally excluded from the PBPK-side object family, and the stable resource endpoints that expose the contract.
 The live schema, capability-matrix, and contract-manifest resources now also expose SHA-256 values so downstream clients can verify that the running API matches the published artifact inventory.
 The shared schema/capability/contract-manifest route logic now lives in packaged `src/mcp_bridge/routes/resources_base.py`, while the patch layer only extends `/mcp/resources` with the model-catalog endpoint that is still patch-only in the current convergence stage.
-The same split now starts to exist for tools as well: packaged `src/mcp_bridge/tools/registry_base.py` owns the shared base tool descriptors, while the patch layer only adds the extended discovery/verification/reporting/import descriptors that still need runtime overlay in the current convergence stage.
-The next `0.4.x` debt-reduction slices are now live too: generic discovery, manifest, load/session-status/population workflow tools, deterministic-result retrieval, external-import normalization, and the shared `model_catalog` / `model_manifest` helpers now live in packaged `src/`, while the patch manifest carries those packaged files into the live stack until the base image catches up.
+The same split now starts to exist for tools as well: packaged `src/mcp_bridge/tools/registry_base.py` owns the shared base tool descriptors, while the patch layer only adds the remaining discovery/static-manifest/result/import descriptors that still need runtime overlay in the current convergence stage.
+The next `0.4.x` debt-reduction slices are now live too: generic discovery, manifest, load/session-status, preflight validation, executable verification, dossier export, deterministic-result retrieval, external-import normalization, population workflow tools, and the shared `model_catalog` / `model_manifest` helpers now live in packaged `src/`, while the patch manifest carries those packaged files into the live stack until the base image catches up.
 
 ## Capability matrix
 
@@ -601,11 +601,13 @@ Important boundaries:
 - `src/mcp/tools/discover_models.py`
 - `src/mcp/tools/load_simulation.py`
 - `src/mcp/tools/get_job_status.py`
+- `src/mcp/tools/validate_simulation_request.py`
+- `src/mcp/tools/run_verification_checks.py`
 - `src/mcp/tools/validate_model_manifest.py`
+- `src/mcp/tools/export_oecd_report.py`
 - `src/mcp/tools/get_results.py`
 - `src/mcp/tools/ingest_external_pbpk_bundle.py`
 - `src/mcp/tools/run_population_simulation.py`
-- `patches/mcp/tools/validate_simulation_request.py`
 - `docs/architecture/dual_backend_pbpk_mcp.md`
 - `docs/deployment/runtime_patch_flow.md`
 - `docs/integration_guides/rxode2_adapter.md`
