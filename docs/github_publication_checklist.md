@@ -28,7 +28,7 @@
 - state clearly that `.pksim5` is an export source and should be converted to `.pkml` before runtime use
 - state clearly that runnable does not mean scientifically qualified
 - state clearly that OECD-oriented metadata supports risk-assessment workflows but does not replace scientific dossier review
-- state clearly when the local runtime is still patch-first rather than fully packaged from `src/`
+- state clearly when the local runtime still relies on source overlays rather than a fully packaged image/runtime boundary
 
 ## Files To Review Before Publishing
 

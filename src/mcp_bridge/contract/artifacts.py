@@ -247,7 +247,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "docs/github_publication_checklist.md",
       "role": "publication checklist",
-      "sha256": "263fb00aaf87fe0f8be3d7deb90727c8688b6c25c400a33378247126a38623c1"
+      "sha256": "b00bf8aea5469aeb0dc9cc3ccc4e26bbcfe3c3019eb539fbb836bd6f0d8690b6"
     },
     {
       "classification": "supporting",

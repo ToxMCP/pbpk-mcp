@@ -44,7 +44,7 @@ flowchart LR
 
     subgraph Runtime["Runtime and QA Path"]
         Jobs["Celery + Redis jobs\nasync runs and result handles"]
-        Patches["Patch-first runtime\nshared patch manifest + installer"]
+        Overlay["Source-overlay runtime\nbind mounts + worker image"]
         Tests["Unit + live smoke tests\nrelease readiness checks"]
     end
 
@@ -61,9 +61,9 @@ flowchart LR
     Convert --> OSPSuite
     Convert --> Rxode2
     Tools --> Jobs
-    Patches --> Tools
+    Overlay --> Tools
     Qualification --> Tests
-    Patches --> Tests
+    Overlay --> Tests
 ```
 
 The current implementation follows a layered model:
@@ -74,19 +74,19 @@ The current implementation follows a layered model:
 - `Execution backends` route `.pkml` files to `ospsuite` and MCP-ready `.R` modules to `rxode2`, while treating `.pksim5` and `.mmd` as conversion-only inputs.
 - `Qualification metadata` keeps `capabilities`, `profile`, `validation`, and `qualificationState` separate so runnable does not get conflated with scientifically qualified.
 - `Executable verification` adds lightweight but structured runtime checks on top of qualification metadata, including parameter-unit consistency, structural flow/volume consistency, deterministic smoke, result-integrity, and repeat-run reproducibility checks without conflating them with formal qualification evidence.
-- `Patch-first runtime + smoke tests` keep the documented tool surface synchronized with the live API during the current `v0.3.5` convergence stage.
+- `Source-overlay runtime + smoke tests` keep the documented tool surface synchronized with the live API during the current `v0.4.0` convergence stage.
 - `Release metadata checks` now verify that package version markers, compose/env `SERVICE_VERSION`, README release markers, the top changelog entry, and the matching `docs/releases/` note stay aligned.
 - `Release artifact evidence` now retains a machine-readable report with `sdist`/wheel hashes and the linked contract-manifest identity during tag builds.
 
 See `docs/architecture/dual_backend_pbpk_mcp.md` for the fuller architecture narrative, `docs/architecture/capability_matrix.md` for the published support matrix, `docs/architecture/mcp_payload_conventions.md` for the response contract, and `docs/deployment/runtime_patch_flow.md` for the operator path behind the current local deployment model.
 
-## What's new in v0.3.5
+## What's new in v0.4.0
 
-- Added typed external uncertainty handoff references and stricter PBPK-side uncertainty semantics for quantified versus declared-only uncertainty evidence.
-- Strengthened predictive-evidence traceability with supplement consistency checks against declared datasets, target outputs, and acceptance criteria.
-- Added deploy-path readiness stabilization so patch-first redeploys wait for stable `/health` and `/mcp/list_tools` responses before returning.
-- Preserved the explicit PBPK/NGRA boundary: PBPK MCP exports qualified PBPK-side objects and evidence, but still does not calculate BER or make assessment decisions.
-- Re-verified the release against the live stack and the clean-clone contract suite.
+- Formalized `pbpk-mcp.v1` with published PBPK-side object schemas, example payloads, a capability matrix, a machine-readable contract manifest, and integrity-hashed live MCP contract resources.
+- Hardened packaging and release gates with explicit dependency preflight, installed-package validation, `sdist`/wheel validation, release-metadata consistency checks, and retained release-artifact evidence.
+- Added a hardened deployment overlay with explicit auth requirements while preserving the same documented MCP contract as the development stack.
+- Moved the generic MCP runtime surface into packaged `src/`, including shared resources, tool registry, workflow tools, and adapter/runtime boundaries.
+- Retired the tracked patch-copy runtime flow: the local stack now uses a source overlay on top of the packaged worker image baseline while keeping the public PBPK/NGRA boundary unchanged.
 
 ## Why this project exists
 
@@ -239,8 +239,7 @@ cd pbpk-mcp
 ./scripts/deploy_rxode2_stack.sh
 ```
 
-> **Heads-up:** The current local deployment is intentionally patch-first. `./scripts/deploy_rxode2_stack.sh` recreates the stack and reapplies the current runtime patch set so the live API matches the documented `v0.3.5` contract.
-> It now also waits for stable `/health` and `/mcp/list_tools` responses before returning, so immediate live-stack checks do not race a restarting API process.
+> **Heads-up:** The current local deployment is a source-overlay development stack. `./scripts/deploy_rxode2_stack.sh` recreates the stack with the workspace bind mounts and waits for stable `/health` and `/mcp/list_tools` responses before returning, so immediate live-stack checks do not race a restarting API process.
 
 Once the server is running:
 
@@ -308,7 +307,7 @@ The default developer stack is defined in `docker-compose.celery.yml`. A stricte
 | `R_PATH` / `R_HOME` | container defaults | Point the bridge to the R runtime used by `rxode2` and OSPSuite tooling. |
 | `R_MAX_VSIZE` | `2G` | Caps R virtual memory use inside the current local worker setup. |
 | `DOTNET_GCHeapLimitPercent` | `60` | Constrains the .NET heap used by the OSPSuite runtime. |
-| `SERVICE_VERSION` | `0.3.5` | Exposed through `/health` and compose-level runtime metadata. |
+| `SERVICE_VERSION` | `0.4.0` | Exposed through `/health` and compose-level runtime metadata. |
 | `AUTH_ALLOW_ANONYMOUS` | `true` | Development-friendly local default; do not expose beyond localhost without hardening. |
 | `PBPK_BIND_HOST` | `127.0.0.1` | Host/interface used by the hardened overlay when publishing the API port. |
 | `PBPK_BIND_PORT` | `8000` | Host port used by the hardened overlay when publishing the API port. |
@@ -440,7 +439,7 @@ The preferred local operator entrypoint is:
 ./scripts/deploy_rxode2_stack.sh
 ```
 
-That command recreates the containers and reapplies the current runtime patch set so the live tool catalog remains aligned with the documented contract.
+That command recreates the containers with the workspace source overlay in place so the live tool catalog remains aligned with the documented contract.
 
 When you want the same runtime contract with stricter deployment defaults, use:
 
@@ -451,7 +450,7 @@ AUTH_JWKS_URL="https://issuer.example/.well-known/jwks.json" \
 ./scripts/deploy_hardened_stack.sh
 ```
 
-That overlay disables anonymous access, switches the stack to `ENVIRONMENT=production`, binds the published API port through `PBPK_BIND_HOST` / `PBPK_BIND_PORT`, and still reapplies the shared patch manifest before waiting for stable `/health` and `/mcp/list_tools` responses.
+That overlay disables anonymous access, switches the stack to `ENVIRONMENT=production`, binds the published API port through `PBPK_BIND_HOST` / `PBPK_BIND_PORT`, and still waits for stable `/health` and `/mcp/list_tools` responses before returning.
 
 ---
 
@@ -532,7 +531,7 @@ The server currently produces and exposes:
 - `rxode2` image builds are heavy and should be prebuilt rather than compiled inside a capped runtime worker.
 - Runtime workers should stay conservatively capped, such as `4 GiB`.
 - Durable `rxode2` image builds can take a long time on laptop hardware because of C/C++ compilation.
-- The current local deployment is patch-first, so container recreate should be followed by the shared patch-install flow to keep the live API aligned with the current workspace contract.
+- The current local deployment is source-overlay based, so container recreate should go through the documented deploy entrypoints to keep the live API aligned with the current workspace contract.
 - The hardened overlay improves auth defaults and bind behavior, but it is still an operator-side compose profile rather than a full production deployment package with ingress, secret rotation, or managed identity infrastructure.
 
 ---
@@ -570,9 +569,9 @@ The published `pbpk-mcp.v1` contract manifest now distinguishes:
 
 If you are maintaining the local stack in the current convergence stage:
 
-1. Change the authoritative runtime files in the migrated shared modules under `src/`, any remaining runtime-specific files under `patches/`, `scripts/ospsuite_bridge.R`, or the bundled `.R` model modules.
+1. Change the authoritative runtime files in the packaged modules under `src/`, the local runtime helpers under `scripts/`, `scripts/ospsuite_bridge.R`, or the bundled `.R` model modules.
    - generic MCP namespaces, tool modules, and adapter/runtime files now live under `src/`
-   - `patches/` should be reserved for genuinely runtime-specific deltas that are not yet migrated
+   - the local operator/runtime helper surface now lives in the deploy scripts, worker Dockerfile, and overlay hook rather than a tracked `patches/` implementation layer
 2. If the worker image baseline should change, rebuild it with `./scripts/build_rxode2_worker_image.sh`.
 3. Recreate the stack with `./scripts/deploy_rxode2_stack.sh`.
    - When you need stricter auth defaults, use `./scripts/deploy_hardened_stack.sh` with `AUTH_ISSUER_URL`, `AUTH_AUDIENCE`, and `AUTH_JWKS_URL` set.
@@ -665,7 +664,7 @@ Citation metadata: `CITATION.cff`
 
 ## Roadmap
 
-- Move from the current patch-first convergence stage into a packaged `src/` implementation once the public contract is fully stable.
+- Move from the current source-overlay convergence stage into a cleaner fully packaged runtime boundary once the public contract and worker-image baseline are fully stable.
 - Add richer quantitative uncertainty, sensitivity, and implementation-verification evidence to strengthen regulatory-facing qualification.
 - Expand dossier-grade parameter provenance and model-performance evidence across curated example and production models.
 - Keep improving release automation so image build, hot patching, docs, and version markers stay aligned.

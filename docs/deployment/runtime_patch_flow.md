@@ -16,7 +16,7 @@ This document explains how that local overlay deployment works and how to operat
 
 ## Why This Exists
 
-The `0.4.x` line is reducing patch-first debt without breaking the live contract.
+The `0.4.x` line is reducing the old patch-first debt without breaking the live contract.
 
 At the current stage:
 
@@ -227,7 +227,7 @@ This local overlay flow should eventually give way to a cleaner packaged runtime
 
 That later milestone should:
 
-- keep reducing the remaining runtime-specific files under `patches/`
+- keep reducing the remaining local overlay-specific runtime surface
 - make the packaged image/runtime boundary authoritative by default
 - reduce the amount of local source overlay needed for normal development
 

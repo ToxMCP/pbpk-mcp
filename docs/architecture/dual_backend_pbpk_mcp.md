@@ -11,7 +11,7 @@ This document describes the current direction of PBPK MCP as it is implemented t
 - discovery is filesystem-backed
 - OECD-oriented qualification metadata is exposed separately from runtime execution
 - Berkeley Madonna `.mmd` remains a conversion source, not a runtime format
-- the current contract-convergence stage is patch-first, with the live MCP surface implemented from `patches/` and applied into the running containers
+- the current contract-convergence stage uses a packaged `src/` runtime with a local source-overlay development stack for workspace iteration
 
 ## Product Positioning
 
@@ -51,7 +51,7 @@ This is deliberate because the published PBPK workflow and the live tests were a
 The current maintainability rule is:
 
 - change the canonical generic runtime contract in `src/`
-- reserve `patches/` only for genuinely runtime-specific deltas that have not been migrated yet
+- keep runtime-specific local operator logic in the deploy scripts, worker image, and overlay hook rather than a tracked patch implementation layer
 - verify it on the live stack
 - keep shrinking the remaining runtime-specific overlay surface until the packaged boundary is authoritative by default
 

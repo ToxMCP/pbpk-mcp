@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp-bridge"
-version = "0.3.5"
+version = "0.4.0"
 description = "Dual-backend PBPK Model Context Protocol server for qualification, verification, and reporting"
 readme = "README.md"
 requires-python = ">=3.9"

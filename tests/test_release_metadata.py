@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 import shutil
 import sys
 import tempfile
@@ -22,10 +23,18 @@ ReleaseMetadataError = module.ReleaseMetadataError
 validate_release_metadata = module.validate_release_metadata
 
 
+def _workspace_version() -> str:
+    pyproject_text = (WORKSPACE_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    match = re.search(r'^version = "(?P<version>\d+\.\d+\.\d+)"$', pyproject_text, flags=re.MULTILINE)
+    if match is None:  # pragma: no cover - test fixture guard
+        raise AssertionError("Unable to determine workspace version from pyproject.toml")
+    return match.group("version")
+
+
 class ReleaseMetadataTests(unittest.TestCase):
     def test_workspace_release_metadata_is_consistent(self) -> None:
         summary = validate_release_metadata(WORKSPACE_ROOT)
-        self.assertEqual(summary["version"], "0.3.5")
+        self.assertEqual(summary["version"], _workspace_version())
         self.assertEqual(summary["projectVersion"], summary["composeServiceVersion"])
         self.assertEqual(summary["projectVersion"], summary["releaseNoteVersion"])
 

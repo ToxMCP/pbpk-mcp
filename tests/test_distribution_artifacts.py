@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -23,16 +24,25 @@ required_sdist_paths = module._required_sdist_paths
 stage_source_tree = module._stage_source_tree
 
 
+def _workspace_version() -> str:
+    pyproject_text = (WORKSPACE_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    match = re.search(r'^version = "(?P<version>\d+\.\d+\.\d+)"$', pyproject_text, flags=re.MULTILINE)
+    if match is None:  # pragma: no cover - test fixture guard
+        raise AssertionError("Unable to determine workspace version from pyproject.toml")
+    return match.group("version")
+
+
 class DistributionArtifactTests(unittest.TestCase):
     def test_required_sdist_paths_include_release_metadata_script(self) -> None:
         required = required_sdist_paths(WORKSPACE_ROOT)
         self.assertIn("scripts/check_release_metadata.py", required)
 
     def test_release_artifact_report_links_contract_manifest_and_hashes(self) -> None:
+        version = _workspace_version()
         with tempfile.TemporaryDirectory(prefix="pbpk_release_report_") as temp_dir:
             temp_root = Path(temp_dir)
-            sdist_path = temp_root / "mcp_bridge-0.3.5.tar.gz"
-            wheel_path = temp_root / "mcp_bridge-0.3.5-py3-none-any.whl"
+            sdist_path = temp_root / f"mcp_bridge-{version}.tar.gz"
+            wheel_path = temp_root / f"mcp_bridge-{version}-py3-none-any.whl"
             sdist_path.write_bytes(b"sdist-bytes")
             wheel_path.write_bytes(b"wheel-bytes")
 
@@ -41,7 +51,7 @@ class DistributionArtifactTests(unittest.TestCase):
         manifest = json.loads(
             (WORKSPACE_ROOT / "docs" / "architecture" / "contract_manifest.json").read_text(encoding="utf-8")
         )
-        self.assertEqual(report["packageVersion"], "0.3.5")
+        self.assertEqual(report["packageVersion"], version)
         self.assertEqual(report["contractVersion"], manifest["contractVersion"])
         self.assertEqual(
             report["contractManifest"]["relativePath"],

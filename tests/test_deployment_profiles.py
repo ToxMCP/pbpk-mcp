@@ -17,6 +17,17 @@ WORKER_DOCKERFILE = WORKSPACE_ROOT / "docker" / "rxode2-worker.Dockerfile"
 
 
 class DeploymentProfileTests(unittest.TestCase):
+    def test_no_tracked_patch_implementation_files_remain(self) -> None:
+        patch_root = WORKSPACE_ROOT / "patches"
+        if not patch_root.exists():
+            return
+        remaining = [
+            path.relative_to(WORKSPACE_ROOT).as_posix()
+            for path in patch_root.rglob("*")
+            if path.is_file() and "__pycache__" not in path.parts
+        ]
+        self.assertEqual(remaining, [])
+
     def test_development_compose_keeps_explicit_dev_default(self) -> None:
         text = DEV_COMPOSE.read_text(encoding="utf-8")
         self.assertIn('AUTH_ALLOW_ANONYMOUS: "true"', text)
