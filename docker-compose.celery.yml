@@ -35,12 +35,10 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/1
       ADAPTER_TIMEOUT_SECONDS: "10"
       R_MAX_VSIZE: 2G
+      PBPK_ENABLE_SRC_OVERLAY: "false"
       SERVICE_VERSION: "0.4.0"
     volumes:
-      - ./scripts:/app/scripts
-      - ./src:/app/src
       - ./var:/app/var
-      - ./scripts/runtime_src_overlay.pth:/usr/local/lib/python3.11/site-packages/pbpk_mcp_runtime_src.pth:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health || exit 1"]
       interval: 30s
@@ -60,10 +58,7 @@ services:
       <<: *pbpk-common-env
       JOB_REGISTRY_PATH: /app/var/jobs/registry.json
     volumes:
-      - ./scripts:/app/scripts
-      - ./src:/app/src
       - ./var:/app/var
-      - ./scripts/runtime_src_overlay.pth:/usr/local/lib/python3.11/site-packages/pbpk_mcp_runtime_src.pth:ro
     mem_limit: 4g
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f 'celery.*worker' >/dev/null || exit 1"]

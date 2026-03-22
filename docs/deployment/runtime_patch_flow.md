@@ -1,18 +1,24 @@
-# Runtime Overlay Flow
+# Runtime Deployment Flow
 
 ## Purpose
 
-The local PBPK MCP stack now runs as a source-overlay development runtime.
+The local PBPK MCP stack now has two explicit operator modes:
 
-That means the authoritative live contract comes from:
+- a packaged local runtime used by default
+- an opt-in source-overlay development runtime for workspace iteration
+
+In both modes, the authoritative contract comes from:
 
 - the packaged `src/` implementation in the image
-- the workspace `src/` tree bind-mounted at `/app/src`
-- `scripts/runtime_src_overlay.pth`, which promotes `/app/src` ahead of the installed package
 - the worker-image baseline assets baked by `docker/rxode2-worker.Dockerfile`
 - the published packaged contract artifacts exposed through `mcp_bridge.contract`
 
-This document explains how that local overlay deployment works and how to operate it safely.
+Only the explicit source-overlay profile additionally uses:
+
+- the workspace `src/` tree bind-mounted at `/app/src`
+- `scripts/runtime_src_overlay.pth`, which promotes `/app/src` ahead of the installed package when `PBPK_ENABLE_SRC_OVERLAY=true`
+
+This document explains both local deployment modes and how to operate them safely.
 
 ## Why This Exists
 
@@ -23,18 +29,20 @@ At the current stage:
 - the user-facing and tested MCP contract is real
 - the generic runtime now lives in packaged `src/`
 - the worker image bakes the baseline R assets directly
-- the local compose stack overlays workspace source through bind mounts instead of patch-copying files into running containers
-- pure packaged runtime deployment is still the longer-term destination
+- the default local compose stack now runs the packaged baseline directly
+- an explicit overlay profile still exists for maintainer-local workspace iteration
 
-This is a transitional operator model, but it is now materially simpler than the earlier hot-patch flow.
+This is still a transitional operator model, but it is materially simpler than the earlier hot-patch flow and now cleaner than the old overlay-by-default setup.
 
 ## Canonical Files
 
-The local source-overlay stack is defined by:
+The local deployment surface is defined by:
 
 - `docker-compose.celery.yml`
+- `docker-compose.overlay.yml`
 - `docker-compose.hardened.yml`
 - `scripts/deploy_rxode2_stack.sh`
+- `scripts/deploy_source_overlay_stack.sh`
 - `scripts/deploy_hardened_stack.sh`
 - `scripts/wait_for_runtime_ready.py`
 - `scripts/runtime_src_overlay.pth`
@@ -47,11 +55,14 @@ The worker image now bakes:
 - `scripts/ospsuite_bridge.R`
 - `cisplatin_models/cisplatin_population_rxode2_model.R`
 
-The local compose stack then bind-mounts:
+The default packaged compose stack bind-mounts:
+
+- `./var:/app/var`
+
+The optional source-overlay profile additionally bind-mounts:
 
 - `./src:/app/src`
 - `./scripts:/app/scripts`
-- `./var:/app/var`
 - `./scripts/runtime_src_overlay.pth:/usr/local/lib/python3.11/site-packages/pbpk_mcp_runtime_src.pth:ro`
 
 The live schema, capability-matrix, and contract-manifest resources now treat packaged `mcp_bridge.contract` content as authoritative. `scripts/check_installed_package_contract.py` is the maintainer gate that proves the generated package fallback still matches the published JSON artifacts after a non-editable local install.
@@ -60,7 +71,7 @@ The live schema, capability-matrix, and contract-manifest resources now treat pa
 
 Use these in order of preference.
 
-### 1. Normal local redeploy
+### 1. Default packaged local redeploy
 
 ```bash
 ./scripts/deploy_rxode2_stack.sh
@@ -68,17 +79,36 @@ Use these in order of preference.
 
 Use this when:
 
-- you changed the current workspace source or runtime helper files
-- you want the running API and worker to match the current workspace state
+- you want the local stack to reflect the current packaged worker-image baseline
+- you want the default operator path rather than maintainer-local source overrides
 - you recreated the containers and want the live MCP surface to stay aligned
 
 What it does:
 
 - recreates `redis`, `api`, and `worker`
-- keeps the local `src/`, `scripts/`, `var/`, and overlay `.pth` bind mounts in place
+- keeps the local `var/` bind mount in place for models, jobs, and smoke artifacts
 - waits for stable `/health` and `/mcp/list_tools` responses before returning so follow-on live checks do not race a still-settling API process
 
-### 2. Hardened local or operator redeploy
+### 2. Source-overlay maintainer redeploy
+
+```bash
+./scripts/deploy_source_overlay_stack.sh
+```
+
+Use this when:
+
+- you changed workspace `src/` or runtime helper files
+- you want the running API and worker to reflect the current workspace tree rather than only the baked image
+- you are doing maintainer-local development on the runtime itself
+
+What it does:
+
+- layers `docker-compose.overlay.yml` over `docker-compose.celery.yml`
+- bind-mounts the local `src/`, `scripts/`, and `var/` trees
+- enables `PBPK_ENABLE_SRC_OVERLAY=true`
+- waits for stable `/health` and `/mcp/list_tools` responses before returning
+
+### 3. Hardened local or operator redeploy
 
 ```bash
 AUTH_ISSUER_URL="https://issuer.example" \
@@ -100,7 +130,7 @@ What it does:
 - sets `AUTH_ALLOW_ANONYMOUS=false` and `ENVIRONMENT=production`
 - waits for stable `/health` and `/mcp/list_tools` responses at the configured bind host/port before returning
 
-### 3. Rebuild the worker image baseline
+### 4. Rebuild the worker image baseline
 
 ```bash
 ./scripts/build_rxode2_worker_image.sh
@@ -112,7 +142,7 @@ Use this when:
 - `rxode2` or image-baked runtime assets need to be updated
 - you want the image baseline to catch up with the current packaged runtime
 
-This does not replace the source-overlay workflow. It updates the baseline image that local overlays build on top of.
+This does not replace the local runtime flows. It updates the baseline image that both the packaged and source-overlay modes build on top of.
 
 ## Verification Workflow
 
@@ -135,7 +165,7 @@ These checks should confirm:
 
 `./scripts/deploy_rxode2_stack.sh` includes a built-in readiness wait through `scripts/wait_for_runtime_ready.py`. That helper requires several consecutive successful `/health` and `/mcp/list_tools` probes before the deploy command exits, which reduces transient connection resets immediately after container recreate.
 
-`./scripts/deploy_hardened_stack.sh` uses the same readiness helper, but targets the base URL derived from `PBPK_BIND_HOST` and `PBPK_BIND_PORT`. This lets the hardened overlay validate the same runtime contract without assuming the default `127.0.0.1:8000` bind target.
+`./scripts/deploy_hardened_stack.sh` uses the same readiness helper, but targets the base URL derived from `PBPK_BIND_HOST` and `PBPK_BIND_PORT`. This lets the hardened profile validate the same runtime contract without assuming the default `127.0.0.1:8000` bind target.
 
 When you specifically want to exercise declared `rxode2` population support too, run:
 
@@ -166,7 +196,7 @@ Symptom:
 
 Typical cause:
 
-- the stack was not recreated after changing the local source-overlay files
+- the wrong deployment mode is still running
 - the wrong compose project or stale container is still running
 
 Fix:
@@ -174,7 +204,7 @@ Fix:
 - rerun `./scripts/deploy_rxode2_stack.sh`
 - verify `/health` and `/mcp/list_tools` again
 
-### Image baseline and local overlay diverged
+### Image baseline and source overlay diverged
 
 Symptom:
 
@@ -182,7 +212,7 @@ Symptom:
 
 Typical cause:
 
-- the workspace overlay is masking an out-of-date worker image baseline
+- the explicit source-overlay profile is masking an out-of-date worker image baseline
 
 Fix:
 
@@ -223,12 +253,9 @@ Fix:
 
 ## Deferred Work
 
-This local overlay flow should eventually give way to a cleaner packaged runtime boundary.
+The next packaging milestone should keep reducing the remaining local overlay-specific maintainership surface until even the explicit source-overlay profile is thinner.
 
-That later milestone should:
+For now:
 
-- keep reducing the remaining local overlay-specific runtime surface
-- make the packaged image/runtime boundary authoritative by default
-- reduce the amount of local source overlay needed for normal development
-
-Until then, this source-overlay flow is the supported maintainership path for the local PBPK MCP stack.
+- the packaged local runtime is the default operator path
+- the source-overlay profile is the supported maintainership path when you are actively changing runtime code

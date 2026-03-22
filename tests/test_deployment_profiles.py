@@ -8,12 +8,15 @@ from pathlib import Path
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
-DEV_COMPOSE = WORKSPACE_ROOT / "docker-compose.celery.yml"
+PACKAGED_COMPOSE = WORKSPACE_ROOT / "docker-compose.celery.yml"
+OVERLAY_COMPOSE = WORKSPACE_ROOT / "docker-compose.overlay.yml"
 HARDENED_COMPOSE = WORKSPACE_ROOT / "docker-compose.hardened.yml"
-DEV_DEPLOY = WORKSPACE_ROOT / "scripts" / "deploy_rxode2_stack.sh"
+PACKAGED_DEPLOY = WORKSPACE_ROOT / "scripts" / "deploy_rxode2_stack.sh"
+OVERLAY_DEPLOY = WORKSPACE_ROOT / "scripts" / "deploy_source_overlay_stack.sh"
 HARDENED_DEPLOY = WORKSPACE_ROOT / "scripts" / "deploy_hardened_stack.sh"
 RELEASE_ARTIFACTS_WORKFLOW = WORKSPACE_ROOT / ".github" / "workflows" / "release-artifacts.yml"
 WORKER_DOCKERFILE = WORKSPACE_ROOT / "docker" / "rxode2-worker.Dockerfile"
+ENV_EXAMPLE = WORKSPACE_ROOT / ".env.example"
 
 
 class DeploymentProfileTests(unittest.TestCase):
@@ -28,12 +31,22 @@ class DeploymentProfileTests(unittest.TestCase):
         ]
         self.assertEqual(remaining, [])
 
-    def test_development_compose_keeps_explicit_dev_default(self) -> None:
-        text = DEV_COMPOSE.read_text(encoding="utf-8")
+    def test_packaged_compose_is_default_local_runtime(self) -> None:
+        text = PACKAGED_COMPOSE.read_text(encoding="utf-8")
         self.assertIn('AUTH_ALLOW_ANONYMOUS: "true"', text)
         self.assertIn("ENVIRONMENT: development", text)
-        self.assertNotIn("./schemas:/app/schemas:ro", text)
-        self.assertNotIn("./docs:/app/docs:ro", text)
+        self.assertIn('PBPK_ENABLE_SRC_OVERLAY: "false"', text)
+        self.assertNotIn("./src:/app/src", text)
+        self.assertNotIn("./scripts:/app/scripts", text)
+        self.assertNotIn("pbpk_mcp_runtime_src.pth:ro", text)
+        self.assertEqual(text.count("./var:/app/var"), 2)
+
+    def test_overlay_compose_enables_workspace_source_overlay(self) -> None:
+        text = OVERLAY_COMPOSE.read_text(encoding="utf-8")
+        self.assertEqual(text.count('PBPK_ENABLE_SRC_OVERLAY: "true"'), 2)
+        self.assertEqual(text.count("./src:/app/src"), 2)
+        self.assertEqual(text.count("./scripts:/app/scripts"), 2)
+        self.assertEqual(text.count("./var:/app/var"), 2)
         self.assertEqual(
             text.count(
                 "./scripts/runtime_src_overlay.pth:/usr/local/lib/python3.11/site-packages/pbpk_mcp_runtime_src.pth:ro"
@@ -50,11 +63,22 @@ class DeploymentProfileTests(unittest.TestCase):
         self.assertIn("${AUTH_JWKS_URL:?", text)
         self.assertIn('${PBPK_BIND_HOST:-127.0.0.1}:${PBPK_BIND_PORT:-8000}:8000', text)
 
+    def test_env_example_defaults_to_packaged_runtime(self) -> None:
+        text = ENV_EXAMPLE.read_text(encoding="utf-8")
+        self.assertIn('PBPK_ENABLE_SRC_OVERLAY="false"', text)
+        self.assertIn("Set to true only when you intentionally run the source-overlay maintainer profile.", text)
+
     def test_deploy_scripts_wait_for_bound_base_url_without_patch_step(self) -> None:
-        dev_text = DEV_DEPLOY.read_text(encoding="utf-8")
-        self.assertIn("docker-compose.celery.yml", dev_text)
-        self.assertIn('wait_for_runtime_ready.py"', dev_text)
-        self.assertNotIn("apply_rxode2_patch.py", dev_text)
+        packaged_text = PACKAGED_DEPLOY.read_text(encoding="utf-8")
+        self.assertIn("docker-compose.celery.yml", packaged_text)
+        self.assertIn('wait_for_runtime_ready.py"', packaged_text)
+        self.assertNotIn("docker-compose.overlay.yml", packaged_text)
+
+        overlay_text = OVERLAY_DEPLOY.read_text(encoding="utf-8")
+        self.assertIn("docker-compose.celery.yml", overlay_text)
+        self.assertIn("docker-compose.overlay.yml", overlay_text)
+        self.assertIn('wait_for_runtime_ready.py"', overlay_text)
+        self.assertNotIn("apply_rxode2_patch.py", overlay_text)
 
         text = HARDENED_DEPLOY.read_text(encoding="utf-8")
         self.assertIn("docker-compose.celery.yml", text)
@@ -64,9 +88,12 @@ class DeploymentProfileTests(unittest.TestCase):
         self.assertIn('wait_for_runtime_ready.py" --base-url "${base_url}"', text)
         self.assertNotIn("apply_rxode2_patch.py", text)
 
-    def test_worker_image_carries_src_overlay_material(self) -> None:
+    def test_worker_image_installs_current_package_and_carries_overlay_material(self) -> None:
         text = WORKER_DOCKERFILE.read_text(encoding="utf-8")
+        self.assertIn("COPY pyproject.toml README.md /app/", text)
         self.assertIn("COPY src /app/src", text)
+        self.assertIn("python -m pip install --no-deps /app", text)
+        self.assertIn("metadata.version('mcp-bridge') == '0.4.0'", text)
         self.assertIn(
             "COPY scripts/runtime_src_overlay.pth /usr/local/lib/python3.11/site-packages/pbpk_mcp_runtime_src.pth",
             text,
@@ -79,11 +106,31 @@ class DeploymentProfileTests(unittest.TestCase):
         self.assertNotIn("COPY patches /tmp/pbpk_runtime_source/patches", text)
         self.assertNotIn("install_runtime_patches.py", text)
 
-    def test_runtime_src_overlay_pth_executes_cleanly_and_keeps_app_src_first(self) -> None:
+    def test_runtime_src_overlay_pth_is_disabled_by_default(self) -> None:
         overlay_line = (WORKSPACE_ROOT / "scripts" / "runtime_src_overlay.pth").read_text(encoding="utf-8").strip()
         program = f"""
 import json
 import sys
+sys.path[:] = ['keep-a', '/app/src', 'keep-b']
+exec({overlay_line!r})
+print(json.dumps(sys.path[:3]))
+"""
+        completed = subprocess.run(
+            [sys.executable, "-S", "-c", program],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        path_prefix = json.loads(completed.stdout.strip())
+        self.assertNotIn("/app/src", path_prefix)
+
+    def test_runtime_src_overlay_pth_executes_cleanly_and_keeps_app_src_first(self) -> None:
+        overlay_line = (WORKSPACE_ROOT / "scripts" / "runtime_src_overlay.pth").read_text(encoding="utf-8").strip()
+        program = f"""
+import os
+import json
+import sys
+os.environ['PBPK_ENABLE_SRC_OVERLAY'] = 'true'
 sys.path[:] = ['keep-a', '/app/src', 'keep-b']
 exec({overlay_line!r})
 print(json.dumps(sys.path[:3]))

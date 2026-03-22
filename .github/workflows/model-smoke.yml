@@ -43,7 +43,7 @@ jobs:
       - name: Build rxode2 worker image
         run: ./scripts/build_rxode2_worker_image.sh
 
-      - name: Deploy patched local stack
+      - name: Deploy packaged local stack
         run: ./scripts/deploy_rxode2_stack.sh
 
       - name: Wait for API health

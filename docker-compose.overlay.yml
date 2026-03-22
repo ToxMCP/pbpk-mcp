@@ -1,0 +1,18 @@
+services:
+  api:
+    environment:
+      PBPK_ENABLE_SRC_OVERLAY: "true"
+    volumes:
+      - ./scripts:/app/scripts
+      - ./src:/app/src
+      - ./var:/app/var
+      - ./scripts/runtime_src_overlay.pth:/usr/local/lib/python3.11/site-packages/pbpk_mcp_runtime_src.pth:ro
+
+  worker:
+    environment:
+      PBPK_ENABLE_SRC_OVERLAY: "true"
+    volumes:
+      - ./scripts:/app/scripts
+      - ./src:/app/src
+      - ./var:/app/var
+      - ./scripts/runtime_src_overlay.pth:/usr/local/lib/python3.11/site-packages/pbpk_mcp_runtime_src.pth:ro

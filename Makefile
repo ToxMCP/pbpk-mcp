@@ -96,7 +96,7 @@ runtime-patch-check: ## Compile the local runtime/deploy helper files used by th
 		src/mcp_bridge/routes/resources_base.py \
 		src/mcp_bridge/tools/registry.py \
 		src/mcp_bridge/tools/registry_base.py
-	bash -n scripts/deploy_rxode2_stack.sh scripts/deploy_hardened_stack.sh
+	bash -n scripts/deploy_rxode2_stack.sh scripts/deploy_source_overlay_stack.sh scripts/deploy_hardened_stack.sh
 
 runtime-contract-test: ## Run the local runtime contract tests that do not require the live stack
 	$(PY) scripts/check_runtime_contract_env.py

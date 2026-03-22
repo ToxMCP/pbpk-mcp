@@ -8,6 +8,7 @@ RUN mkdir -p \
     /app/scripts \
     /app/src/mcp \
     /app/src/mcp_bridge \
+    /app/var/jobs \
     /app/var/models/rxode2/cisplatin \
     /usr/local/lib/python3.11/site-packages/mcp_bridge/adapter \
     /usr/local/lib/python3.11/site-packages/mcp_bridge/routes \
@@ -38,14 +39,17 @@ RUN mkdir -p /root/.R \
 
 RUN Rscript -e "options(Ncpus=1L); install.packages('rxode2', repos='https://cloud.r-project.org')"
 
+COPY pyproject.toml README.md /app/
 COPY src /app/src
 COPY scripts/runtime_src_overlay.pth /usr/local/lib/python3.11/site-packages/pbpk_mcp_runtime_src.pth
 COPY scripts/ospsuite_bridge.R /app/scripts/ospsuite_bridge.R
 COPY cisplatin_models/cisplatin_population_rxode2_model.R /app/var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R
 
-RUN python -c "import sys; from pathlib import Path; statement = Path('/usr/local/lib/python3.11/site-packages/pbpk_mcp_runtime_src.pth').read_text(encoding='utf-8').strip(); original = list(sys.path); sys.path[:] = ['keep-a', '/app/src', 'keep-b']; exec(statement, {}); assert sys.path[0] == '/app/src'; assert sys.path.count('/app/src') == 1; sys.path[:] = original" \
+RUN python -m pip install --no-deps /app \
+    && python -c "import importlib.metadata as metadata; assert metadata.version('mcp-bridge') == '0.4.0'" \
+    && python -c "import os, sys; from pathlib import Path; statement = Path('/usr/local/lib/python3.11/site-packages/pbpk_mcp_runtime_src.pth').read_text(encoding='utf-8').strip(); original = list(sys.path); sys.path[:] = ['keep-a', '/app/src', 'keep-b']; os.environ.pop('PBPK_ENABLE_SRC_OVERLAY', None); exec(statement, {}); assert '/app/src' not in sys.path; sys.path[:] = ['keep-a', '/app/src', 'keep-b']; os.environ['PBPK_ENABLE_SRC_OVERLAY'] = 'true'; exec(statement, {}); assert sys.path[0] == '/app/src'; assert sys.path.count('/app/src') == 1; sys.path[:] = original" \
     && Rscript -e "invisible(parse(file='/app/scripts/ospsuite_bridge.R')); invisible(parse(file='/app/var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R')); stopifnot(requireNamespace('rxode2', quietly=TRUE)); cat('rxode2 worker image ready\n')"
 
-RUN chown -R mcp:mcp /app/scripts /app/var/models/rxode2
+RUN chown -R mcp:mcp /app/scripts /app/var
 
 USER mcp

@@ -11,7 +11,7 @@ This document describes the current direction of PBPK MCP as it is implemented t
 - discovery is filesystem-backed
 - OECD-oriented qualification metadata is exposed separately from runtime execution
 - Berkeley Madonna `.mmd` remains a conversion source, not a runtime format
-- the current contract-convergence stage uses a packaged `src/` runtime with a local source-overlay development stack for workspace iteration
+- the current contract-convergence stage uses a packaged `src/` runtime by default, with a thinner local source-overlay profile available only for workspace iteration
 
 ## Product Positioning
 
@@ -42,7 +42,7 @@ The `v0.3.x` line started as a contract-convergence milestone, and the `0.4.x` l
 
 For this stage:
 
-- the live MCP surface is defined by the packaged `src/` implementation plus a local `/app/src` source overlay
+- the live MCP surface is defined by the packaged `src/` implementation, with an optional local `/app/src` source overlay only for explicit maintainer development
 - the worker image carries the baseline runtime assets directly
 - the compose-based local stack uses direct bind mounts and a `.pth` overlay hook instead of patch-copying files into running containers
 

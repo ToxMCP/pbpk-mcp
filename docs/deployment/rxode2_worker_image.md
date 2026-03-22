@@ -10,7 +10,7 @@ This is the recommended path because:
 - `rxode2` and its compiled dependencies are significantly heavier than the OSPSuite runtime
 - source-compiling `rxode2` inside a capped runtime worker is likely to fail under memory pressure
 
-For the current local source-overlay operator workflow layered on top of this image, see [`runtime_patch_flow.md`](runtime_patch_flow.md).
+For the current local packaged and source-overlay operator workflows layered on top of this image, see [`runtime_patch_flow.md`](runtime_patch_flow.md).
 
 ## Image Layout
 
@@ -24,9 +24,10 @@ It extends:
 
 and then bakes in:
 
+- the current `mcp-bridge` package installed into site-packages from this repo
 - the `rxode2` R package
-- the packaged `src/` tree at `/app/src`
-- the runtime overlay hook in `scripts/runtime_src_overlay.pth`
+- the workspace `src/` tree at `/app/src` for the explicit overlay profile only
+- the runtime overlay hook in `scripts/runtime_src_overlay.pth` for the explicit source-overlay maintainer profile
 - the hybrid bridge in `scripts/ospsuite_bridge.R`
 - the reference cisplatin model module in `cisplatin_models/cisplatin_population_rxode2_model.R`
 
@@ -98,7 +99,9 @@ Do not treat raw Berkeley Madonna `.mmd` files as directly executable runtime in
 For the current local workspace deployment, the repo now includes:
 
 - `docker-compose.celery.yml`
+- `docker-compose.overlay.yml`
 - `scripts/deploy_rxode2_stack.sh`
+- `scripts/deploy_source_overlay_stack.sh`
 
 This local stack uses `pbpk_mcp-worker-rxode2:latest` for both the API and the Celery worker so one machine can execute both `.pkml` and `.R` models without a second worker pool.
 
@@ -113,7 +116,8 @@ Current local runtime behavior:
 - `pbpk_mcp-worker-1` runs with a `4 GiB` memory cap
 - the worker healthcheck uses `pgrep` against the Celery worker process
 - PK-Sim / MoBi `.pkml` models remain supported on the same worker
-- `scripts/deploy_rxode2_stack.sh` recreates the stack, bind-mounts the current workspace `src/`, `scripts/`, and `var/` trees, and waits for stable readiness
-- the local implementation is therefore a source-overlay development stack for this convergence stage, even though the image also carries a baked baseline runtime
+- `scripts/deploy_rxode2_stack.sh` recreates the packaged local stack and keeps the workspace `var/` tree mounted for models and artifacts
+- `scripts/deploy_source_overlay_stack.sh` is the explicit maintainer path when workspace `src/` and `scripts/` should override the baked image
+- the local implementation is therefore packaged by default, with a thinner source-overlay development mode still available when needed
 
 Longer-term, separate worker pools are still the cleaner production shape when OSPSuite-only and `rxode2` workloads need different scaling or isolation.

@@ -131,6 +131,12 @@ Recreate the local unified stack:
 ./scripts/deploy_rxode2_stack.sh
 ```
 
+When you want workspace `src/` and `scripts/` to override the packaged image baseline:
+
+```bash
+./scripts/deploy_source_overlay_stack.sh
+```
+
 For stricter auth defaults on the same stack:
 
 ```bash
@@ -140,11 +146,11 @@ AUTH_JWKS_URL="https://issuer.example/.well-known/jwks.json" \
 ./scripts/deploy_hardened_stack.sh
 ```
 
-The local stack now mounts the `src/`, `scripts/`, `var/`, and runtime overlay `.pth` files directly, so there is no separate patch-copy step for day-to-day development.
+The local stack now runs the packaged runtime by default and keeps the workspace `var/` tree mounted for models and runtime artifacts. The explicit source-overlay profile additionally mounts `src/`, `scripts/`, and the runtime overlay `.pth` file when you are iterating on runtime code.
 
 ## Model path to use
 
-After patching, the cisplatin model is copied to:
+In the packaged worker baseline, the reference cisplatin model is available at:
 
 ```text
 /app/var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R

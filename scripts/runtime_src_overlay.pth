@@ -1,1 +1,1 @@
-import sys; sys.path[:] = ['/app/src'] + [x for x in sys.path if x != '/app/src']
+import os, sys; enabled = os.environ.get('PBPK_ENABLE_SRC_OVERLAY', '').lower() in ('1', 'true', 'yes', 'on'); sys.path[:] = (['/app/src'] + [x for x in sys.path if x != '/app/src']) if enabled else [x for x in sys.path if x != '/app/src']
