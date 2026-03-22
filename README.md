@@ -186,7 +186,7 @@ Design intent:
 - keep BER calculation and final decision policy outside PBPK MCP
 - make the PBPK-side handoff layer consumable by downstream validators and orchestrators without scraping examples out of tests
 
-See `schemas/README.md` for the short schema guide and `tests/test_ngra_object_schemas.py` for the validation gate that keeps the published schemas aligned with live payload generation. The same schema family is also exposed through the live MCP resource surface at `/mcp/resources/schemas`. In the current patch-first runtime, those contract artifacts are copied through the shared runtime patch manifest, and the installed package now also carries a generated fallback copy so the live resource surface is not tied only to repo-local files. `scripts/check_installed_package_contract.py` is the maintainer gate that proves the generated package fallback still matches the published JSON artifacts after a non-editable local install.
+See `schemas/README.md` for the short schema guide and `tests/test_ngra_object_schemas.py` for the validation gate that keeps the published schemas aligned with live payload generation. The same schema family is also exposed through the live MCP resource surface at `/mcp/resources/schemas`. In the current patch-first runtime, the generic Python runtime now comes from the mounted `/app/src` tree through `scripts/runtime_src_overlay.pth`, and the live schema/capability/contract-manifest resources now treat the packaged `mcp_bridge.contract` content as authoritative rather than depending on copied JSON under `/app/var/contract`. `scripts/check_installed_package_contract.py` is the maintainer gate that proves the generated package fallback still matches the published JSON artifacts after a non-editable local install.
 
 PBPK MCP now also publishes a machine-readable contract manifest in:
 
@@ -197,7 +197,7 @@ That manifest inventories the published PBPK-side schema family, the capability 
 The live schema, capability-matrix, and contract-manifest resources now also expose SHA-256 values so downstream clients can verify that the running API matches the published artifact inventory.
 The shared schema/capability/contract-manifest route logic now lives in packaged `src/mcp_bridge/routes/resources_base.py`, and packaged `src/mcp_bridge/routes/resources.py` now owns the full generic `/mcp/resources` surface including `/mcp/resources/models`.
 The same is now true for tools as well: packaged `src/mcp_bridge/tools/registry_base.py` and `src/mcp_bridge/tools/registry.py` now own the generic discovery/static-manifest/result/import descriptors alongside the rest of the documented PBPK workflow surface.
-The next `0.4.x` debt-reduction slices are now live too: generic discovery, manifest, load/session-status, preflight validation, executable verification, dossier export, deterministic-result retrieval, external-import normalization, population workflow tools, the shared `model_catalog` / `model_manifest` helpers, the top-level `mcp` namespace, and the generic adapter contract/runtime now live in packaged `src/`, while the patch manifest carries those packaged files into the live stack until the base image catches up.
+The next `0.4.x` debt-reduction slices are now live too: generic discovery, manifest, load/session-status, preflight validation, executable verification, dossier export, deterministic-result retrieval, external-import normalization, population workflow tools, the shared `model_catalog` / `model_manifest` helpers, the top-level `mcp` namespace, and the generic adapter contract/runtime now live in packaged `src/`. The current runtime patch flow now overlays `/app/src` through `scripts/runtime_src_overlay.pth` instead of copying those Python files into `site-packages` one by one.
 
 ## Capability matrix
 
@@ -570,7 +570,7 @@ The published `pbpk-mcp.v1` contract manifest now distinguishes:
 
 If you are maintaining the local stack in the current convergence stage:
 
-1. Change the authoritative runtime files in `patches/`, the migrated shared modules under `src/`, `scripts/ospsuite_bridge.R`, or the bundled `.R` model modules.
+1. Change the authoritative runtime files in the migrated shared modules under `src/`, any remaining runtime-specific files under `patches/`, `scripts/ospsuite_bridge.R`, or the bundled `.R` model modules.
    - generic MCP namespaces, tool modules, and adapter/runtime files now live under `src/`
    - `patches/` should be reserved for genuinely runtime-specific deltas that are not yet migrated
 2. If the worker image baseline should change, rebuild it with `./scripts/build_rxode2_worker_image.sh`.

@@ -4,11 +4,16 @@ from __future__ import annotations
 import argparse
 import importlib
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+SCRIPT_ROOT = Path(__file__).resolve().parent
+if str(SCRIPT_ROOT) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_ROOT))
+
+from contract_stage_utils import stage_source_tree
 
 
 CHECK_SNIPPET = r"""
@@ -87,22 +92,7 @@ def _run(command: list[str], *, env: dict[str, str] | None = None, cwd: Path | N
 
 
 def _stage_source_tree(source_root: Path, destination: Path) -> Path:
-    staged_root = destination / "source-tree"
-    shutil.copytree(
-        source_root,
-        staged_root,
-        ignore=shutil.ignore_patterns(
-            ".git",
-            ".mypy_cache",
-            ".pytest_cache",
-            ".ruff_cache",
-            "__pycache__",
-            "build",
-            "dist",
-            "src/mcp_bridge.egg-info",
-        ),
-    )
-    return staged_root
+    return stage_source_tree(source_root, destination)
 
 
 def main() -> int:

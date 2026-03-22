@@ -5,7 +5,6 @@ import argparse
 import hashlib
 import importlib
 import json
-import shutil
 import subprocess
 import sys
 import tarfile
@@ -13,20 +12,16 @@ import tempfile
 import zipfile
 from pathlib import Path
 
+SCRIPT_ROOT = Path(__file__).resolve().parent
+if str(SCRIPT_ROOT) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_ROOT))
+
+from contract_stage_utils import stage_source_tree
+
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 CHECK_INSTALLED_PACKAGE_CONTRACT = WORKSPACE_ROOT / "scripts" / "check_installed_package_contract.py"
 CHECK_RELEASE_METADATA = WORKSPACE_ROOT / "scripts" / "check_release_metadata.py"
-COPY_IGNORE_PATTERNS = shutil.ignore_patterns(
-    ".git",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    "__pycache__",
-    "build",
-    "dist",
-    "src/mcp_bridge.egg-info",
-)
 
 
 def _load_release_metadata_module():
@@ -80,9 +75,7 @@ def _ensure_build_available() -> None:
 
 
 def _stage_source_tree(source_root: Path, destination: Path) -> Path:
-    staged_root = destination / "source-tree"
-    shutil.copytree(source_root, staged_root, ignore=COPY_IGNORE_PATTERNS)
-    return staged_root
+    return stage_source_tree(source_root, destination)
 
 
 def _required_sdist_paths(source_root: Path) -> set[str]:

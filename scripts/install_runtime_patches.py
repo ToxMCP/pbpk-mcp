@@ -9,7 +9,13 @@ import sys
 import tempfile
 from pathlib import Path
 
-from runtime_patch_manifest import iter_patch_mappings, python_target_paths, r_target_paths
+from runtime_patch_manifest import (
+    iter_patch_mappings,
+    iter_patch_tree_mappings,
+    python_target_paths,
+    python_tree_targets,
+    r_target_paths,
+)
 
 
 def resolve_target_path(target_root: Path, absolute_target: str) -> Path:
@@ -23,14 +29,27 @@ def install_patches(source_root: Path, target_root: Path) -> None:
         target_path = resolve_target_path(target_root, absolute_target)
         target_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source_path, target_path)
+    for source_path, absolute_target in iter_patch_tree_mappings(source_root):
+        if not source_path.is_dir():
+            raise NotADirectoryError(source_path)
+        target_path = resolve_target_path(target_root, absolute_target)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(source_path, target_path, dirs_exist_ok=True)
 
 
 def verify_python_targets(target_root: Path) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
-        for index, absolute_target in enumerate(python_target_paths()):
+        python_targets = [
+            resolve_target_path(target_root, absolute_target)
+            for absolute_target in python_target_paths()
+        ]
+        for tree_target in python_tree_targets():
+            tree_root = resolve_target_path(target_root, tree_target)
+            python_targets.extend(sorted(tree_root.rglob("*.py")))
+        for index, target_path in enumerate(python_targets):
             py_compile.compile(
-                str(resolve_target_path(target_root, absolute_target)),
+                str(target_path),
                 cfile=str(tmp_path / f"{index}.pyc"),
                 doraise=True,
             )

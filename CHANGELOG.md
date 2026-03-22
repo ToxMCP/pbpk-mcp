@@ -45,6 +45,9 @@ All notable changes to this project should be documented in this file.
 - generic load/session-status/population implementation modules now also live in packaged `src/mcp/tools/`, while the runtime patch manifest carries those packaged files into the live stack so the remaining patch layer is closer to genuinely runtime-specific deltas
 - generic preflight-validation, executable-verification, and OECD-report export modules now also live in packaged `src/mcp/tools/`, and `registry_base` now treats them as part of the packaged base tool surface rather than patch-only extensions
 - the generic top-level `mcp` namespace and subprocess adapter boundary now also live in packaged `src/`, with `src/mcp/__init__.py`, `src/mcp_bridge/adapter/interface.py`, and `src/mcp_bridge/adapter/ospsuite.py` carried into the live stack through the shared runtime patch manifest instead of patch-only copies
+- the local runtime now overlays the packaged `src/mcp` and `src/mcp_bridge` trees through `scripts/runtime_src_overlay.pth` and tree-based runtime patch mappings, reducing per-file Python patching in `site-packages` while keeping the live contract unchanged
+- staged-source packaging checks now ignore local virtual environments, build outputs, and Codex scratch directories so maintainer-local scratch state cannot cause false contract failures
+- live contract resources now treat the packaged `mcp_bridge.contract` content as authoritative, so schema/capability/manifest endpoints no longer depend on copying contract JSON into `/app/var/contract`
 - removed the stale `mcp_bridge.schemas` package-data declaration now that the published PBPK-side contract artifacts are carried either as generated Python module content or as patched runtime JSON copies
 
 ## v0.3.5 - 2026-03-21

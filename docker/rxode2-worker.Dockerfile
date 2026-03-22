@@ -6,6 +6,8 @@ USER root
 
 RUN mkdir -p \
     /app/scripts \
+    /app/src/mcp \
+    /app/src/mcp_bridge \
     /app/var/models/rxode2/cisplatin \
     /usr/local/lib/python3.11/site-packages/mcp_bridge/adapter \
     /usr/local/lib/python3.11/site-packages/mcp_bridge/routes \
@@ -36,9 +38,12 @@ RUN mkdir -p /root/.R \
 
 RUN Rscript -e "options(Ncpus=1L); install.packages('rxode2', repos='https://cloud.r-project.org')"
 
+COPY src /app/src
+COPY src /tmp/pbpk_runtime_source/src
 COPY patches /tmp/pbpk_runtime_source/patches
 COPY scripts/install_runtime_patches.py /tmp/pbpk_runtime_source/scripts/install_runtime_patches.py
 COPY scripts/runtime_patch_manifest.py /tmp/pbpk_runtime_source/scripts/runtime_patch_manifest.py
+COPY scripts/runtime_src_overlay.pth /tmp/pbpk_runtime_source/scripts/runtime_src_overlay.pth
 COPY scripts/ospsuite_bridge.R /tmp/pbpk_runtime_source/scripts/ospsuite_bridge.R
 COPY cisplatin_models/cisplatin_population_rxode2_model.R /tmp/pbpk_runtime_source/cisplatin_models/cisplatin_population_rxode2_model.R
 

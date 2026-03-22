@@ -12,6 +12,15 @@ __pycache__/
 .env
 .env.*
 .python-version
+.venv/
+venv/
+env/
+.tox/
+.nox/
+.tmp_codex_*/
+build/
+dist/
+*.egg-info/
 
 # Temporary workspace artifacts
 tmp/

@@ -1,0 +1,1 @@
+import sys; sys.path[:] = ['/app/src'] + [x for x in sys.path if x != '/app/src']

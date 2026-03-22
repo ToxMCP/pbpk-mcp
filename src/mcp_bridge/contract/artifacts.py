@@ -259,7 +259,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "scripts/check_distribution_artifacts.py",
       "role": "distribution artifact validation script",
-      "sha256": "4c24be62174cb502895230c210a85593a5eb50c9a835c6ec6ea8e17f634fb2f0"
+      "sha256": "f71f779112302dc1b0bc6d0aa83fed81bf9ca11fefdfba5782eabc736198e6da"
     },
     {
       "classification": "supporting",
@@ -271,7 +271,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "scripts/check_installed_package_contract.py",
       "role": "installed package contract validation script",
-      "sha256": "cbbf79f1bf86a59ffbfef4e28c6cd77d811d9b1f177ca3b1189465415763f401"
+      "sha256": "e961342d40a42ea074f5735671da5f030066db4bd28b4763d6661f6c371a365a"
     },
     {
       "classification": "supporting",

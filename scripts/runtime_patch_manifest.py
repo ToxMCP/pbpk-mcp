@@ -11,161 +11,27 @@ class RuntimePatch:
     target: str
 
 
+@dataclass(frozen=True)
+class RuntimePatchTree:
+    source: str
+    target: str
+
+
 PATCHES: tuple[RuntimePatch, ...] = (
-    RuntimePatch("src/mcp/__init__.py", "/usr/local/lib/python3.11/site-packages/mcp/__init__.py"),
     RuntimePatch(
-        "src/mcp_bridge/adapter/__init__.py",
-        "/usr/local/lib/python3.11/site-packages/mcp_bridge/adapter/__init__.py",
-    ),
-    RuntimePatch(
-        "src/mcp_bridge/adapter/interface.py",
-        "/usr/local/lib/python3.11/site-packages/mcp_bridge/adapter/interface.py",
-    ),
-    RuntimePatch(
-        "src/mcp_bridge/adapter/ospsuite.py",
-        "/usr/local/lib/python3.11/site-packages/mcp_bridge/adapter/ospsuite.py",
-    ),
-    RuntimePatch(
-        "src/mcp/tools/run_verification_checks.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/tools/run_verification_checks.py",
-    ),
-    RuntimePatch(
-        "src/mcp_bridge/model_catalog.py",
-        "/usr/local/lib/python3.11/site-packages/mcp_bridge/model_catalog.py",
-    ),
-    RuntimePatch(
-        "src/mcp_bridge/model_manifest.py",
-        "/usr/local/lib/python3.11/site-packages/mcp_bridge/model_manifest.py",
-    ),
-    RuntimePatch(
-        "src/mcp_bridge/routes/resources_base.py",
-        "/usr/local/lib/python3.11/site-packages/mcp_bridge/routes/resources_base.py",
-    ),
-    RuntimePatch(
-        "src/mcp_bridge/tools/registry_base.py",
-        "/usr/local/lib/python3.11/site-packages/mcp_bridge/tools/registry_base.py",
-    ),
-    RuntimePatch(
-        "src/mcp_bridge/routes/resources.py",
-        "/usr/local/lib/python3.11/site-packages/mcp_bridge/routes/resources.py",
-    ),
-    RuntimePatch(
-        "src/mcp_bridge/tools/registry.py",
-        "/usr/local/lib/python3.11/site-packages/mcp_bridge/tools/registry.py",
-    ),
-    RuntimePatch(
-        "src/mcp/tools/load_simulation.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/tools/load_simulation.py",
-    ),
-    RuntimePatch(
-        "src/mcp/tools/get_job_status.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/tools/get_job_status.py",
-    ),
-    RuntimePatch(
-        "src/mcp/tools/discover_models.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/tools/discover_models.py",
-    ),
-    RuntimePatch(
-        "src/mcp/tools/export_oecd_report.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/tools/export_oecd_report.py",
-    ),
-    RuntimePatch(
-        "src/mcp/tools/run_population_simulation.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/tools/run_population_simulation.py",
-    ),
-    RuntimePatch(
-        "src/mcp/tools/validate_model_manifest.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/tools/validate_model_manifest.py",
-    ),
-    RuntimePatch(
-        "src/mcp/tools/get_results.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/tools/get_results.py",
-    ),
-    RuntimePatch(
-        "src/mcp/tools/ingest_external_pbpk_bundle.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/tools/ingest_external_pbpk_bundle.py",
-    ),
-    RuntimePatch(
-        "src/mcp/tools/validate_simulation_request.py",
-        "/usr/local/lib/python3.11/site-packages/mcp/tools/validate_simulation_request.py",
-    ),
-    RuntimePatch(
-        "docs/architecture/capability_matrix.json",
-        "/app/var/contract/capability_matrix.json",
-    ),
-    RuntimePatch(
-        "docs/architecture/contract_manifest.json",
-        "/app/var/contract/contract_manifest.json",
-    ),
-    RuntimePatch(
-        "schemas/assessmentContext.v1.json",
-        "/app/var/contract/schemas/assessmentContext.v1.json",
-    ),
-    RuntimePatch(
-        "schemas/berInputBundle.v1.json",
-        "/app/var/contract/schemas/berInputBundle.v1.json",
-    ),
-    RuntimePatch(
-        "schemas/internalExposureEstimate.v1.json",
-        "/app/var/contract/schemas/internalExposureEstimate.v1.json",
-    ),
-    RuntimePatch(
-        "schemas/pbpkQualificationSummary.v1.json",
-        "/app/var/contract/schemas/pbpkQualificationSummary.v1.json",
-    ),
-    RuntimePatch(
-        "schemas/pointOfDepartureReference.v1.json",
-        "/app/var/contract/schemas/pointOfDepartureReference.v1.json",
-    ),
-    RuntimePatch(
-        "schemas/uncertaintyHandoff.v1.json",
-        "/app/var/contract/schemas/uncertaintyHandoff.v1.json",
-    ),
-    RuntimePatch(
-        "schemas/uncertaintyRegisterReference.v1.json",
-        "/app/var/contract/schemas/uncertaintyRegisterReference.v1.json",
-    ),
-    RuntimePatch(
-        "schemas/uncertaintySummary.v1.json",
-        "/app/var/contract/schemas/uncertaintySummary.v1.json",
-    ),
-    RuntimePatch(
-        "schemas/examples/assessmentContext.v1.example.json",
-        "/app/var/contract/schemas/examples/assessmentContext.v1.example.json",
-    ),
-    RuntimePatch(
-        "schemas/examples/berInputBundle.v1.example.json",
-        "/app/var/contract/schemas/examples/berInputBundle.v1.example.json",
-    ),
-    RuntimePatch(
-        "schemas/examples/internalExposureEstimate.v1.example.json",
-        "/app/var/contract/schemas/examples/internalExposureEstimate.v1.example.json",
-    ),
-    RuntimePatch(
-        "schemas/examples/pbpkQualificationSummary.v1.example.json",
-        "/app/var/contract/schemas/examples/pbpkQualificationSummary.v1.example.json",
-    ),
-    RuntimePatch(
-        "schemas/examples/pointOfDepartureReference.v1.example.json",
-        "/app/var/contract/schemas/examples/pointOfDepartureReference.v1.example.json",
-    ),
-    RuntimePatch(
-        "schemas/examples/uncertaintyHandoff.v1.example.json",
-        "/app/var/contract/schemas/examples/uncertaintyHandoff.v1.example.json",
-    ),
-    RuntimePatch(
-        "schemas/examples/uncertaintyRegisterReference.v1.example.json",
-        "/app/var/contract/schemas/examples/uncertaintyRegisterReference.v1.example.json",
-    ),
-    RuntimePatch(
-        "schemas/examples/uncertaintySummary.v1.example.json",
-        "/app/var/contract/schemas/examples/uncertaintySummary.v1.example.json",
+        "scripts/runtime_src_overlay.pth",
+        "/usr/local/lib/python3.11/site-packages/pbpk_mcp_runtime_src.pth",
     ),
     RuntimePatch("scripts/ospsuite_bridge.R", "/app/scripts/ospsuite_bridge.R"),
     RuntimePatch(
         "cisplatin_models/cisplatin_population_rxode2_model.R",
         "/app/var/models/rxode2/cisplatin/cisplatin_population_rxode2_model.R",
     ),
+)
+
+PATCH_TREES: tuple[RuntimePatchTree, ...] = (
+    RuntimePatchTree("src/mcp", "/app/src/mcp"),
+    RuntimePatchTree("src/mcp_bridge", "/app/src/mcp_bridge"),
 )
 
 DEFAULT_PATCH_CONTAINERS: tuple[str, ...] = ("pbpk_mcp-api-1", "pbpk_mcp-worker-1")
@@ -176,13 +42,27 @@ def iter_patch_mappings(workspace_root: Path) -> Iterable[tuple[Path, str]]:
         yield workspace_root / patch.source, patch.target
 
 
+def iter_patch_tree_mappings(workspace_root: Path) -> Iterable[tuple[Path, str]]:
+    for patch in PATCH_TREES:
+        yield workspace_root / patch.source, patch.target
+
+
 def target_directories() -> tuple[str, ...]:
-    directories = sorted({str(Path(patch.target).parent) for patch in PATCHES})
+    directories = {str(Path(patch.target).parent) for patch in PATCHES}
+    directories.update(str(Path(patch.target)) for patch in PATCH_TREES)
+    directories.update(str(Path(patch.target).parent) for patch in PATCH_TREES)
+    directories = sorted(directories)
     return tuple(directories)
 
 
 def python_target_paths() -> tuple[str, ...]:
     return tuple(patch.target for patch in PATCHES if patch.target.endswith(".py"))
+
+
+def python_tree_targets() -> tuple[str, ...]:
+    return tuple(
+        patch.target for patch in PATCH_TREES if patch.target.startswith("/app/src/")
+    )
 
 
 def r_target_paths() -> tuple[str, ...]:
@@ -192,9 +72,13 @@ def r_target_paths() -> tuple[str, ...]:
 __all__ = [
     "DEFAULT_PATCH_CONTAINERS",
     "PATCHES",
+    "PATCH_TREES",
     "RuntimePatch",
+    "RuntimePatchTree",
     "iter_patch_mappings",
+    "iter_patch_tree_mappings",
     "python_target_paths",
+    "python_tree_targets",
     "r_target_paths",
     "target_directories",
 ]

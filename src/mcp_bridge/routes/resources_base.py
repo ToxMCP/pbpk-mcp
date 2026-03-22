@@ -241,6 +241,10 @@ def _sha256_document(document: dict[str, Any]) -> str:
 
 
 def _contract_manifest_document() -> tuple[dict[str, Any], str, float]:
+    if packaged_contract_manifest_document is not None:
+        manifest = packaged_contract_manifest_document()
+        return (manifest, _sha256_document(manifest), 0.0)
+
     if CONTRACT_MANIFEST_PATH.exists():
         return (
             _load_json_file(CONTRACT_MANIFEST_PATH),
@@ -248,11 +252,32 @@ def _contract_manifest_document() -> tuple[dict[str, Any], str, float]:
             CONTRACT_MANIFEST_PATH.stat().st_mtime,
         )
 
-    if packaged_contract_manifest_document is None:
-        raise FileNotFoundError(CONTRACT_MANIFEST_PATH)
+    raise FileNotFoundError(CONTRACT_MANIFEST_PATH)
 
-    manifest = packaged_contract_manifest_document()
-    return (manifest, _sha256_document(manifest), 0.0)
+
+def _capability_matrix_document() -> tuple[dict[str, Any], str, float]:
+    try:
+        contract_manifest, _, _ = _contract_manifest_document()
+    except FileNotFoundError:
+        contract_manifest = {}
+
+    if packaged_capability_matrix_document is not None:
+        matrix = packaged_capability_matrix_document()
+        matrix_sha256 = (
+            (contract_manifest.get("capabilityMatrix") or {}).get("sha256")
+            or _sha256_document(matrix)
+        )
+        return (matrix, matrix_sha256, 0.0)
+
+    if CAPABILITY_MATRIX_PATH.exists():
+        matrix = _load_json_file(CAPABILITY_MATRIX_PATH)
+        matrix_sha256 = (
+            (contract_manifest.get("capabilityMatrix") or {}).get("sha256")
+            or _sha256_path(CAPABILITY_MATRIX_PATH)
+        )
+        return (matrix, matrix_sha256, CAPABILITY_MATRIX_PATH.stat().st_mtime)
+
+    raise FileNotFoundError(CAPABILITY_MATRIX_PATH)
 
 
 def _schema_index() -> list[dict[str, Any]]:
@@ -265,6 +290,39 @@ def _schema_index() -> list[dict[str, Any]]:
     manifest_schema_index = {
         entry["schemaId"]: entry for entry in (contract_manifest or {}).get("schemas") or []
     }
+
+    if packaged_schema_documents is not None and packaged_schema_examples is not None:
+        documents = packaged_schema_documents()
+        examples = packaged_schema_examples()
+        for schema_id, document in sorted(documents.items()):
+            version = schema_id.rsplit(".", 1)[-1] if "." in schema_id else "v1"
+            example = examples.get(schema_id)
+            manifest_entry = manifest_schema_index.get(schema_id, {})
+            resources.append(
+                {
+                    "id": schema_id,
+                    "schemaId": schema_id,
+                    "version": version,
+                    "title": document.get("title"),
+                    "description": document.get("description"),
+                    "sha256": manifest_entry.get("sha256") or _sha256_document(document),
+                    "relativePath": f"schemas/{schema_id}.json",
+                    "exampleSha256": (
+                        manifest_entry.get("exampleSha256")
+                        or (_sha256_document(example) if example is not None else None)
+                    ),
+                    "exampleRelativePath": (
+                        f"schemas/examples/{schema_id}.example.json" if example is not None else None
+                    ),
+                    "schema": document,
+                    "example": example,
+                    "_fingerprint": hashlib.sha1(
+                        json.dumps({"schema": document, "example": example}, sort_keys=True).encode("utf-8")
+                    ).hexdigest(),
+                    "_last_modified": 0.0,
+                }
+            )
+        return resources
 
     if SCHEMA_ROOT.exists():
         for schema_path in sorted(SCHEMA_ROOT.glob("*.v*.json")):
@@ -300,40 +358,7 @@ def _schema_index() -> list[dict[str, Any]]:
             )
         return resources
 
-    if packaged_schema_documents is None or packaged_schema_examples is None:
-        raise FileNotFoundError(SCHEMA_ROOT)
-
-    documents = packaged_schema_documents()
-    examples = packaged_schema_examples()
-    for schema_id, document in sorted(documents.items()):
-        version = schema_id.rsplit(".", 1)[-1] if "." in schema_id else "v1"
-        example = examples.get(schema_id)
-        manifest_entry = manifest_schema_index.get(schema_id, {})
-        resources.append(
-            {
-                "id": schema_id,
-                "schemaId": schema_id,
-                "version": version,
-                "title": document.get("title"),
-                "description": document.get("description"),
-                "sha256": manifest_entry.get("sha256") or _sha256_document(document),
-                "relativePath": f"schemas/{schema_id}.json",
-                "exampleSha256": (
-                    manifest_entry.get("exampleSha256")
-                    or (_sha256_document(example) if example is not None else None)
-                ),
-                "exampleRelativePath": (
-                    f"schemas/examples/{schema_id}.example.json" if example is not None else None
-                ),
-                "schema": document,
-                "example": example,
-                "_fingerprint": hashlib.sha1(
-                    json.dumps({"schema": document, "example": example}, sort_keys=True).encode("utf-8")
-                ).hexdigest(),
-                "_last_modified": 0.0,
-            }
-        )
-    return resources
+    raise FileNotFoundError(SCHEMA_ROOT)
 
 
 def _paginate(items: Sequence[Any], *, page: int, limit: int) -> Sequence[Any]:
@@ -669,55 +694,31 @@ async def get_capability_matrix_resource(
     response: Response,
 ) -> CapabilityMatrixResource:
     try:
-        contract_manifest, _, _ = _contract_manifest_document()
+        matrix, matrix_sha256, matrix_last_modified = _capability_matrix_document()
+    except json.JSONDecodeError as exc:
+        raise _http_error(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Capability matrix resource is malformed",
+            code=ErrorCode.INTERNAL_ERROR,
+        ) from exc
     except FileNotFoundError:
-        contract_manifest = {}
-    if CAPABILITY_MATRIX_PATH.exists():
-        try:
-            matrix = _load_json_file(CAPABILITY_MATRIX_PATH)
-        except json.JSONDecodeError as exc:
-            raise _http_error(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="Capability matrix resource is malformed",
-                code=ErrorCode.INTERNAL_ERROR,
-            ) from exc
+        raise _http_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Capability matrix resource is not available in the current runtime",
+            code=ErrorCode.NOT_FOUND,
+            hint=_contract_runtime_hint(),
+        )
 
-        etag = _weak_etag(
-            [
-                str(CAPABILITY_MATRIX_PATH.stat().st_mtime),
-                matrix.get("contractVersion", ""),
-                str(len(matrix.get("entries", []))),
-            ]
-        )
-        headers = {
-            "ETag": etag,
-            "Last-Modified": _isoformat(CAPABILITY_MATRIX_PATH.stat().st_mtime),
-        }
-        matrix_sha256 = (
-            (contract_manifest.get("capabilityMatrix") or {}).get("sha256")
-            or _sha256_path(CAPABILITY_MATRIX_PATH)
-        )
-    else:
-        if packaged_capability_matrix_document is None:
-            raise _http_error(
-                status_code=status.HTTP_404_NOT_FOUND,
-                message="Capability matrix resource is not available in the current runtime",
-                code=ErrorCode.NOT_FOUND,
-                hint=_contract_runtime_hint(),
-            )
-        matrix = packaged_capability_matrix_document()
-        etag = _weak_etag(
-            [
-                hashlib.sha1(json.dumps(matrix, sort_keys=True).encode("utf-8")).hexdigest(),
-                matrix.get("contractVersion", ""),
-                str(len(matrix.get("entries", []))),
-            ]
-        )
-        headers = {"ETag": etag}
-        matrix_sha256 = (
-            (contract_manifest.get("capabilityMatrix") or {}).get("sha256")
-            or _sha256_document(matrix)
-        )
+    etag = _weak_etag(
+        [
+            matrix_sha256,
+            matrix.get("contractVersion", ""),
+            str(len(matrix.get("entries", []))),
+        ]
+    )
+    headers = {"ETag": etag}
+    if matrix_last_modified > 0:
+        headers["Last-Modified"] = _isoformat(matrix_last_modified)
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=headers)
 
@@ -795,6 +796,7 @@ __all__ = [
     "SchemaResourcePage",
     "SimulationResource",
     "SimulationResourcePage",
+    "_capability_matrix_document",
     "_contract_manifest_document",
     "_fingerprint_metadata",
     "_http_error",

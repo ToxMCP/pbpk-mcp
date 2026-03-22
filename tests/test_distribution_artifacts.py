@@ -20,6 +20,7 @@ spec.loader.exec_module(module)
 
 build_release_artifact_report = module._build_release_artifact_report
 required_sdist_paths = module._required_sdist_paths
+stage_source_tree = module._stage_source_tree
 
 
 class DistributionArtifactTests(unittest.TestCase):
@@ -56,6 +57,34 @@ class DistributionArtifactTests(unittest.TestCase):
         self.assertEqual(report["artifacts"]["wheel"]["filename"], wheel_path.name)
         self.assertGreater(report["artifacts"]["sdist"]["sizeBytes"], 0)
         self.assertGreater(report["artifacts"]["wheel"]["sizeBytes"], 0)
+
+    def test_stage_source_tree_excludes_local_virtualenv_and_codex_scratch_dirs(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pbpk_stage_src_") as source_dir, tempfile.TemporaryDirectory(
+            prefix="pbpk_stage_dst_"
+        ) as destination_dir:
+            source_root = Path(source_dir)
+            destination_root = Path(destination_dir)
+
+            (source_root / "README.md").write_text("example\n", encoding="utf-8")
+            (source_root / ".venv").mkdir()
+            (source_root / ".venv" / "pyvenv.cfg").write_text("home = /tmp/python\n", encoding="utf-8")
+            (source_root / ".tmp_codex_overlay").mkdir()
+            (source_root / ".tmp_codex_overlay" / "pyvenv.cfg").write_text(
+                "home = /tmp/python\n",
+                encoding="utf-8",
+            )
+            (source_root / "src" / "mcp_bridge.egg-info").mkdir(parents=True)
+            (source_root / "src" / "mcp_bridge.egg-info" / "PKG-INFO").write_text(
+                "metadata\n",
+                encoding="utf-8",
+            )
+
+            staged_root = stage_source_tree(source_root, destination_root)
+
+            self.assertTrue((staged_root / "README.md").exists())
+            self.assertFalse((staged_root / ".venv").exists())
+            self.assertFalse((staged_root / ".tmp_codex_overlay").exists())
+            self.assertFalse((staged_root / "src" / "mcp_bridge.egg-info").exists())
 
 
 if __name__ == "__main__":

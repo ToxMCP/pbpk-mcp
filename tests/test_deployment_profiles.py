@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib.util
+import json
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -20,6 +22,8 @@ module = importlib.util.module_from_spec(spec)
 sys.modules.setdefault("pbpk_runtime_patch_manifest_test", module)
 spec.loader.exec_module(module)
 PATCHES = module.PATCHES
+PATCH_TREES = module.PATCH_TREES
+WORKER_DOCKERFILE = WORKSPACE_ROOT / "docker" / "rxode2-worker.Dockerfile"
 
 
 class DeploymentProfileTests(unittest.TestCase):
@@ -47,66 +51,67 @@ class DeploymentProfileTests(unittest.TestCase):
         self.assertIn('PBPK_BIND_PORT:-8000', text)
         self.assertIn('wait_for_runtime_ready.py" --base-url "${base_url}"', text)
 
-    def test_runtime_patch_manifest_carries_public_contract_artifacts(self) -> None:
-        manifest_sources = {patch.source for patch in PATCHES}
-        expected = {
-            "docs/architecture/capability_matrix.json",
-            "docs/architecture/contract_manifest.json",
-            "src/mcp/__init__.py",
-            "src/mcp/tools/discover_models.py",
-            "src/mcp/tools/export_oecd_report.py",
-            "src/mcp/tools/get_job_status.py",
-            "src/mcp/tools/get_results.py",
-            "src/mcp/tools/ingest_external_pbpk_bundle.py",
-            "src/mcp/tools/load_simulation.py",
-            "src/mcp/tools/run_verification_checks.py",
-            "src/mcp/tools/run_population_simulation.py",
-            "src/mcp/tools/validate_simulation_request.py",
-            "src/mcp/tools/validate_model_manifest.py",
-            "src/mcp_bridge/adapter/__init__.py",
-            "src/mcp_bridge/adapter/interface.py",
-            "src/mcp_bridge/adapter/ospsuite.py",
-            "src/mcp_bridge/model_catalog.py",
-            "src/mcp_bridge/model_manifest.py",
-            "src/mcp_bridge/routes/resources.py",
-            "src/mcp_bridge/routes/resources_base.py",
-            "src/mcp_bridge/tools/registry.py",
-            "src/mcp_bridge/tools/registry_base.py",
-            "schemas/assessmentContext.v1.json",
-            "schemas/berInputBundle.v1.json",
-            "schemas/internalExposureEstimate.v1.json",
-            "schemas/pbpkQualificationSummary.v1.json",
-            "schemas/pointOfDepartureReference.v1.json",
-            "schemas/uncertaintyHandoff.v1.json",
-            "schemas/uncertaintyRegisterReference.v1.json",
-            "schemas/uncertaintySummary.v1.json",
-            "schemas/examples/assessmentContext.v1.example.json",
-            "schemas/examples/berInputBundle.v1.example.json",
-            "schemas/examples/internalExposureEstimate.v1.example.json",
-            "schemas/examples/pbpkQualificationSummary.v1.example.json",
-            "schemas/examples/pointOfDepartureReference.v1.example.json",
-            "schemas/examples/uncertaintyHandoff.v1.example.json",
-            "schemas/examples/uncertaintyRegisterReference.v1.example.json",
-            "schemas/examples/uncertaintySummary.v1.example.json",
+    def test_runtime_patch_manifest_uses_packaged_src_overlay_for_contract_surface(self) -> None:
+        file_sources = {patch.source for patch in PATCHES}
+        tree_sources = {patch.source for patch in PATCH_TREES}
+        expected_trees = {
+            "src/mcp",
+            "src/mcp_bridge",
         }
-        self.assertTrue(expected.issubset(manifest_sources))
-        self.assertNotIn("patches/mcp/__init__.py", manifest_sources)
-        self.assertNotIn("patches/mcp/tools/discover_models.py", manifest_sources)
-        self.assertNotIn("patches/mcp/tools/export_oecd_report.py", manifest_sources)
-        self.assertNotIn("patches/mcp/tools/get_job_status.py", manifest_sources)
-        self.assertNotIn("patches/mcp/tools/get_results.py", manifest_sources)
-        self.assertNotIn("patches/mcp/tools/ingest_external_pbpk_bundle.py", manifest_sources)
-        self.assertNotIn("patches/mcp/tools/load_simulation.py", manifest_sources)
-        self.assertNotIn("patches/mcp/tools/run_population_simulation.py", manifest_sources)
-        self.assertNotIn("patches/mcp/tools/run_verification_checks.py", manifest_sources)
-        self.assertNotIn("patches/mcp/tools/validate_simulation_request.py", manifest_sources)
-        self.assertNotIn("patches/mcp/tools/validate_model_manifest.py", manifest_sources)
-        self.assertNotIn("patches/mcp_bridge/adapter/interface.py", manifest_sources)
-        self.assertNotIn("patches/mcp_bridge/adapter/ospsuite.py", manifest_sources)
-        self.assertNotIn("patches/mcp_bridge/model_catalog.py", manifest_sources)
-        self.assertNotIn("patches/mcp_bridge/model_manifest.py", manifest_sources)
-        self.assertNotIn("patches/mcp_bridge/routes/resources.py", manifest_sources)
-        self.assertNotIn("patches/mcp_bridge/tools/registry.py", manifest_sources)
+        self.assertIn("scripts/runtime_src_overlay.pth", file_sources)
+        self.assertEqual(expected_trees, tree_sources)
+        self.assertNotIn("docs/architecture/capability_matrix.json", file_sources)
+        self.assertNotIn("docs/architecture/contract_manifest.json", file_sources)
+        self.assertNotIn("schemas/assessmentContext.v1.json", file_sources)
+        self.assertNotIn("schemas/uncertaintySummary.v1.json", file_sources)
+        self.assertNotIn("patches/mcp/__init__.py", file_sources)
+        self.assertNotIn("patches/mcp/tools/discover_models.py", file_sources)
+        self.assertNotIn("patches/mcp/tools/export_oecd_report.py", file_sources)
+        self.assertNotIn("patches/mcp/tools/get_job_status.py", file_sources)
+        self.assertNotIn("patches/mcp/tools/get_results.py", file_sources)
+        self.assertNotIn("patches/mcp/tools/ingest_external_pbpk_bundle.py", file_sources)
+        self.assertNotIn("patches/mcp/tools/load_simulation.py", file_sources)
+        self.assertNotIn("patches/mcp/tools/run_population_simulation.py", file_sources)
+        self.assertNotIn("patches/mcp/tools/run_verification_checks.py", file_sources)
+        self.assertNotIn("patches/mcp/tools/validate_simulation_request.py", file_sources)
+        self.assertNotIn("patches/mcp/tools/validate_model_manifest.py", file_sources)
+        self.assertNotIn("patches/mcp_bridge/adapter/interface.py", file_sources)
+        self.assertNotIn("patches/mcp_bridge/adapter/ospsuite.py", file_sources)
+        self.assertNotIn("patches/mcp_bridge/model_catalog.py", file_sources)
+        self.assertNotIn("patches/mcp_bridge/model_manifest.py", file_sources)
+        self.assertNotIn("patches/mcp_bridge/routes/resources.py", file_sources)
+        self.assertNotIn("patches/mcp_bridge/tools/registry.py", file_sources)
+        self.assertNotIn("src/mcp/__init__.py", file_sources)
+        self.assertNotIn("src/mcp_bridge/adapter/interface.py", file_sources)
+        self.assertNotIn("src/mcp", file_sources)
+
+    def test_worker_image_carries_src_overlay_material(self) -> None:
+        text = WORKER_DOCKERFILE.read_text(encoding="utf-8")
+        self.assertIn("COPY src /app/src", text)
+        self.assertIn("COPY src /tmp/pbpk_runtime_source/src", text)
+        self.assertIn(
+            "COPY scripts/runtime_src_overlay.pth /tmp/pbpk_runtime_source/scripts/runtime_src_overlay.pth",
+            text,
+        )
+
+    def test_runtime_src_overlay_pth_executes_cleanly_and_keeps_app_src_first(self) -> None:
+        overlay_line = (WORKSPACE_ROOT / "scripts" / "runtime_src_overlay.pth").read_text(encoding="utf-8").strip()
+        program = f"""
+import json
+import sys
+sys.path[:] = ['keep-a', '/app/src', 'keep-b']
+exec({overlay_line!r})
+print(json.dumps(sys.path[:3]))
+"""
+        completed = subprocess.run(
+            [sys.executable, "-S", "-c", program],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        path_prefix = json.loads(completed.stdout.strip())
+        self.assertEqual(path_prefix[0], "/app/src")
+        self.assertEqual(path_prefix.count("/app/src"), 1)
 
     def test_release_artifacts_workflow_validates_and_uploads_distribution_boundary(self) -> None:
         text = RELEASE_ARTIFACTS_WORKFLOW.read_text(encoding="utf-8")

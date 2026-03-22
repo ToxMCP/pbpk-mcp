@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -9,7 +10,9 @@ from pathlib import Path
 from runtime_patch_manifest import (
     DEFAULT_PATCH_CONTAINERS,
     iter_patch_mappings,
+    iter_patch_tree_mappings,
     python_target_paths,
+    python_tree_targets,
     r_target_paths,
     target_directories,
 )
@@ -45,10 +48,25 @@ def copy_files(container: str) -> None:
         if not source.is_file():
             raise FileNotFoundError(source)
         run(["docker", "cp", str(source), f"{container}:{target}"])
+    for source, target in iter_patch_tree_mappings(WORKSPACE_ROOT):
+        if not source.is_dir():
+            raise NotADirectoryError(source)
+        run(
+            [
+                "docker",
+                "exec",
+                container,
+                "sh",
+                "-lc",
+                f"mkdir -p {shlex.quote(target)}",
+            ]
+        )
+        run(["docker", "cp", f"{source}/.", f"{container}:{target}"])
 
 
 def verify_python(container: str) -> None:
     file_list = ", ".join(repr(path) for path in python_target_paths())
+    tree_list = ", ".join(repr(path) for path in python_tree_targets())
     run(
         [
             "docker",
@@ -57,10 +75,13 @@ def verify_python(container: str) -> None:
             "python",
             "-c",
             (
-                "import py_compile, tempfile; "
+                "import py_compile, tempfile; from pathlib import Path; "
                 f"files = [{file_list}]; "
+                f"trees = [{tree_list}]; "
                 "tmp = tempfile.mkdtemp(); "
-                "[(py_compile.compile(path, cfile=f'{tmp}/{index}.pyc', doraise=True)) for index, path in enumerate(files)]"
+                "overlay = [str(path) for tree in trees for path in sorted(Path(tree).rglob('*.py'))]; "
+                "all_paths = list(files) + overlay; "
+                "[(py_compile.compile(path, cfile=f'{tmp}/{index}.pyc', doraise=True)) for index, path in enumerate(all_paths)]"
             ),
         ]
     )
