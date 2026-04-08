@@ -80,6 +80,7 @@ The current implementation follows a layered model:
 
 See `docs/architecture/dual_backend_pbpk_mcp.md` for the fuller architecture narrative, `docs/architecture/capability_matrix.md` for the published support matrix, `docs/architecture/mcp_payload_conventions.md` for the response contract, `docs/deployment/runtime_patch_flow.md` for the operator path behind the current local deployment model, and `docs/pbpk_model_onboarding_checklist.md` for the recommended trust pipeline when onboarding another chemical model.
 See `docs/architecture/exposure_led_ngra_role.md` for the explicit boundary statement on what PBPK MCP does and does not own inside exposure-led NGRA workflows.
+See `docs/architecture/toxmcp_suite_index.md` for the shortest cross-service routing guide inside the ToxMCP suite.
 See `benchmarks/regulatory_goldset/regulatory_goldset_summary.md` for the current gold-set documentation benchmark summary derived from the fetched public-code PBPK corpus. Internal examples such as the bundled synthetic reference model remain bounded MCP rehearsal models, not benchmark exemplars.
 
 ## What's new in v0.4.3
@@ -217,6 +218,7 @@ PBPK MCP now publishes a dedicated capability matrix for adopters in:
 - `docs/architecture/capability_matrix.json`
 
 The machine-readable matrix is also exposed from the running server at `/mcp/resources/capability-matrix`.
+For the cross-service routing view rather than the per-input capability boundary, read `docs/architecture/toxmcp_suite_index.md`.
 
 This matrix is the crisp public answer to:
 

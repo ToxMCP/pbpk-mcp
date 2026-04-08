@@ -136,7 +136,7 @@ _CONTRACT_MANIFEST_JSON = r"""
   "artifactCounts": {
     "examples": 8,
     "schemas": 8,
-    "supporting": 33
+    "supporting": 34
   },
   "capabilityMatrix": {
     "classification": "normative",
@@ -272,7 +272,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "docs/architecture/capability_matrix.md",
       "role": "human-readable capability guide",
-      "sha256": "ed587abf32181ca8cd530c73b6deb64655cb34473eee9b1cc450becc8a237589"
+      "sha256": "f239bd8632e5bf325f79ab530e7fa7bd7e3cff3bfc2e2d2b2bfa3bd047f97a59"
     },
     {
       "classification": "supporting",
@@ -284,13 +284,19 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "docs/architecture/exposure_led_ngra_role.md",
       "role": "exposure-led NGRA boundary guide",
-      "sha256": "25a56d32680e62e8bd99d995c00606fa31e815f0655a31c7bc227122bf298e5a"
+      "sha256": "782b28c3770556b5d724f75e5135104be15faa4ce3c5023fb4676c9d6ed855f8"
+    },
+    {
+      "classification": "supporting",
+      "relativePath": "docs/architecture/toxmcp_suite_index.md",
+      "role": "cross-service suite routing guide",
+      "sha256": "91f9e70c538dd1a16d82e463b1acf3c9e15dd7139f1148d73603bd1bc5aa4079"
     },
     {
       "classification": "supporting",
       "relativePath": "docs/architecture/release_bundle_manifest.json",
       "role": "whole release bundle hash inventory",
-      "sha256": "d33375c071496f2e42e7d8dc6818ef5598a4a65df718da426df9b5c8da5b2012"
+      "sha256": "7616ceb2a81ce54d3b63bc11fb88387c7f860b29f0994b3af16985ce7760f4ce"
     },
     {
       "classification": "supporting",
@@ -374,7 +380,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "scripts/generate_contract_artifacts.py",
       "role": "contract artifact generator",
-      "sha256": "1dcde156ef5105247cfd7b08a0c36c42c624720a3c2d8c847696397fd402d880"
+      "sha256": "be2ba70bb91b87679eac6eff08eccb042d19b7676b3914ff5a5f6dd4116b0bd4"
     },
     {
       "classification": "supporting",
@@ -436,9 +442,9 @@ _CONTRACT_MANIFEST_JSON = r"""
 
 _RELEASE_BUNDLE_MANIFEST_JSON = r"""
 {
-  "bundleSha256": "b505c4cc2fb0f9bb8193ebcfa917e20430280993906ab20776c3cf40ab5cd4c4",
+  "bundleSha256": "8525d93bc3bc2323ba61fde00e49ff9f92320505c3863fa7f0ee5d77526812b6",
   "contractVersion": "pbpk-mcp.v1",
-  "fileCount": 561,
+  "fileCount": 562,
   "files": [
     {
       "group": "root",
@@ -509,8 +515,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "root",
       "relativePath": "MANIFEST.in",
-      "sha256": "3cb265618639771711bbde5214984357f186e39536768bacc28f6519bc7f9cbf",
-      "sizeBytes": 1795
+      "sha256": "9f6592cfa852e8bc337e04cff8339e483662f18bdcf320fa290580cee147dbae",
+      "sizeBytes": 1843
     },
     {
       "group": "root",
@@ -521,8 +527,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "root",
       "relativePath": "README.md",
-      "sha256": "7854e1cbe653e5dac23aabbe1fc9db9e691f3393753101edaf180894eece5663",
-      "sizeBytes": 52193
+      "sha256": "9400daaf827ad709fbe8b8ad6b515a7f91e17b5f7211a228fb6e8f9fa728958c",
+      "sizeBytes": 52439
     },
     {
       "group": "root",
@@ -719,8 +725,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "documentation",
       "relativePath": "docs/architecture/capability_matrix.md",
-      "sha256": "ed587abf32181ca8cd530c73b6deb64655cb34473eee9b1cc450becc8a237589",
-      "sizeBytes": 2535
+      "sha256": "f239bd8632e5bf325f79ab530e7fa7bd7e3cff3bfc2e2d2b2bfa3bd047f97a59",
+      "sizeBytes": 2721
     },
     {
       "group": "documentation",
@@ -731,14 +737,20 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "documentation",
       "relativePath": "docs/architecture/exposure_led_ngra_role.md",
-      "sha256": "25a56d32680e62e8bd99d995c00606fa31e815f0655a31c7bc227122bf298e5a",
-      "sizeBytes": 4478
+      "sha256": "782b28c3770556b5d724f75e5135104be15faa4ce3c5023fb4676c9d6ed855f8",
+      "sizeBytes": 4612
     },
     {
       "group": "documentation",
       "relativePath": "docs/architecture/mcp_payload_conventions.md",
       "sha256": "2bd79754995a99b2f7c679b336a5b9e4e91373714d3e64ddc933da4edcd0ee02",
       "sizeBytes": 18585
+    },
+    {
+      "group": "documentation",
+      "relativePath": "docs/architecture/toxmcp_suite_index.md",
+      "sha256": "91f9e70c538dd1a16d82e463b1acf3c9e15dd7139f1148d73603bd1bc5aa4079",
+      "sizeBytes": 2684
     },
     {
       "group": "documentation",
@@ -2519,8 +2531,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "operations",
       "relativePath": "scripts/generate_contract_artifacts.py",
-      "sha256": "1dcde156ef5105247cfd7b08a0c36c42c624720a3c2d8c847696397fd402d880",
-      "sizeBytes": 16486
+      "sha256": "be2ba70bb91b87679eac6eff08eccb042d19b7676b3914ff5a5f6dd4116b0bd4",
+      "sizeBytes": 16595
     },
     {
       "group": "operations",
@@ -3810,7 +3822,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
   "groupCounts": {
     "container": 1,
     "contract": 18,
-    "documentation": 125,
+    "documentation": 126,
     "governance": 5,
     "operations": 34,
     "root": 183,
@@ -3856,7 +3868,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     ],
     "mode": "staged-source-tree-equivalent"
   },
-  "totalBytes": 3551646
+  "totalBytes": 3555053
 }
 """
 

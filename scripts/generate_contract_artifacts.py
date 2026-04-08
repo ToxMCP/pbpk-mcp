@@ -71,6 +71,10 @@ SUPPORTING_ARTIFACTS = (
         "exposure-led NGRA boundary guide",
     ),
     (
+        "docs/architecture/toxmcp_suite_index.md",
+        "cross-service suite routing guide",
+    ),
+    (
         "docs/architecture/release_bundle_manifest.json",
         "whole release bundle hash inventory",
     ),

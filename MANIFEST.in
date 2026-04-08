@@ -9,6 +9,7 @@ include docs/architecture/capability_matrix.md
 include docs/architecture/capability_matrix.json
 include docs/architecture/mcp_payload_conventions.md
 include docs/architecture/exposure_led_ngra_role.md
+include docs/architecture/toxmcp_suite_index.md
 include docs/architecture/contract_manifest.json
 include docs/architecture/release_bundle_manifest.json
 include docs/hardening_migration_notes.md

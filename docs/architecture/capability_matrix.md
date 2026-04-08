@@ -2,6 +2,10 @@
 
 This matrix is the adoption-facing summary of what the current public PBPK MCP contract supports for each input class.
 
+Use it together with [toxmcp_suite_index.md](./toxmcp_suite_index.md) when the
+question is "should PBPK MCP own this step?" rather than only "does this repo
+support this input class?".
+
 Machine-readable source of truth:
 
 - `docs/architecture/capability_matrix.json`
