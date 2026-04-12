@@ -1,5 +1,5 @@
 {
-  "bundleSha256": "66eb0ec8be3d1ece40ed8ecc8008c3d30bb8728cb88a8013432856f1b5d6f19f",
+  "bundleSha256": "a6428d9e44864e4b39fcad5c3a20e7b897c1edd7e9253d8c2cf2f1580555cae3",
   "contractVersion": "pbpk-mcp.v1",
   "fileCount": 593,
   "files": [
@@ -3078,8 +3078,8 @@
     {
       "group": "verification",
       "relativePath": "tests/test_runtime_security_live_stack.py",
-      "sha256": "f13a7de9ab4f78285d14eb39311f22a1e51b051b91a2f44f0d4384a2e708b5b2",
-      "sizeBytes": 13766
+      "sha256": "7117ddb351c2bdb913f91691da82c7bafeb1b57884243ae302bbf17fabf289ad",
+      "sizeBytes": 13762
     },
     {
       "group": "verification",
@@ -3607,5 +3607,5 @@
     ],
     "mode": "staged-source-tree-equivalent"
   },
-  "totalBytes": 11905283
+  "totalBytes": 11905279
 }
