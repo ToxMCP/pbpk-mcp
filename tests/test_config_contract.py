@@ -62,6 +62,21 @@ class ConfigContractTests(unittest.TestCase):
 
         self.assertEqual(config.service_version, AppConfig.model_fields["service_version"].default)
 
+    def test_s3_endpoint_and_path_style_env_are_loaded(self) -> None:
+        env = {
+            "AUDIT_STORAGE_BACKEND": "s3",
+            "AUDIT_S3_BUCKET": "pbpk-mcp-audit-smoke",
+            "AUDIT_S3_ENDPOINT_URL": "http://minio:9000",
+            "AUDIT_S3_FORCE_PATH_STYLE": "true",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            config = AppConfig.from_env()
+
+        self.assertEqual(config.audit_storage_backend, "s3")
+        self.assertEqual(config.audit_s3_bucket, "pbpk-mcp-audit-smoke")
+        self.assertEqual(config.audit_s3_endpoint_url, "http://minio:9000")
+        self.assertTrue(config.audit_s3_force_path_style)
+
 
 if __name__ == "__main__":
     unittest.main()

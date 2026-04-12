@@ -104,16 +104,25 @@ class _CsvRow:
     parameter_path: Optional[str]
     percent_change: Optional[float]
     absolute_value: Optional[float]
+    bounded_by_input: Optional[bool]
     job_status: str
+    failure_category: Optional[str]
     error: Optional[str]
     metric: str
     unit: Optional[str]
     cmax: Optional[float]
     tmax: Optional[float]
     auc: Optional[float]
+    auc0_inf: Optional[float]
+    lambda_z: Optional[float]
+    half_life: Optional[float]
+    auc_extrapolated_percent: Optional[float]
+    terminal_phase_point_count: Optional[int]
+    nca_status: Optional[str]
     delta_cmax_percent: Optional[float]
     delta_tmax_percent: Optional[float]
     delta_auc_percent: Optional[float]
+    delta_auc0_inf_percent: Optional[float]
 
 
 def _build_parameter_specs(
@@ -152,16 +161,25 @@ def _format_csv(report: SensitivityAnalysisReport, *, filename_hint: str) -> tup
                     parameter_path=scenario.parameter_path,
                     percent_change=scenario.percent_change,
                     absolute_value=scenario.absolute_value,
+                    bounded_by_input=bool(scenario.scenario_provenance.get("bounded_by_input")),
                     job_status=scenario.job_status,
+                    failure_category=scenario.failure_category,
                     error=scenario.error,
                     metric=parameter,
                     unit=metric.unit,
                     cmax=metric.cmax,
                     tmax=metric.tmax,
                     auc=metric.auc,
+                    auc0_inf=metric.auc0_inf,
+                    lambda_z=metric.lambda_z,
+                    half_life=metric.half_life,
+                    auc_extrapolated_percent=metric.auc_extrapolated_percent,
+                    terminal_phase_point_count=metric.terminal_phase_point_count,
+                    nca_status=metric.nca_status,
                     delta_cmax_percent=delta_map.get("cmax"),
                     delta_tmax_percent=delta_map.get("tmax"),
                     delta_auc_percent=delta_map.get("auc"),
+                    delta_auc0_inf_percent=delta_map.get("auc0Inf"),
                 )
             )
 
@@ -173,16 +191,25 @@ def _format_csv(report: SensitivityAnalysisReport, *, filename_hint: str) -> tup
                     parameter_path=scenario.parameter_path,
                     percent_change=scenario.percent_change,
                     absolute_value=scenario.absolute_value,
+                    bounded_by_input=bool(scenario.scenario_provenance.get("bounded_by_input")),
                     job_status=scenario.job_status,
+                    failure_category=scenario.failure_category,
                     error=scenario.error,
                     metric="",
                     unit=None,
                     cmax=None,
                     tmax=None,
                     auc=None,
+                    auc0_inf=None,
+                    lambda_z=None,
+                    half_life=None,
+                    auc_extrapolated_percent=None,
+                    terminal_phase_point_count=None,
+                    nca_status=None,
                     delta_cmax_percent=None,
                     delta_tmax_percent=None,
                     delta_auc_percent=None,
+                    delta_auc0_inf_percent=None,
                 )
             )
 
@@ -194,16 +221,25 @@ def _format_csv(report: SensitivityAnalysisReport, *, filename_hint: str) -> tup
             "parameter_path",
             "percent_change",
             "absolute_value",
+            "bounded_by_input",
             "job_status",
+            "failure_category",
             "error",
             "metric",
             "unit",
             "cmax",
             "tmax",
             "auc",
+            "auc0_inf",
+            "lambda_z",
+            "half_life",
+            "auc_extrapolated_percent",
+            "terminal_phase_point_count",
+            "nca_status",
             "delta_cmax_percent",
             "delta_tmax_percent",
             "delta_auc_percent",
+            "delta_auc0_inf_percent",
         ],
     )
     writer.writeheader()

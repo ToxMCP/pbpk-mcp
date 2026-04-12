@@ -23,7 +23,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from starlette.types import ASGIApp
 
-from .audit import AuditTrail, LocalAuditTrail, S3AuditTrail
+from .audit.trail import AuditTrail, S3AuditTrail
 from .audit.middleware import AuditMiddleware
 from .config import AppConfig, ConfigError, config_env_warnings, load_config
 from .constants import CORRELATION_HEADER
@@ -38,11 +38,6 @@ from .errors import (
     redact_sensitive,
 )
 from .logging import DEFAULT_LOG_LEVEL, bind_context, clear_context, get_logger, setup_logging
-from .routes import audit as audit_routes
-from .routes import jsonrpc as jsonrpc_routes
-from .routes import mcp as mcp_routes
-from .routes import resources as resource_routes
-from .routes import simulation as simulation_routes
 from .runtime.factory import (
     build_adapter,
     build_population_store,
@@ -207,6 +202,8 @@ def create_app(config: AppConfig | None = None, log_level: str | None = None) ->
             bucket=config.audit_s3_bucket,
             prefix=config.audit_s3_prefix,
             region=config.audit_s3_region,
+            endpoint_url=config.audit_s3_endpoint_url,
+            force_path_style=config.audit_s3_force_path_style,
             enabled=config.audit_enabled,
             object_lock_mode=config.audit_s3_object_lock_mode,
             object_lock_retain_days=config.audit_s3_object_lock_days,
@@ -226,6 +223,12 @@ def create_app(config: AppConfig | None = None, log_level: str | None = None) ->
     app.state.adapter_offload = should_offload_adapter_calls(config)
     job_service = create_job_service(config=config, audit_trail=audit_trail, population_store=population_store)
     app.state.jobs = job_service
+
+    from .routes import audit as audit_routes
+    from .routes import jsonrpc as jsonrpc_routes
+    from .routes import mcp as mcp_routes
+    from .routes import resources as resource_routes
+    from .routes import simulation as simulation_routes
 
     router = APIRouter()
 

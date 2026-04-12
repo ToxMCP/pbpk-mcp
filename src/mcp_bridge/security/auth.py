@@ -5,15 +5,10 @@ from __future__ import annotations
 import threading
 import time
 from dataclasses import dataclass
-from typing import Callable, Iterable, List, Optional
+from typing import Any, Callable, Iterable, List, Optional
 
 import httpx
 from fastapi import Depends, HTTPException, Request, status
-
-try:  # pragma: no cover - exercised when python-jose is available
-    from jose import JWTError, jwt
-except ImportError:  # pragma: no cover - fallback for constrained environments
-    from .simple_jwt import JWTError, jwt
 
 from ..config import AppConfig
 
@@ -34,11 +29,12 @@ class AuthContext:
 
 
 _JWKS_CACHE: dict[str, tuple[float, dict]] = {}
-_TOKEN_REPLAY_CACHE: dict[str, float] = {}
+_TOKEN_REPLAY_CACHE: dict[str, tuple[float, tuple[str | None, int | None, int | None]]] = {}
 _TOKEN_CACHE_LOCK = threading.Lock()
 
 _RATE_LIMIT_CACHE: dict[str, tuple[float, int]] = {}
 _RATE_LIMIT_LOCK = threading.Lock()
+_JWT_BACKEND: tuple[type[Exception], Any] | None = None
 
 
 def _anonymous_context() -> AuthContext:
@@ -51,31 +47,43 @@ def _anonymous_context() -> AuthContext:
     )
 
 
+def _get_jwt_backend() -> tuple[type[Exception], Any]:
+    global _JWT_BACKEND
+    if _JWT_BACKEND is None:
+        try:  # pragma: no cover - exercised when python-jose is available
+            from jose import JWTError, jwt
+        except ImportError:  # pragma: no cover - fallback for constrained environments
+            from .simple_jwt import JWTError, jwt
+        _JWT_BACKEND = (JWTError, jwt)
+    return _JWT_BACKEND
+
+
 class JWTValidator:
     def __init__(self, config: AppConfig) -> None:
         self._config = config
         self._clock_skew = float(getattr(config, "auth_clock_skew_seconds", 0.0))
 
     def validate(self, token: str) -> AuthContext:
+        jwt_error, jwt_backend = _get_jwt_backend()
         if (
             self._config.environment.lower() in {"development", "local"}
             and self._config.auth_dev_secret
         ):
             secret = self._config.auth_dev_secret
             try:
-                payload = jwt.decode(
+                payload = jwt_backend.decode(
                     token,
                     secret,
                     algorithms=["HS256"],
                     options={"verify_aud": False},
                 )
-            except JWTError as exc:
+            except jwt_error as exc:
                 raise AuthError(status.HTTP_401_UNAUTHORIZED, f"Invalid dev token: {exc}") from exc
             return self._build_context(payload)
 
         jwks = _get_jwks(self._config.auth_jwks_url, self._config.auth_jwks_cache_seconds)
         try:
-            payload = jwt.decode(
+            payload = jwt_backend.decode(
                 token,
                 jwks,
                 algorithms=["RS256"],
@@ -83,7 +91,7 @@ class JWTValidator:
                 issuer=self._config.auth_issuer_url,
                 options={"verify_at_hash": False},
             )
-        except JWTError as exc:
+        except jwt_error as exc:
             raise AuthError(status.HTTP_401_UNAUTHORIZED, f"Invalid token: {exc}") from exc
         return self._build_context(payload)
 
@@ -141,15 +149,23 @@ def _register_token(payload: dict, config: AppConfig) -> None:
         return
     now = time.time()
     expiry = float(payload.get("exp", now)) + float(getattr(config, "auth_replay_window_seconds", 0.0))
+    token_identity = (
+        str(payload.get("sub")) if payload.get("sub") is not None else None,
+        payload.get("iat"),
+        payload.get("exp"),
+    )
     with _TOKEN_CACHE_LOCK:
         _purge_token_cache(now)
-        if jti in _TOKEN_REPLAY_CACHE and _TOKEN_REPLAY_CACHE[jti] > now:
-            raise AuthError(status.HTTP_401_UNAUTHORIZED, "Token replay detected")
-        _TOKEN_REPLAY_CACHE[jti] = expiry
+        cached = _TOKEN_REPLAY_CACHE.get(jti)
+        if cached and cached[0] > now:
+            if cached[1] != token_identity:
+                raise AuthError(status.HTTP_401_UNAUTHORIZED, "Token identifier collision detected")
+            return
+        _TOKEN_REPLAY_CACHE[jti] = (expiry, token_identity)
 
 
 def _purge_token_cache(now: float) -> None:
-    expired = [identifier for identifier, expiry in _TOKEN_REPLAY_CACHE.items() if expiry <= now]
+    expired = [identifier for identifier, entry in _TOKEN_REPLAY_CACHE.items() if entry[0] <= now]
     for identifier in expired:
         _TOKEN_REPLAY_CACHE.pop(identifier, None)
 

@@ -12,4 +12,7 @@ docker compose \
   up -d --force-recreate --remove-orphans redis api worker
 
 python3 "${workspace_root}/scripts/wait_for_runtime_ready.py" \
-  --auth-dev-secret "pbpk-local-dev-secret"
+  --auth-dev-secret "pbpk-local-dev-secret" \
+  --timeout-seconds 600 \
+  --per-request-timeout-seconds 30 \
+  --stable-successes 2

@@ -6,7 +6,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from ..audit import AuditTrail
+from ..audit.trail import AuditTrail
 from ..dependencies import get_audit_trail
 from ..security.auth import AuthContext, require_roles
 

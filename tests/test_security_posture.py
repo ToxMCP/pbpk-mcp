@@ -15,6 +15,7 @@ if str(SRC_ROOT) not in sys.path:
 
 from mcp_bridge.app import create_app  # noqa: E402
 from mcp_bridge.config import AppConfig  # noqa: E402
+from mcp_bridge.security.auth import JWTValidator  # noqa: E402
 from mcp_bridge.security.simple_jwt import jwt  # noqa: E402
 
 
@@ -115,6 +116,37 @@ class SecurityPostureTests(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 428)
+
+    def test_jti_tokens_can_be_reused_across_requests(self) -> None:
+        secret = "test-dev-secret"
+        config = AppConfig.model_validate(
+            {
+                "environment": "development",
+                "auth_allow_anonymous": False,
+                "auth_dev_secret": secret,
+                "audit_enabled": False,
+                "service_version": "0.4.2-test",
+            }
+        )
+        validator = JWTValidator(config)
+        token = jwt.encode(
+            {
+                "sub": "viewer-user",
+                "roles": ["viewer"],
+                "jti": f"reusable-{time.time_ns()}",
+                "iat": int(time.time()),
+                "exp": int(time.time()) + 3600,
+            },
+            secret,
+            algorithm="HS256",
+        )
+
+        first = validator.validate(token)
+        second = validator.validate(token)
+
+        self.assertEqual(first.subject, "viewer-user")
+        self.assertEqual(second.subject, "viewer-user")
+        self.assertEqual(second.token_id, first.token_id)
 
 
 if __name__ == "__main__":

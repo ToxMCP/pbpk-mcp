@@ -53,3 +53,20 @@ jobs:
 
       - name: Run runtime contract tests
         run: make runtime-contract-test
+
+      - name: Retain validated distribution artifacts
+        run: |
+          python scripts/check_distribution_artifacts.py \
+            --artifact-dir dist \
+            --report-path dist/runtime-contract-report.json
+
+      - name: Upload runtime contract artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pbpk-runtime-contract-${{ github.sha }}
+          path: |
+            dist/*.tar.gz
+            dist/*.whl
+            dist/runtime-contract-report.json
+          if-no-files-found: error
+          retention-days: 14
