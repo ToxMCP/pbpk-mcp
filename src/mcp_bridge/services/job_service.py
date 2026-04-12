@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional, TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:  # pragma: no cover
-    from mcp_bridge.audit import AuditTrail
+    from mcp_bridge.audit.trail import AuditTrail
 
 try:
     from celery.result import AsyncResult
@@ -1245,7 +1245,7 @@ class CeleryJobService:
     def _map_state(self, state: str) -> JobStatus:
         mapping = {
             "PENDING": JobStatus.QUEUED,
-            "RECEIVED": JobStatus.QUEUED,
+            "RECEIVED": JobStatus.RUNNING,
             "STARTED": JobStatus.RUNNING,
             "RETRY": JobStatus.RUNNING,
             "SUCCESS": JobStatus.SUCCEEDED,

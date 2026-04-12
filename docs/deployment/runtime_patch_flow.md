@@ -40,6 +40,7 @@ The local deployment surface is defined by:
 
 - `docker-compose.celery.yml`
 - `docker-compose.overlay.yml`
+  This overlay now bind-mounts `src/`, `scripts/`, `docs/`, `schemas/`, and `var/` so live contract resources follow the current workspace during maintainer release-prep.
 - `docker-compose.hardened.yml`
 - `scripts/deploy_rxode2_stack.sh`
 - `scripts/deploy_source_overlay_stack.sh`

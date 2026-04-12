@@ -10,4 +10,4 @@ try:
 except metadata.PackageNotFoundError:  # pragma: no cover - fallback for local runs
     _resolved_version = None
 
-__version__ = _resolved_version or "0.4.3"
+__version__ = _resolved_version or "0.4.4"

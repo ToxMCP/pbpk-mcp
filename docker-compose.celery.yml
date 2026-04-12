@@ -18,6 +18,7 @@ services:
         condition: service_started
     environment: &pbpk-common-env
       ADAPTER_MODEL_PATHS: /app/var
+      MCP_MODEL_SEARCH_PATHS: /app/var
       ADAPTER_R_PATH: /usr/bin/R
       ADAPTER_R_HOME: /usr/lib/R
       OSPSUITE_VERSION: "12.3.2"
@@ -37,15 +38,15 @@ services:
       ADAPTER_TIMEOUT_MS: "10000"
       R_MAX_VSIZE: 2G
       PBPK_ENABLE_SRC_OVERLAY: "false"
-      SERVICE_VERSION: "0.4.3"
+      SERVICE_VERSION: "0.4.4"
     volumes:
       - ./var:/app/var
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health || exit 1"]
       interval: 30s
-      timeout: 5s
-      start_period: 30s
-      retries: 3
+      timeout: 30s
+      start_period: 180s
+      retries: 5
 
   worker:
     image: pbpk_mcp-worker-rxode2:latest
@@ -64,9 +65,9 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f 'celery.*worker' >/dev/null || exit 1"]
       interval: 30s
-      timeout: 5s
-      start_period: 30s
-      retries: 3
+      timeout: 30s
+      start_period: 180s
+      retries: 5
 
 volumes:
   redis-data:

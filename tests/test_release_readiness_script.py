@@ -69,6 +69,11 @@ class ReleaseReadinessScriptTests(unittest.TestCase):
         self.assertEqual(module.REQUIRED_SCHEMA_IDS, frozenset(module.published_schema_ids()))
         self.assertEqual(wait_module.DEFAULT_REQUIRED_TOOLS, module.release_probe_required_tools())
 
+    def test_ospsuite_report_timeout_budget_is_raised_for_release_gate(self) -> None:
+        self.assertGreaterEqual(module.OSPSUITE_LOAD_TIMEOUT_SECONDS, 300)
+        self.assertGreaterEqual(module.OSPSUITE_REPORT_TIMEOUT_SECONDS, 300)
+        self.assertGreaterEqual(module.ASYNC_REFERENCE_JOB_TIMEOUT_SECONDS, 300)
+
 
 if __name__ == "__main__":
     unittest.main()
