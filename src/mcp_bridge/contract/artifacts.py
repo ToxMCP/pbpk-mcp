@@ -296,7 +296,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "docs/architecture/release_bundle_manifest.json",
       "role": "whole release bundle hash inventory",
-      "sha256": "e6e4094692e270173cb2392cc876050e1c2c4c9d29672119223c75da1252c51a"
+      "sha256": "83b2eb081e92415118a9ec61911078e5d05fe84dfa2cadc513ed0024ff71bc22"
     },
     {
       "classification": "supporting",
@@ -380,7 +380,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "scripts/generate_contract_artifacts.py",
       "role": "contract artifact generator",
-      "sha256": "6d572e5bd4702d74513ff8017e42b1600caa2f1c9717397126cf5b3cf053d322"
+      "sha256": "2003c73be78e39dad25c1bf4b88c63ca88a0c6511d7c68babe49619b19888d5f"
     },
     {
       "classification": "supporting",
@@ -442,7 +442,7 @@ _CONTRACT_MANIFEST_JSON = r"""
 
 _RELEASE_BUNDLE_MANIFEST_JSON = r"""
 {
-  "bundleSha256": "c7ed98f8479f43e4db1bc88deeb1deab9c60ffeda7dc73ad6e356e19e9c70623",
+  "bundleSha256": "7726b4650350c6e65c26254d13bc5080d0312bf58709f5fafb3429f7dca89de6",
   "contractVersion": "pbpk-mcp.v1",
   "fileCount": 612,
   "files": [
@@ -635,8 +635,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "governance",
       "relativePath": ".github/workflows/ci.yml",
-      "sha256": "7e76a0224e87ea7a21009cca3f68463a04184b991a9affdfece4681f691c6e32",
-      "sizeBytes": 1717
+      "sha256": "269ac7922d12d9692f71194d106dcecf4ece9f9edb3e242cef30386bdda4b9bd",
+      "sizeBytes": 1998
     },
     {
       "group": "governance",
@@ -2645,8 +2645,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "operations",
       "relativePath": "scripts/generate_contract_artifacts.py",
-      "sha256": "6d572e5bd4702d74513ff8017e42b1600caa2f1c9717397126cf5b3cf053d322",
-      "sizeBytes": 16955
+      "sha256": "2003c73be78e39dad25c1bf4b88c63ca88a0c6511d7c68babe49619b19888d5f",
+      "sizeBytes": 17457
     },
     {
       "group": "operations",
@@ -4164,7 +4164,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     ],
     "mode": "staged-source-tree-equivalent"
   },
-  "totalBytes": 12049460
+  "totalBytes": 12050243
 }
 """
 
