@@ -4,6 +4,25 @@ All notable changes to this project should be documented in this file.
 
 ## Unreleased
 
+## v0.5.0 - 2026-04-16
+
+### Added
+- Dynamic weight-scaled parameter bounds with allometric scaling
+- Cross-parameter consistency validation for 13 organs
+- Redis-backed session persistence with startup rehydration
+- PBPK-05 live load-test profiling script (`scripts/population_load_test.py`)
+- Unit tests for startup rehydration and memory regression
+
+### Changed
+- Memory estimator calibrated from 0.5 to 0.25 MB/patient (live rxode2 data)
+- All dev secrets lengthened to 32+ bytes
+- Docker Compose defaults to `SESSION_BACKEND=redis`
+
+### Fixed
+- PyJWT `InsecureKeyLengthWarning` in dev/test environments
+- Simulation ephemerality after API container restarts
+- Missing `snapshot_store` injection in JSON-RPC transport path
+
 ## v0.4.4 - 2026-04-12
 
 ### Added

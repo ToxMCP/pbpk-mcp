@@ -9,9 +9,9 @@ SRC_ROOT = WORKSPACE_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from mcp_bridge.adapter.mock import InMemoryAdapter
-from mcp_bridge.services.cross_parameter_consistency import CrossParameterConsistencyValidator
-from mcp.tools.run_parameter_consistency_check import (
+from mcp_bridge.adapter.mock import InMemoryAdapter  # noqa: E402
+from mcp_bridge.services.cross_parameter_consistency import CrossParameterConsistencyValidator  # noqa: E402
+from mcp.tools.run_parameter_consistency_check import (  # noqa: E402
     RunParameterConsistencyCheckRequest,
     run_parameter_consistency_check,
 )

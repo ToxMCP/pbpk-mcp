@@ -1,5 +1,8 @@
 # PBPK MCP Role in Exposure-led NGRA
 
+For the shortest cross-service routing guide across the current ToxMCP family,
+see [toxmcp_suite_index.md](./toxmcp_suite_index.md).
+
 ## Purpose
 
 PBPK MCP is a PBPK execution, qualification, and handoff substrate inside an exposure-led NGRA workflow. It is not the whole workflow.

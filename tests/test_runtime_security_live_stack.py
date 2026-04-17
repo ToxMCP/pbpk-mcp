@@ -262,7 +262,7 @@ class RuntimeSecurityLiveStackTests(unittest.TestCase):
         self.assertFalse(operator_recorded["body"]["operatorReviewGovernance"]["supportsOverride"])
 
         viewer_get = api_request(
-            "/review_signoff?simulationId=%s&scope=export_oecd_report" % simulation_id,
+            f"/review_signoff?simulationId={simulation_id}&scope=export_oecd_report",
             headers=_auth_headers("viewer"),
         )
         self.assertEqual(viewer_get["status"], 200)
@@ -273,7 +273,7 @@ class RuntimeSecurityLiveStackTests(unittest.TestCase):
         self.assertFalse(viewer_get["body"]["operatorReviewGovernance"]["supportsAdjudication"])
 
         viewer_history = api_request(
-            "/review_signoff/history?simulationId=%s&scope=export_oecd_report&limit=10" % simulation_id,
+            f"/review_signoff/history?simulationId={simulation_id}&scope=export_oecd_report&limit=10",
             headers=_auth_headers("viewer"),
         )
         self.assertEqual(viewer_history["status"], 200)

@@ -10,7 +10,7 @@ SRC_ROOT = WORKSPACE_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from mcp_bridge.audit.sweep_review import (
+from mcp_bridge.audit.sweep_review import (  # noqa: E402
     SWEEP_REVIEWED_EVENT,
     attach_sweep_review,
     build_sweep_review_summary,

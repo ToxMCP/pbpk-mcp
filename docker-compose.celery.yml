@@ -18,7 +18,6 @@ services:
         condition: service_started
     environment: &pbpk-common-env
       ADAPTER_MODEL_PATHS: /app/var
-      MCP_MODEL_SEARCH_PATHS: /app/var
       ADAPTER_R_PATH: /usr/bin/R
       ADAPTER_R_HOME: /usr/lib/R
       OSPSUITE_VERSION: "12.3.2"

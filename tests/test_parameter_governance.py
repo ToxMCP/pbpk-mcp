@@ -11,14 +11,14 @@ SRC_ROOT = WORKSPACE_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from mcp.tools.set_parameter_value import (
+from mcp.tools.set_parameter_value import (  # noqa: E402
     SetParameterValueRequest,
     set_parameter_value,
 )
-from mcp.session_registry import registry
-from mcp_bridge.adapter.mock import InMemoryAdapter
-from mcp_bridge.parameter_bounds import ParameterBoundsRegistry
-from mcp_bridge.storage.snapshot_store import SimulationSnapshotStore
+from mcp.session_registry import registry  # noqa: E402
+from mcp_bridge.adapter.mock import InMemoryAdapter  # noqa: E402
+from mcp_bridge.parameter_bounds import ParameterBoundsRegistry  # noqa: E402
+from mcp_bridge.storage.snapshot_store import SimulationSnapshotStore  # noqa: E402
 
 
 def _register(handle) -> None:

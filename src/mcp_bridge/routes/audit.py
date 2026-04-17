@@ -17,9 +17,9 @@ router = APIRouter(prefix="/audit", tags=["audit"])
 
 
 class AuditVerifyRequest(BaseModel):
-    storage: Literal["local", "s3"] = Field(
-        default="local",
-        description="Audit storage backend to verify",
+    storage: Literal["local", "s3"] | None = Field(
+        default=None,
+        description="Audit storage backend to verify (defaults to app config)",
     )
     path: Optional[str] = Field(
         default=None,
@@ -83,7 +83,7 @@ def verify_audit(
 ) -> AuditVerifyResponse:
     config: AppConfig = request.app.state.config
 
-    storage = body.storage or config.audit_storage_backend
+    storage = body.storage or config.audit_storage_backend or "local"
 
     if storage == "local":
         base_path = body.path or config.audit_storage_path

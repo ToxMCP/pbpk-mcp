@@ -253,7 +253,6 @@ def build_trust_surface_contract(payload: Mapping[str, Any], *, tool_name: str) 
                     "report.humanReviewSummary.reviewStatus",
                     "report.humanReviewSummary.cautionSummary",
                     "report.humanReviewSummary.summaryTransportRisk",
-                    "report.humanReviewSummary.summaryTransportRisk",
                     "report.humanReviewSummary.exportBlockPolicy",
                     "report.missingEvidence",
                     "report.dossierImprovementSignals",
