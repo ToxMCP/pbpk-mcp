@@ -71,6 +71,10 @@ SUPPORTING_ARTIFACTS = (
         "exposure-led NGRA boundary guide",
     ),
     (
+        "docs/architecture/toxmcp_suite_index.md",
+        "cross-service suite routing guide",
+    ),
+    (
         "docs/architecture/release_bundle_manifest.json",
         "whole release bundle hash inventory",
     ),
@@ -200,14 +204,6 @@ def _should_ignore_name(name: str) -> bool:
     return any(fnmatch.fnmatch(name, pattern) for pattern in COPY_IGNORE_GLOBS)
 
 
-def _is_virtualenv_root(path: Path) -> bool:
-    return path.is_dir() and (path / "pyvenv.cfg").exists()
-
-
-def _should_ignore_path(path: Path) -> bool:
-    return _should_ignore_name(path.name) or _is_virtualenv_root(path)
-
-
 def _release_bundle_group(relative_path: str) -> str:
     parts = Path(relative_path).parts
     if not parts:
@@ -233,14 +229,11 @@ def _release_bundle_entries() -> list[dict[str, object]]:
         PACKAGED_MODULE_PATH.relative_to(WORKSPACE_ROOT).as_posix(),
     }
     for root, dirnames, filenames in os.walk(WORKSPACE_ROOT):
-        root_path = Path(root)
-        dirnames[:] = sorted(
-            name for name in dirnames if not _should_ignore_path(root_path / name)
-        )
+        dirnames[:] = sorted(name for name in dirnames if not _should_ignore_name(name))
         for filename in sorted(filenames):
-            path = root_path / filename
-            if _should_ignore_path(path):
+            if _should_ignore_name(filename):
                 continue
+            path = Path(root) / filename
             relative_path = path.relative_to(WORKSPACE_ROOT).as_posix()
             if relative_path in excluded_paths:
                 continue

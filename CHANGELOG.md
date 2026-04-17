@@ -4,6 +4,40 @@ All notable changes to this project should be documented in this file.
 
 ## Unreleased
 
+## v0.5.0 - 2026-04-17
+
+### Changed
+
+- bearer tokens with `jti` claims are now single-use within the replay cache, so repeated presentation of an already-seen token identifier is rejected instead of being treated as a harmless repeat validation
+- REST `/set_parameter_value` now uses the same snapshot, audit, sweep-detection, and response-governance path as MCP `call_tool`, eliminating transport drift on parameter-write controls
+- `set_parameter_value(updateMode="relative")` now applies deltas against the current parameter value before bounds checks, cross-parameter validation, audit recording, and adapter persistence
+- the packaged/local deployment surface now uses canonical `ADAPTER_MODEL_PATHS` configuration in the default compose profile, while the remaining legacy env aliases keep warning-based compatibility until `v0.6.0`
+
+### Fixed
+
+- completed release metadata convergence for `v0.5.0` across package version markers, compose/env `SERVICE_VERSION`, README release markers, and the matching release note entry
+
+## v0.4.4 - 2026-04-12
+
+### Added
+
+- a retained `public_release_preflight` summary artifact so release-prep runs can prove the local runtime-contract gate, live release-readiness check, live-stack pytest slice, workspace smoke, and review-signoff index audit from one entrypoint
+- a documented MinIO/S3-compatible audit smoke path and review-signoff index backfill utility so local operator release-prep can exercise the off-host audit contract and migrate legacy signoff history into the fast lookup path
+
+### Changed
+
+- the live OSPSuite release gate now proves sidecar-backed OECD report export without forcing a full runtime parameter-table preview on the `.pkml` branch, while still keeping companion parameter provenance covered by dedicated bridge tests
+- the source-overlay startup path now does less eager import work in the app, auth, audit, and tool-registry layers, reducing maintainer redeploy cost during release-prep loops
+- release docs and publication checklists now treat the GitHub `main` ruleset, retained `public_release_preflight_summary.json`, and workflow artifacts as first-class release evidence
+- the `Model Smoke` workflow now runs the consolidated public preflight entrypoint and retains the same preflight summary JSON used in local release-prep, instead of hand-assembling a partially overlapping evidence set
+
+### Fixed
+
+- eliminated the last known pre-public false-negative in the local release gate by aligning the live-stack subprocess timeout with the real `workspace_model_smoke.py --include-population` runtime
+- restored publication-gate convergence after contract artifact regeneration by forcing the live runtime, generated manifests, and retained release-preflight summary back onto the same contract hash
+- fixed the remaining async release-gate false negative by tracking Celery worker start state and giving the reference-model async poll budget enough time to observe a healthy `rxode2` completion
+- fixed source-overlay contract drift by bind-mounting the workspace `docs/` and `schemas/` trees, so regenerated contract manifests match the live server without rebuilding the image
+
 ## v0.4.3 - 2026-03-30
 
 ### Added

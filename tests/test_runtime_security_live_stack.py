@@ -22,7 +22,7 @@ if str(SRC_ROOT) not in sys.path:
 from mcp_bridge.security.simple_jwt import jwt  # noqa: E402
 
 
-DEV_AUTH_SECRET = "pbpk-local-dev-secret"
+DEV_AUTH_SECRET = "pbpk-local-dev-secret-32bytes-long"
 REFERENCE_MODEL = "/app/var/models/rxode2/reference_compound/reference_compound_population_rxode2_model.R"
 
 
@@ -262,7 +262,7 @@ class RuntimeSecurityLiveStackTests(unittest.TestCase):
         self.assertFalse(operator_recorded["body"]["operatorReviewGovernance"]["supportsOverride"])
 
         viewer_get = api_request(
-            f"/review_signoff?simulationId={simulation_id}&scope=export_oecd_report",
+            "/review_signoff?simulationId=%s&scope=export_oecd_report" % simulation_id,
             headers=_auth_headers("viewer"),
         )
         self.assertEqual(viewer_get["status"], 200)
@@ -273,7 +273,7 @@ class RuntimeSecurityLiveStackTests(unittest.TestCase):
         self.assertFalse(viewer_get["body"]["operatorReviewGovernance"]["supportsAdjudication"])
 
         viewer_history = api_request(
-            f"/review_signoff/history?simulationId={simulation_id}&scope=export_oecd_report&limit=10",
+            "/review_signoff/history?simulationId=%s&scope=export_oecd_report&limit=10" % simulation_id,
             headers=_auth_headers("viewer"),
         )
         self.assertEqual(viewer_history["status"], 200)

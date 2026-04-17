@@ -14,6 +14,42 @@
           "default": null,
           "title": "Auc"
         },
+        "auc0Inf": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Auc0Inf"
+        },
+        "aucExtrapolatedPercent": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Aucextrapolatedpercent"
+        },
+        "clearance": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Clearance"
+        },
         "cmax": {
           "anyOf": [
             {
@@ -26,9 +62,64 @@
           "default": null,
           "title": "Cmax"
         },
+        "halfLife": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Halflife"
+        },
+        "lambdaZ": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lambdaz"
+        },
+        "ncaStatus": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ncastatus"
+        },
+        "ncaWarnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Ncawarnings",
+          "type": "array"
+        },
         "parameter": {
           "title": "Parameter",
           "type": "string"
+        },
+        "terminalPhasePointCount": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Terminalphasepointcount"
         },
         "tmax": {
           "anyOf": [
@@ -53,6 +144,18 @@
           ],
           "default": null,
           "title": "Unit"
+        },
+        "volumeDistribution": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Volumedistribution"
         }
       },
       "required": [

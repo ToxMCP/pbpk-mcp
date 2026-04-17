@@ -85,6 +85,8 @@ def build_trust_surface_contract(payload: Mapping[str, Any], *, tool_name: str) 
                 "curationSummary.reviewLabel",
                 "curationSummary.humanSummary",
                 "curationSummary.regulatoryBenchmarkReadiness",
+                "curationSummary.regulatoryBenchmarkReadiness.prioritizedGaps",
+                "curationSummary.regulatoryBenchmarkReadiness.recommendedNextArtifacts",
                 "curationSummary.cautionSummary",
                 "curationSummary.summaryTransportRisk",
                 "curationSummary.misreadRiskSummary",
@@ -127,6 +129,8 @@ def build_trust_surface_contract(payload: Mapping[str, Any], *, tool_name: str) 
                 "items[*].curationSummary.reviewLabel",
                 "items[*].curationSummary.humanSummary",
                 "items[*].curationSummary.regulatoryBenchmarkReadiness",
+                "items[*].curationSummary.regulatoryBenchmarkReadiness.prioritizedGaps",
+                "items[*].curationSummary.regulatoryBenchmarkReadiness.recommendedNextArtifacts",
                 "items[*].curationSummary.cautionSummary",
                 "items[*].curationSummary.summaryTransportRisk",
                 "items[*].curationSummary.misreadRiskSummary",
@@ -155,10 +159,17 @@ def build_trust_surface_contract(payload: Mapping[str, Any], *, tool_name: str) 
             surface_type="qualification-summary",
             summary=(
                 "Do not render qualification-facing state alone. Carry review status, evidence basis, "
-                "claim boundaries, caution summary, export-block policy, and operator sign-off context together."
+                "claim boundaries, missing-evidence context, caution summary, warnings, benchmark advisory signals, "
+                "and operator sign-off context together."
             ),
             required_adjacent_paths=_unique_texts(
                 "qualificationState",
+                "evidenceBasis",
+                "workflowClaimBoundaries",
+                "cautionSummary",
+                "missingEvidence",
+                "warnings",
+                "dossierImprovementSignals",
                 "ngraObjects.pbpkQualificationSummary.reviewStatus",
                 "ngraObjects.pbpkQualificationSummary.evidenceBasis",
                 "ngraObjects.pbpkQualificationSummary.workflowClaimBoundaries",
@@ -190,14 +201,18 @@ def build_trust_surface_contract(payload: Mapping[str, Any], *, tool_name: str) 
             surface_type="verification-qualification-state",
             summary=(
                 "Do not render verification-facing qualification state alone. Carry workflow role, "
-                "population support, evidence basis, claim boundaries, reviewer status, active warnings, "
-                "and operator sign-off context together."
+                "population support, evidence basis, claim boundaries, missing-evidence context, benchmark "
+                "advisory signals, active warnings, and operator sign-off context together."
             ),
             required_adjacent_paths=_unique_texts(
                 "qualificationState",
                 "qualificationState.reviewStatus",
                 "profile.workflowRole",
                 "profile.populationSupport",
+                "evidenceBasis",
+                "workflowClaimBoundaries",
+                "missingEvidence",
+                "dossierImprovementSignals",
                 "profile.evidenceBasis",
                 "profile.workflowClaimBoundaries",
                 "warnings",
@@ -230,14 +245,19 @@ def build_trust_surface_contract(payload: Mapping[str, Any], *, tool_name: str) 
                 surface_type="human-review-summary",
                 summary=(
                     "Do not render the OECD human-review summary alone. Carry the caution summary, "
-                    "transport risk, anti-misread section, block reasons, and operator sign-off together."
+                    "transport risk, anti-misread section, missing-evidence context, benchmark advisory "
+                    "signals, objective performance-evidence metrics, block reasons, and operator sign-off together."
                 ),
                 required_adjacent_paths=_unique_texts(
                     "report.humanReviewSummary.plainLanguageSummary",
                     "report.humanReviewSummary.reviewStatus",
                     "report.humanReviewSummary.cautionSummary",
                     "report.humanReviewSummary.summaryTransportRisk",
+                    "report.humanReviewSummary.summaryTransportRisk",
                     "report.humanReviewSummary.exportBlockPolicy",
+                    "report.missingEvidence",
+                    "report.dossierImprovementSignals",
+                    "report.performanceEvidence.objectiveMetrics",
                     "report.misreadRiskSummary",
                     "report.exportBlockPolicy",
                     "report.operatorReviewSignoff",
@@ -257,7 +277,8 @@ def build_trust_surface_contract(payload: Mapping[str, Any], *, tool_name: str) 
                     surface_type="qualification-summary",
                     summary=(
                         "Do not render the nested PBPK qualification summary alone. Carry review status, "
-                        "evidence basis, claim boundaries, caution summary, and report-level anti-misread context together."
+                        "evidence basis, claim boundaries, caution summary, missing-evidence context, "
+                        "benchmark advisory signals, and report-level anti-misread context together."
                     ),
                     required_adjacent_paths=_unique_texts(
                         "report.ngraObjects.pbpkQualificationSummary.reviewStatus",
@@ -265,6 +286,9 @@ def build_trust_surface_contract(payload: Mapping[str, Any], *, tool_name: str) 
                         "report.ngraObjects.pbpkQualificationSummary.workflowClaimBoundaries",
                         "report.ngraObjects.pbpkQualificationSummary.cautionSummary",
                         "report.ngraObjects.pbpkQualificationSummary.exportBlockPolicy",
+                        "report.missingEvidence",
+                        "report.dossierImprovementSignals",
+                        "report.humanReviewSummary.summaryTransportRisk",
                         "report.misreadRiskSummary",
                         "report.operatorReviewSignoff",
                         "report.operatorReviewGovernance",

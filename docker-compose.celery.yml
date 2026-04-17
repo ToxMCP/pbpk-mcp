@@ -26,7 +26,7 @@ services:
       DOTNET_GCServer: "1"
       MALLOC_ARENA_MAX: "2"
       AUTH_ALLOW_ANONYMOUS: "true"
-      AUTH_DEV_SECRET: "pbpk-local-dev-secret"
+      AUTH_DEV_SECRET: "pbpk-local-dev-secret-32bytes-long"
       ENVIRONMENT: development
       ADAPTER_BACKEND: subprocess
       ADAPTER_TO_THREAD: "true"
@@ -34,18 +34,20 @@ services:
       JOB_BACKEND: celery
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
+      SESSION_BACKEND: redis
+      SESSION_REDIS_URL: redis://redis:6379/2
       ADAPTER_TIMEOUT_MS: "10000"
       R_MAX_VSIZE: 2G
       PBPK_ENABLE_SRC_OVERLAY: "false"
-      SERVICE_VERSION: "0.4.3"
+      SERVICE_VERSION: "0.5.0"
     volumes:
       - ./var:/app/var
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health || exit 1"]
       interval: 30s
-      timeout: 5s
-      start_period: 30s
-      retries: 3
+      timeout: 30s
+      start_period: 180s
+      retries: 5
 
   worker:
     image: pbpk_mcp-worker-rxode2:latest
@@ -64,9 +66,9 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f 'celery.*worker' >/dev/null || exit 1"]
       interval: 30s
-      timeout: 5s
-      start_period: 30s
-      retries: 3
+      timeout: 30s
+      start_period: 180s
+      retries: 5
 
 volumes:
   redis-data:

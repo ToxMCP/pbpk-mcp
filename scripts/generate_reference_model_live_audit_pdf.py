@@ -54,7 +54,7 @@ if str(SRC_ROOT) not in sys.path:
 
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
-DEFAULT_DEV_SECRET = "pbpk-local-dev-secret"
+DEFAULT_DEV_SECRET = "pbpk-local-dev-secret-32bytes-long"
 REFERENCE_MODEL = "/app/var/models/rxode2/reference_compound/reference_compound_population_rxode2_model.R"
 REQUEST_JSON = {"route": "iv-infusion", "contextOfUse": "research-only"}
 REGULATORY_GOLDSET_SCORECARD = (

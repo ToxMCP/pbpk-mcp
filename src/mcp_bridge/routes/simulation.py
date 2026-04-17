@@ -92,6 +92,9 @@ from mcp.tools.set_parameter_value import (
     SetParameterValueRequest as ToolSetParameterValueRequest,
 )
 from mcp.tools.set_parameter_value import (
+    SetParameterValueResponse as ToolSetParameterValueResponse,
+)
+from mcp.tools.set_parameter_value import (
     SetParameterValueValidationError,
 )
 from mcp.tools.set_parameter_value import (
@@ -100,7 +103,7 @@ from mcp.tools.set_parameter_value import (
 
 from ..adapter import AdapterError, AdapterErrorCode, OspsuiteAdapter
 from ..adapter.schema import SimulationResult
-from ..audit import AuditTrail
+from ..audit.trail import AuditTrail
 from ..dependencies import (
     get_adapter,
     get_audit_trail,
@@ -317,6 +320,15 @@ class PkMetricModel(CamelModel):
     cmax: Optional[float] = Field(default=None, alias="cmax")
     tmax: Optional[float] = Field(default=None, alias="tmax")
     auc: Optional[float] = Field(default=None, alias="auc")
+    auc0_inf: Optional[float] = Field(default=None, alias="auc0Inf")
+    lambda_z: Optional[float] = Field(default=None, alias="lambdaZ")
+    half_life: Optional[float] = Field(default=None, alias="halfLife")
+    auc_extrapolated_percent: Optional[float] = Field(default=None, alias="aucExtrapolatedPercent")
+    terminal_phase_point_count: Optional[int] = Field(default=None, alias="terminalPhasePointCount")
+    nca_status: Optional[str] = Field(default=None, alias="ncaStatus")
+    nca_warnings: List[str] = Field(default_factory=list, alias="ncaWarnings")
+    clearance: Optional[float] = Field(default=None, alias="clearance")
+    volume_distribution: Optional[float] = Field(default=None, alias="volumeDistribution")
 
 
 class CalculatePkParametersResponseBody(CamelModel):
@@ -718,13 +730,15 @@ async def get_parameter_value(
     return ParameterValueResponse(parameter=model)
 
 
-@router.post("/set_parameter_value", response_model=ParameterValueResponse)
+@router.post("/set_parameter_value", response_model=ToolSetParameterValueResponse)
 async def set_parameter_value(
     payload: SetParameterValueRequest,
-   request: Request,
+    request: Request,
     adapter: OspsuiteAdapter = Depends(get_adapter),
+    audit_trail: AuditTrail = Depends(get_audit_trail),
+    snapshot_store: SimulationSnapshotStore = Depends(get_snapshot_store),
     _auth: AuthContext = Depends(require_roles("operator", "admin")),
-) -> ParameterValueResponse:
+) -> ToolSetParameterValueResponse:
     require_confirmation(request, confirmed=payload.confirm)
     try:
         tool_payload = ToolSetParameterValueRequest.model_validate(
@@ -747,6 +761,8 @@ async def set_parameter_value(
             execute_set_parameter_value,
             adapter,
             tool_payload,
+            audit_trail=audit_trail,
+            snapshot_store=snapshot_store,
         )
     except SetParameterValueValidationError as exc:
         detail = str(exc)
@@ -777,22 +793,13 @@ async def set_parameter_value(
     except AdapterError as exc:
         raise adapter_error_to_http(exc) from exc
 
-    value = tool_response.parameter
-    model = ParameterValueModel(
-        path=value.path,
-        value=value.value,
-        unit=value.unit,
-        displayName=value.display_name,
-        lastUpdatedAt=value.last_updated_at,
-        source=value.source,
-    )
     logger.info(
         "simulation.parameter.updated",
         simulationId=payload.simulation_id,
         parameterPath=payload.parameter_path,
-        unit=value.unit,
+        unit=tool_response.parameter.unit,
     )
-    return ParameterValueResponse(parameter=model)
+    return tool_response
 
 
 @router.post(
@@ -1347,6 +1354,15 @@ async def calculate_pk_parameters(
             cmax=item.cmax,
             tmax=item.tmax,
             auc=item.auc,
+            auc0Inf=item.auc0_inf,
+            lambdaZ=item.lambda_z,
+            halfLife=item.half_life,
+            aucExtrapolatedPercent=item.auc_extrapolated_percent,
+            terminalPhasePointCount=item.terminal_phase_point_count,
+            ncaStatus=item.nca_status,
+            ncaWarnings=item.nca_warnings,
+            clearance=item.clearance,
+            volumeDistribution=item.volume_distribution,
         )
         for item in tool_response.metrics
     ]

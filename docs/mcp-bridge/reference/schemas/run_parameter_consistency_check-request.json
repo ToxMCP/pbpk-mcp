@@ -1,0 +1,15 @@
+{
+  "properties": {
+    "simulationId": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Simulationid",
+      "type": "string"
+    }
+  },
+  "required": [
+    "simulationId"
+  ],
+  "title": "RunParameterConsistencyCheckRequest",
+  "type": "object"
+}

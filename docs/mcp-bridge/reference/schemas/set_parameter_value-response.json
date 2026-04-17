@@ -1,5 +1,39 @@
 {
   "$defs": {
+    "ParameterGovernancePayload": {
+      "description": "Governance metadata returned with a successful parameter change.",
+      "properties": {
+        "boundsReference": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Boundsreference",
+          "type": "array"
+        },
+        "snapshotId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Snapshotid"
+        },
+        "sweepAlerts": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Sweepalerts",
+          "type": "array"
+        }
+      },
+      "title": "ParameterGovernancePayload",
+      "type": "object"
+    },
     "ParameterValuePayload": {
       "properties": {
         "displayName": {
@@ -61,6 +95,9 @@
     }
   },
   "properties": {
+    "governance": {
+      "$ref": "#/$defs/ParameterGovernancePayload"
+    },
     "parameter": {
       "$ref": "#/$defs/ParameterValuePayload"
     }

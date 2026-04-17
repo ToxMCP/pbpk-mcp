@@ -8,6 +8,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from mcp_bridge.adapter.interface import OspsuiteAdapter
+from mcp_bridge.reviewer_advisory import build_dossier_improvement_signals
 
 TOOL_NAME = "export_oecd_report"
 CONTRACT_VERSION = "pbpk-mcp.v1"
@@ -33,6 +34,7 @@ class ExportOecdReportResponse(BaseModel):
     generated_at: Optional[str] = Field(default=None, alias="generatedAt")
     ngra_objects: dict[str, Any] = Field(default_factory=dict, alias="ngraObjects")
     qualification_state: dict[str, Any] | None = Field(default=None, alias="qualificationState")
+    dossier_improvement_signals: dict[str, Any] | None = Field(default=None, alias="dossierImprovementSignals")
     report: dict[str, Any] = Field(default_factory=dict)
 
     @classmethod
@@ -49,14 +51,19 @@ class ExportOecdReportResponse(BaseModel):
             assessment = report_payload["validation"].get("assessment")
             if isinstance(assessment, Mapping) and isinstance(assessment.get("qualificationState"), Mapping):
                 qualification_state = dict(assessment["qualificationState"])
+        simulation_id = str(payload.get("simulationId"))
+        advisory = build_dossier_improvement_signals(simulation_id=simulation_id)
+        if advisory is not None:
+            report_payload["dossierImprovementSignals"] = dict(advisory)
         return cls(
             tool=TOOL_NAME,
             contractVersion=CONTRACT_VERSION,
-            simulationId=str(payload.get("simulationId")),
+            simulationId=simulation_id,
             backend=str(payload.get("backend")) if payload.get("backend") else None,
             generatedAt=str(payload.get("generatedAt")) if payload.get("generatedAt") else None,
             ngraObjects=ngra_objects_payload,
             qualificationState=qualification_state,
+            dossierImprovementSignals=advisory,
             report=report_payload,
         )
 

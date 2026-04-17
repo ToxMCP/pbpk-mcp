@@ -279,7 +279,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--dev-secret",
-        default="benchmark-secret",
+        default="benchmark-secret-32bytes-long",
         help="Shared secret for signing development tokens (ASGI mode)",
     )
     parser.add_argument(
