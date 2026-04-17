@@ -160,6 +160,69 @@ def _matching_events(
     return sorted(relevant, key=lambda item: str(item.get("timestamp") or ""), reverse=True)
 
 
+def _fetch_matching_review_signoff_events(
+    audit: Any,
+    *,
+    simulation_id: str,
+    scope: str,
+    limit: int,
+    event_types: tuple[str, ...] | None = None,
+) -> list[dict[str, Any]]:
+    if hasattr(audit, "fetch_review_signoff_events"):
+        try:
+            return audit.fetch_review_signoff_events(
+                limit=limit,
+                simulation_id=simulation_id,
+                scope=scope,
+                event_types=event_types,
+            )
+        except NotImplementedError:
+            pass
+
+    merged: list[dict[str, Any]] = []
+    if event_types is None:
+        event_types = (SIGNOFF_RECORDED_EVENT, SIGNOFF_REVOKED_EVENT)
+    for event_type in event_types:
+        merged.extend(
+            _matching_events(
+                audit.fetch_events(limit=1000, event_type=event_type),
+                simulation_id=simulation_id,
+                scope=scope,
+            )
+        )
+    merged.sort(key=lambda item: str(item.get("timestamp") or ""), reverse=True)
+    return merged[:limit]
+
+
+def _count_matching_review_signoff_events(
+    audit: Any,
+    *,
+    simulation_id: str,
+    scope: str,
+    event_types: tuple[str, ...] | None = None,
+) -> int:
+    if hasattr(audit, "count_review_signoff_events"):
+        try:
+            return int(
+                audit.count_review_signoff_events(
+                    simulation_id=simulation_id,
+                    scope=scope,
+                    event_types=event_types,
+                )
+            )
+        except NotImplementedError:
+            pass
+    return len(
+        _fetch_matching_review_signoff_events(
+            audit,
+            simulation_id=simulation_id,
+            scope=scope,
+            limit=1000,
+            event_types=event_types,
+        )
+    )
+
+
 def build_operator_review_signoff_summary(
     audit: Any,
     *,
@@ -181,9 +244,21 @@ def build_operator_review_signoff_summary(
         )
         return summary
 
+    if hasattr(audit, "has_review_signoff_index"):
+        try:
+            if not audit.has_review_signoff_index(simulation_id=simulation_id, scope=scope):
+                return summary
+        except NotImplementedError:
+            pass
+
     try:
-        recorded = audit.fetch_events(limit=1000, event_type=SIGNOFF_RECORDED_EVENT)
-        revoked = audit.fetch_events(limit=1000, event_type=SIGNOFF_REVOKED_EVENT)
+        events = _fetch_matching_review_signoff_events(
+            audit,
+            simulation_id=simulation_id,
+            scope=scope,
+            limit=8,
+            event_types=(SIGNOFF_RECORDED_EVENT, SIGNOFF_REVOKED_EVENT),
+        )
     except NotImplementedError:
         summary["status"] = "unavailable"
         summary["plainLanguageSummary"] = (
@@ -191,8 +266,16 @@ def build_operator_review_signoff_summary(
         )
         return summary
 
-    latest_recorded = _latest_matching_event(recorded, simulation_id=simulation_id, scope=scope)
-    latest_revoked = _latest_matching_event(revoked, simulation_id=simulation_id, scope=scope)
+    latest_recorded = _latest_matching_event(
+        [event for event in events if event.get("eventType") == SIGNOFF_RECORDED_EVENT],
+        simulation_id=simulation_id,
+        scope=scope,
+    )
+    latest_revoked = _latest_matching_event(
+        [event for event in events if event.get("eventType") == SIGNOFF_REVOKED_EVENT],
+        simulation_id=simulation_id,
+        scope=scope,
+    )
     latest_event = max(
         [event for event in (latest_recorded, latest_revoked) if event is not None],
         key=lambda item: str(item.get("timestamp") or ""),
@@ -289,9 +372,28 @@ def build_operator_review_signoff_history(
         )
         return response
 
+    if hasattr(audit, "has_review_signoff_index"):
+        try:
+            if not audit.has_review_signoff_index(simulation_id=simulation_id, scope=scope):
+                return response
+        except NotImplementedError:
+            pass
+
     try:
-        recorded = audit.fetch_events(limit=1000, event_type=SIGNOFF_RECORDED_EVENT)
-        revoked = audit.fetch_events(limit=1000, event_type=SIGNOFF_REVOKED_EVENT)
+        capped_limit = max(1, min(int(limit), 100))
+        merged = _fetch_matching_review_signoff_events(
+            audit,
+            simulation_id=simulation_id,
+            scope=scope,
+            limit=capped_limit,
+            event_types=(SIGNOFF_RECORDED_EVENT, SIGNOFF_REVOKED_EVENT),
+        )
+        total_count = _count_matching_review_signoff_events(
+            audit,
+            simulation_id=simulation_id,
+            scope=scope,
+            event_types=(SIGNOFF_RECORDED_EVENT, SIGNOFF_REVOKED_EVENT),
+        )
     except NotImplementedError:
         response["status"] = "unavailable"
         response["readableAuditHistory"] = False
@@ -300,11 +402,6 @@ def build_operator_review_signoff_history(
         )
         return response
 
-    merged = _matching_events(recorded, simulation_id=simulation_id, scope=scope)
-    merged.extend(_matching_events(revoked, simulation_id=simulation_id, scope=scope))
-    merged.sort(key=lambda item: str(item.get("timestamp") or ""), reverse=True)
-
-    capped_limit = max(1, min(int(limit), 100))
     entries: list[dict[str, Any]] = []
     for event in merged[:capped_limit]:
         payload = event.get("reviewSignoff")
@@ -333,8 +430,8 @@ def build_operator_review_signoff_history(
 
     response["entries"] = entries
     response["returnedEntryCount"] = len(entries)
-    response["totalEntryCount"] = len(merged)
-    response["truncated"] = len(merged) > len(entries)
+    response["totalEntryCount"] = total_count
+    response["truncated"] = total_count > len(entries)
     if entries:
         response["latestStatus"] = entries[0]["action"]
         response["latestDisposition"] = entries[0]["disposition"]

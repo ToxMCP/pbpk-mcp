@@ -100,7 +100,7 @@ from mcp.tools.set_parameter_value import (
 
 from ..adapter import AdapterError, AdapterErrorCode, OspsuiteAdapter
 from ..adapter.schema import SimulationResult
-from ..audit import AuditTrail
+from ..audit.trail import AuditTrail
 from ..dependencies import (
     get_adapter,
     get_audit_trail,
@@ -317,6 +317,15 @@ class PkMetricModel(CamelModel):
     cmax: Optional[float] = Field(default=None, alias="cmax")
     tmax: Optional[float] = Field(default=None, alias="tmax")
     auc: Optional[float] = Field(default=None, alias="auc")
+    auc0_inf: Optional[float] = Field(default=None, alias="auc0Inf")
+    lambda_z: Optional[float] = Field(default=None, alias="lambdaZ")
+    half_life: Optional[float] = Field(default=None, alias="halfLife")
+    auc_extrapolated_percent: Optional[float] = Field(default=None, alias="aucExtrapolatedPercent")
+    terminal_phase_point_count: Optional[int] = Field(default=None, alias="terminalPhasePointCount")
+    nca_status: Optional[str] = Field(default=None, alias="ncaStatus")
+    nca_warnings: List[str] = Field(default_factory=list, alias="ncaWarnings")
+    clearance: Optional[float] = Field(default=None, alias="clearance")
+    volume_distribution: Optional[float] = Field(default=None, alias="volumeDistribution")
 
 
 class CalculatePkParametersResponseBody(CamelModel):
@@ -1347,6 +1356,15 @@ async def calculate_pk_parameters(
             cmax=item.cmax,
             tmax=item.tmax,
             auc=item.auc,
+            auc0Inf=item.auc0_inf,
+            lambdaZ=item.lambda_z,
+            halfLife=item.half_life,
+            aucExtrapolatedPercent=item.auc_extrapolated_percent,
+            terminalPhasePointCount=item.terminal_phase_point_count,
+            ncaStatus=item.nca_status,
+            ncaWarnings=item.nca_warnings,
+            clearance=item.clearance,
+            volumeDistribution=item.volume_distribution,
         )
         for item in tool_response.metrics
     ]

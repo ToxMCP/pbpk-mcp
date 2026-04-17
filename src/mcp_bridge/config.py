@@ -144,6 +144,16 @@ class AppConfig(BaseModel):
         ge=0,
         description="Retention window (seconds) for population simulation artefacts",
     )
+    max_population_size: int = Field(
+        default=5000,
+        ge=1,
+        description="Hard upper bound on population cohort size for simulations",
+    )
+    max_memory_per_job_mb: int = Field(
+        default=2048,
+        ge=1,
+        description="Maximum estimated memory quota per population job in megabytes",
+    )
     snapshot_storage_path: str = Field(
         default="var/snapshots",
         description="Filesystem path for persisted simulation baseline snapshots",
@@ -168,6 +178,14 @@ class AppConfig(BaseModel):
     )
     audit_s3_region: Optional[str] = Field(
         default=None, description="AWS region where the audit bucket resides"
+    )
+    audit_s3_endpoint_url: Optional[str] = Field(
+        default=None,
+        description="Custom S3 endpoint URL for S3-compatible stores used outside the default AWS endpoint",
+    )
+    audit_s3_force_path_style: bool = Field(
+        default=False,
+        description="Force path-style addressing for S3-compatible endpoints such as MinIO",
     )
     audit_s3_object_lock_mode: Optional[str] = Field(
         default=None, description="S3 Object Lock mode (governance or compliance)"
@@ -224,7 +242,7 @@ class AppConfig(BaseModel):
     def _normalise_service_metadata(cls, value: Any, info: ValidationInfo) -> str:
         default = cls.model_fields[info.field_name].default
         if info.field_name == "service_version" and not default:
-            default = __version__ or "0.4.3"
+            default = __version__ or "0.4.4"
         if value is None:
             return str(default)
         text = str(value).strip()
@@ -419,6 +437,11 @@ class AppConfig(BaseModel):
                     "AUDIT_S3_PREFIX", cls.model_fields["audit_s3_prefix"].default
                 ),
                 "audit_s3_region": os.getenv("AUDIT_S3_REGION"),
+                "audit_s3_endpoint_url": os.getenv("AUDIT_S3_ENDPOINT_URL"),
+                "audit_s3_force_path_style": cls._env_to_bool(
+                    "AUDIT_S3_FORCE_PATH_STYLE",
+                    cls.model_fields["audit_s3_force_path_style"].default,
+                ),
                 "audit_s3_object_lock_mode": os.getenv("AUDIT_S3_OBJECT_LOCK_MODE"),
                 "audit_s3_object_lock_days": (
                     cls._env_to_int("AUDIT_S3_OBJECT_LOCK_DAYS", 1)

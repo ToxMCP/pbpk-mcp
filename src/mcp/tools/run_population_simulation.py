@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
+from prometheus_client import Counter
 
 from mcp.session_registry import SessionRegistry, SessionRegistryError, registry
 from mcp.tools.load_simulation import resolve_model_path
@@ -16,7 +17,15 @@ from mcp_bridge.adapter.schema import (
     PopulationOutputsConfig,
     PopulationSimulationConfig,
 )
+from mcp_bridge.config import AppConfig
 from mcp_bridge.services.job_service import BaseJobService, JobRecord
+from mcp_bridge.services.resource_quota import QuotaExceededError, ResourceQuotaValidator
+
+_POPULATION_QUOTA_REJECTIONS = Counter(
+    "mcp_population_quota_rejections_total",
+    "Total population simulation requests rejected by resource quotas.",
+    ("reason",),
+)
 
 
 class RunPopulationSimulationValidationError(ValueError):
@@ -118,8 +127,24 @@ def run_population_simulation(
     allowed_roots: Optional[list[str]] = None,
     idempotency_key: Optional[str] = None,
     idempotency_fingerprint: Optional[str] = None,
+    config: AppConfig | None = None,
 ) -> RunPopulationSimulationResponse:
     """Submit a population simulation job and return queued metadata."""
+
+    if config is not None:
+        quota_validator = ResourceQuotaValidator(config)
+        is_valid, errors = quota_validator.validate_job_request(payload.cohort.size)
+        if not is_valid:
+            for err in errors:
+                if "Population size" in err:
+                    _POPULATION_QUOTA_REJECTIONS.labels(reason="population_size").inc()
+                elif "memory" in err.lower():
+                    _POPULATION_QUOTA_REJECTIONS.labels(reason="memory_quota").inc()
+                else:
+                    _POPULATION_QUOTA_REJECTIONS.labels(reason="other").inc()
+            raise RunPopulationSimulationValidationError(
+                f"Job validation failed: {'; '.join(errors)}"
+            )
 
     store = session_store or registry
     model_path, already_loaded = _normalise_model_path(

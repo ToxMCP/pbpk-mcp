@@ -268,6 +268,7 @@ async def _handle_call_tool(request: Request, params: dict[str, Any], auth: Auth
     job_service = request.app.state.jobs
     population_store = request.app.state.population_store
     audit = request.app.state.audit
+    snapshot_store = request.app.state.snapshot_store
 
     try:
         result: rest_mcp.CallToolResponse = await rest_mcp.call_tool(  # type: ignore[call-arg]
@@ -277,6 +278,7 @@ async def _handle_call_tool(request: Request, params: dict[str, Any], auth: Auth
             job_service=job_service,
             population_store=population_store,
             audit_trail=audit,
+            snapshot_store=snapshot_store,
             auth=auth,
         )
     except DetailedHTTPException as exc:

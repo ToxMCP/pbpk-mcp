@@ -22,7 +22,9 @@ from mcp_bridge.security.simple_jwt import jwt  # noqa: E402
 API_CONTAINER = "pbpk_mcp-api-1"
 CONTRACT_VERSION = "pbpk-mcp.v1"
 PKSIM5_PROJECT = "/app/var/demos/cimetidine/Cimetidine-Model.pksim5"
-DEV_AUTH_SECRET = "pbpk-local-dev-secret"
+DEV_AUTH_SECRET = "pbpk-local-dev-secret-32bytes-long"
+LIVE_DOCKER_EXEC_TIMEOUT_SECONDS = 120
+LIVE_URLLIB_TIMEOUT_SECONDS = 90
 
 
 def _auth_headers(role: str = "operator") -> dict[str, str]:
@@ -48,6 +50,7 @@ def docker_exec_json(script: str):
         check=True,
         capture_output=True,
         text=True,
+        timeout=LIVE_DOCKER_EXEC_TIMEOUT_SECONDS,
     )
     return json.loads(completed.stdout.strip() or "null")
 
@@ -76,7 +79,7 @@ def api_request(
             headers=json.loads({json.dumps(json.dumps(request_headers))}),
         )
         try:
-            with urllib.request.urlopen(req) as resp:
+            with urllib.request.urlopen(req, timeout={LIVE_URLLIB_TIMEOUT_SECONDS}) as resp:
                 body = json.loads(resp.read().decode())
                 print(json.dumps({{"status": resp.status, "body": body}}))
         except urllib.error.HTTPError as exc:
@@ -103,6 +106,7 @@ class OecdLiveStackTests(unittest.TestCase):
             ["docker", "exec", API_CONTAINER, "true"],
             capture_output=True,
             text=True,
+            timeout=30,
         )
         if probe.returncode != 0:
             raise unittest.SkipTest(f"{API_CONTAINER} is not available")

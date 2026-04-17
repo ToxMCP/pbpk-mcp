@@ -8,6 +8,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from mcp_bridge.adapter.interface import OspsuiteAdapter
+from mcp_bridge.reviewer_advisory import build_dossier_improvement_signals
 
 TOOL_NAME = "run_verification_checks"
 CONTRACT_VERSION = "pbpk-mcp.v1"
@@ -69,6 +70,10 @@ class RunVerificationChecksResponse(BaseModel):
     profile: dict[str, Any] = Field(default_factory=dict)
     capabilities: dict[str, Any] = Field(default_factory=dict)
     qualification_state: dict[str, Any] | None = Field(default=None, alias="qualificationState")
+    evidence_basis: dict[str, Any] = Field(default_factory=dict, alias="evidenceBasis")
+    workflow_claim_boundaries: dict[str, Any] = Field(default_factory=dict, alias="workflowClaimBoundaries")
+    missing_evidence: list[str] = Field(default_factory=list, alias="missingEvidence")
+    dossier_improvement_signals: dict[str, Any] | None = Field(default=None, alias="dossierImprovementSignals")
     verification: dict[str, Any] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
 
@@ -92,16 +97,21 @@ class RunVerificationChecksResponse(BaseModel):
         )
         warnings = _validation_warnings(validation_payload)
         warnings.extend(_verification_warnings(verification_payload))
+        simulation_id = str(payload.get("simulationId"))
         return cls(
             tool=TOOL_NAME,
             contractVersion=CONTRACT_VERSION,
-            simulationId=str(payload.get("simulationId")),
+            simulationId=simulation_id,
             backend=str(payload.get("backend")) if payload.get("backend") else None,
             generatedAt=str(payload.get("generatedAt")) if payload.get("generatedAt") else None,
             validation=validation_payload,
             profile=profile_payload,
             capabilities=capabilities_payload,
             qualificationState=qualification_state,
+            evidenceBasis=dict(profile_payload.get("evidenceBasis") or {}),
+            workflowClaimBoundaries=dict(profile_payload.get("workflowClaimBoundaries") or {}),
+            missingEvidence=list(assessment.get("missingEvidence") or []) if isinstance(assessment, Mapping) else [],
+            dossierImprovementSignals=build_dossier_improvement_signals(simulation_id=simulation_id),
             verification=verification_payload,
             warnings=warnings,
         )

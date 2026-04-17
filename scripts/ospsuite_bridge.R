@@ -93,6 +93,44 @@ population_result_record <- function(results_id) {
   get(results_id, envir = population_results_store, inherits = FALSE)
 }
 
+persist_simulation_record <- function(record) {
+  simulation_id <- safe_chr(record$simulation_id)
+  if (!is.null(simulation_id) &&
+      nzchar(simulation_id) &&
+      exists(simulation_id, envir = simulations, inherits = FALSE)) {
+    assign(simulation_id, record, envir = simulations)
+  }
+  invisible(record)
+}
+
+ospsuite_parameter_paths <- function(record) {
+  cached_paths <- record$metadata$ospsuiteParameterPaths %||% NULL
+  if (is.list(cached_paths)) {
+    cached_paths <- unlist(cached_paths, use.names = FALSE)
+  }
+  if (is.character(cached_paths) && length(cached_paths) > 0) {
+    return(unique(cached_paths))
+  }
+
+  ensure_ospsuite()
+  paths <- unique(getAllParameterPathsIn(record$simulation))
+  record$metadata$ospsuiteParameterPaths <- paths
+  record$metadata$ospsuiteParameterCount <- as.integer(length(paths))
+  persist_simulation_record(record)
+  paths
+}
+
+ospsuite_parameter_rows <- function(record, paths) {
+  lapply(paths, function(path) {
+    parameter <- getParameter(path = path, container = record$simulation)
+    row <- parameter_payload(parameter)
+    row$category <- NULL
+    row$is_editable <- TRUE
+    row$provenance_status <- "unreported"
+    row
+  })
+}
+
 parameter_payload <- function(parameter) {
   list(
     path = safe_chr(parameter$path),
@@ -4762,10 +4800,194 @@ normalize_performance_evidence_rows <- function(rows) {
       )
     }
 
+    objective_evidence <- performance_objective_evidence(row)
+    if (!is.null(objective_evidence)) {
+      row$objectiveEvidence <- objective_evidence
+    }
+
     normalized[[length(normalized) + 1]] <- row
   }
 
   normalized
+}
+
+extract_first_numeric_token <- function(text) {
+  value <- safe_chr(text)
+  if (is.null(value) || !nzchar(value)) {
+    return(NULL)
+  }
+  matches <- gregexpr("([0-9]+(?:\\.[0-9]+)?)", value, perl = TRUE)
+  tokens <- regmatches(value, matches)[[1]]
+  if (length(tokens) == 0) {
+    return(NULL)
+  }
+  safe_num(tokens[[1]], NULL)
+}
+
+performance_acceptance_evaluation <- function(
+  criterion,
+  observed_value,
+  predicted_value,
+  rmse_value,
+  absolute_fold_error
+) {
+  criterion_text <- safe_chr(criterion)
+  if (is.null(criterion_text) || !nzchar(criterion_text)) {
+    return(NULL)
+  }
+
+  normalized_text <- tolower(criterion_text)
+  threshold <- extract_first_numeric_token(normalized_text)
+  base_payload <- list(
+    criterion = criterion_text,
+    status = "not-evaluable",
+    method = "unsupported-criterion",
+    comparator = "<="
+  )
+
+  if (grepl("rmse", normalized_text) && !is.null(threshold) && is.finite(rmse_value)) {
+    actual_value <- safe_num(rmse_value)
+    status <- if (actual_value <= threshold) "met" else "not-met"
+    return(utils::modifyList(base_payload, list(
+      status = status,
+      method = "rmse-threshold",
+      threshold = safe_num(threshold),
+      actualValue = actual_value,
+      explanation = sprintf("RMSE %.4f %s %.4f.", actual_value, if (identical(status, "met")) "<=" else ">", threshold)
+    )))
+  }
+
+  if (grepl("fold", normalized_text) && !is.null(threshold) &&
+      !is.null(absolute_fold_error) && is.finite(absolute_fold_error)) {
+    actual_value <- safe_num(absolute_fold_error)
+    status <- if (actual_value <= threshold) "met" else "not-met"
+    return(utils::modifyList(base_payload, list(
+      status = status,
+      method = "absolute-fold-error-threshold",
+      threshold = safe_num(threshold),
+      actualValue = actual_value,
+      explanation = sprintf(
+        "Absolute fold error %.4f %s %.4f.",
+        actual_value,
+        if (identical(status, "met")) "<=" else ">",
+        threshold
+      )
+    )))
+  }
+
+  if (grepl("%", normalized_text) &&
+      grepl("error|difference|within", normalized_text) &&
+      is.finite(observed_value) &&
+      !isTRUE(all.equal(abs(observed_value), 0))) {
+    relative_error <- abs(predicted_value - observed_value) / abs(observed_value) * 100
+    if (!is.null(threshold) && is.finite(relative_error)) {
+      status <- if (relative_error <= threshold) "met" else "not-met"
+      return(utils::modifyList(base_payload, list(
+        status = status,
+        method = "relative-error-percent-threshold",
+        threshold = safe_num(threshold),
+        actualValue = safe_num(relative_error),
+        explanation = sprintf(
+          "Relative error %.2f%% %s %.2f%%.",
+          relative_error,
+          if (identical(status, "met")) "<=" else ">",
+          threshold
+        )
+      )))
+    }
+  }
+
+  utils::modifyList(base_payload, list(
+    explanation = "Acceptance criterion was retained, but the current runtime only auto-evaluates simple RMSE, fold-error, and relative-error thresholds."
+  ))
+}
+
+performance_objective_evidence <- function(row) {
+  observed_value <- safe_num(row$observedValue, NA_real_)
+  predicted_value <- safe_num(row$predictedValue, NA_real_)
+  if (!is.finite(observed_value) || !is.finite(predicted_value)) {
+    return(NULL)
+  }
+
+  residual <- predicted_value - observed_value
+  absolute_error <- abs(residual)
+  rmse_value <- sqrt((predicted_value - observed_value) ^ 2)
+  fold_error <- NULL
+  absolute_fold_error <- NULL
+  if (!isTRUE(all.equal(abs(observed_value), 0))) {
+    fold_error <- predicted_value / observed_value
+    if (is.finite(fold_error) && !isTRUE(all.equal(abs(fold_error), 0))) {
+      absolute_fold_error <- max(abs(fold_error), abs(1 / fold_error))
+    }
+  }
+
+  payload <- list(
+    observedValue = safe_num(observed_value),
+    predictedValue = safe_num(predicted_value),
+    residual = safe_num(residual),
+    absoluteError = safe_num(absolute_error),
+    rmse = safe_num(rmse_value)
+  )
+  if (!is.null(fold_error) && is.finite(fold_error)) {
+    payload$foldError <- safe_num(fold_error)
+  }
+  if (!is.null(absolute_fold_error) && is.finite(absolute_fold_error)) {
+    payload$absoluteFoldError <- safe_num(absolute_fold_error)
+  }
+
+  acceptance <- performance_acceptance_evaluation(
+    row$acceptanceCriterion,
+    observed_value,
+    predicted_value,
+    rmse_value,
+    absolute_fold_error
+  )
+  if (!is.null(acceptance)) {
+    payload$acceptanceEvaluation <- acceptance
+  }
+  payload
+}
+
+performance_evidence_objective_summary <- function(rows) {
+  objective_rows <- Filter(
+    function(entry) is.list(entry) && is.list(entry$objectiveEvidence),
+    rows %||% list()
+  )
+  if (length(objective_rows) == 0) {
+    return(list(
+      rowCount = 0L,
+      rmse = NULL,
+      rowsWithAcceptanceEvaluation = 0L,
+      rowsMeetingAcceptanceCriterion = 0L,
+      rowsFailingAcceptanceCriterion = 0L,
+      rowsWithUnevaluableAcceptanceCriterion = 0L
+    ))
+  }
+
+  residuals <- vapply(
+    objective_rows,
+    function(entry) safe_num((entry$objectiveEvidence %||% list())$residual, NA_real_),
+    numeric(1)
+  )
+  evaluable_residuals <- residuals[is.finite(residuals)]
+  acceptance_statuses <- vapply(
+    objective_rows,
+    function(entry) safe_chr(((entry$objectiveEvidence %||% list())$acceptanceEvaluation %||% list())$status, ""),
+    character(1)
+  )
+
+  list(
+    rowCount = as.integer(length(objective_rows)),
+    rmse = if (length(evaluable_residuals) > 0) {
+      safe_num(sqrt(mean(evaluable_residuals ^ 2)))
+    } else {
+      NULL
+    },
+    rowsWithAcceptanceEvaluation = as.integer(sum(nzchar(acceptance_statuses))),
+    rowsMeetingAcceptanceCriterion = as.integer(sum(acceptance_statuses == "met")),
+    rowsFailingAcceptanceCriterion = as.integer(sum(acceptance_statuses == "not-met")),
+    rowsWithUnevaluableAcceptanceCriterion = as.integer(sum(acceptance_statuses == "not-evaluable"))
+  )
 }
 
 named_value_counts <- function(values, expected = NULL) {
@@ -4884,7 +5106,8 @@ performance_evidence_summary <- function(rows) {
     supportsExternalQualificationEvidence = supports_external,
     limitedToRuntimeOrInternalEvidence = limited_runtime_internal,
     qualificationBoundary = qualification_boundary,
-    interpretation = interpretation
+    interpretation = interpretation,
+    objectiveMetrics = performance_evidence_objective_summary(normalized_rows)
   )
 }
 
@@ -5497,6 +5720,10 @@ record_parameter_table <- function(record, pattern = NULL, limit = 200L) {
   source <- "runtime-parameter-enumeration"
   fallback_values <- record$parameters %||% list()
   sidecar <- parameter_table_sidecar(record$file_path)
+  coverage_complete <- TRUE
+  coverage_basis <- "matched-rows"
+  materialized_row_count <- 0L
+  matched_rows_preview <- NULL
 
   if (identical(record$backend, "rxode2") &&
       is.environment(record$module_env) &&
@@ -5523,16 +5750,22 @@ record_parameter_table <- function(record, pattern = NULL, limit = 200L) {
     source <- "parameter_catalog"
     sources <- c(sources, "parameter_catalog")
   } else if (identical(record$backend, "ospsuite")) {
-    ensure_ospsuite()
-    paths <- getAllParameterPathsIn(record$simulation)
-    raw_rows <- lapply(paths, function(path) {
-      parameter <- getParameter(path = path, container = record$simulation)
-      row <- parameter_payload(parameter)
-      row$category <- NULL
-      row$is_editable <- TRUE
-      row$provenance_status <- "unreported"
-      row
-    })
+    paths <- ospsuite_parameter_paths(record)
+    if (!is.null(pattern_value) && nzchar(pattern_value)) {
+      matched_paths <- paths[grepl(glob2rx(pattern_value), paths)]
+    } else {
+      matched_paths <- paths
+    }
+    matched_rows_preview <- as.integer(length(matched_paths))
+    materialized_paths <- matched_paths
+    if (is.null(sidecar$path) &&
+        matched_rows_preview > limit_value) {
+      coverage_complete <- FALSE
+      coverage_basis <- "returned-row-preview"
+      materialized_paths <- matched_paths[seq_len(limit_value)]
+    }
+    raw_rows <- ospsuite_parameter_rows(record, materialized_paths)
+    materialized_row_count <- as.integer(length(raw_rows))
     source <- "ospsuite-runtime"
     sources <- c(sources, "ospsuite-runtime")
   } else {
@@ -5560,14 +5793,30 @@ record_parameter_table <- function(record, pattern = NULL, limit = 200L) {
     sources <- source
   }
   total_rows <- length(rows)
+  preview_optimized <- identical(record$backend, "ospsuite") &&
+    !is.null(matched_rows_preview) &&
+    !(is.list(sidecar$rows) && length(sidecar$rows) > 0)
 
-  if (!is.null(pattern_value) && nzchar(pattern_value)) {
+  if (preview_optimized) {
+    matched_rows <- matched_rows_preview
+  } else if (!is.null(pattern_value) && nzchar(pattern_value)) {
     rows <- Filter(function(entry) {
       isTRUE(grepl(glob2rx(pattern_value), safe_chr(entry$path, "")))
     }, rows)
+    matched_rows <- length(rows)
+  } else {
+    matched_rows <- length(rows)
   }
-  matched_rows <- length(rows)
-  coverage <- parameter_table_coverage_summary(rows)
+
+  if (!preview_optimized) {
+    coverage <- parameter_table_coverage_summary(rows)
+  } else {
+    coverage <- parameter_table_coverage_summary(rows)
+    coverage$rowCount <- matched_rows
+    coverage$materializedRowCount <- materialized_row_count
+    coverage$complete <- coverage_complete
+    coverage$coverageBasis <- coverage_basis
+  }
   metadata_issues <- if (!is.null(sidecar$path)) {
     parameter_table_metadata_issues(sidecar$metadata, source = "parameterTable.bundleMetadata")
   } else {
@@ -5577,6 +5826,16 @@ record_parameter_table <- function(record, pattern = NULL, limit = 200L) {
 
   if (matched_rows > limit_value) {
     rows <- rows[seq_len(limit_value)]
+  }
+
+  if (is.null(coverage$materializedRowCount)) {
+    coverage$materializedRowCount <- as.integer(length(rows))
+  }
+  if (is.null(coverage$complete)) {
+    coverage$complete <- TRUE
+  }
+  if (is.null(coverage$coverageBasis)) {
+    coverage$coverageBasis <- "matched-rows"
   }
 
   list(
@@ -5594,6 +5853,8 @@ record_parameter_table <- function(record, pattern = NULL, limit = 200L) {
     issues = c(sidecar$issues %||% list(), metadata_issues, quality_issues),
     issueCount = length(c(sidecar$issues %||% list(), metadata_issues, quality_issues)),
     coverage = coverage,
+    coverageComplete = isTRUE(coverage$complete),
+    materializedRowCount = as.integer(coverage$materializedRowCount %||% length(rows)),
     rows = rows
   )
 }
@@ -6327,7 +6588,126 @@ uncertainty_handoff_from_record <- function(
   )
 }
 
-pk_metric_summary_from_series <- function(series_entry) {
+extract_dose_amount_from_context <- function(dose_context) {
+  if (!is.list(dose_context)) {
+    return(NULL)
+  }
+  for (key in c("doseAmount", "amount", "value")) {
+    numeric_value <- safe_num(dose_context[[key]], NULL)
+    if (!is.null(numeric_value) && is.finite(numeric_value) && numeric_value > 0) {
+      return(numeric_value)
+    }
+  }
+  NULL
+}
+
+dose_context_matches_output <- function(output_path, dose_context) {
+  if (!is.list(dose_context)) {
+    return(FALSE)
+  }
+  compatible_paths <- dose_context$compatibleOutputPaths %||% list()
+  normalized_paths <- normalize_text_values(compatible_paths)
+  if (length(normalized_paths) > 0) {
+    return(output_path %in% normalized_paths)
+  }
+  candidate_path <- safe_chr(dose_context$outputPath)
+  is.null(candidate_path) || identical(candidate_path, output_path)
+}
+
+terminal_phase_fit_from_series <- function(times, observations, auc_value) {
+  positive_mask <- is.finite(times) & is.finite(observations) & observations > 0
+  positive_times <- times[positive_mask]
+  positive_observations <- observations[positive_mask]
+
+  if (length(positive_times) < 3) {
+    return(list(
+      status = "suppressed",
+      warnings = list("Terminal-phase fit suppressed: fewer than three positive tail points were available.")
+    ))
+  }
+
+  max_points <- min(5L, length(positive_times))
+  best_fit <- NULL
+  best_r_squared <- -Inf
+
+  for (point_count in seq.int(3L, max_points)) {
+    tail_times <- tail(positive_times, point_count)
+    tail_observations <- tail(positive_observations, point_count)
+
+    if (length(unique(tail_times)) < point_count || any(diff(tail_times) <= 0)) {
+      next
+    }
+    if (any(diff(tail_observations) > 1e-12)) {
+      next
+    }
+
+    fit_frame <- data.frame(
+      tail_time = tail_times,
+      log_observation = log(tail_observations)
+    )
+    fit <- tryCatch(
+      stats::lm(log_observation ~ tail_time, data = fit_frame),
+      error = function(exc) NULL
+    )
+    if (is.null(fit)) {
+      next
+    }
+
+    coefficients <- stats::coef(fit)
+    slope <- safe_num(coefficients[["tail_time"]], NULL)
+    r_squared <- safe_num(summary(fit)$r.squared, NULL)
+    if (is.null(slope) || is.null(r_squared) || slope >= 0 || r_squared < 0.98) {
+      next
+    }
+
+    lambda_z <- -slope
+    last_observation <- tail_observations[[length(tail_observations)]]
+    auc_extrapolated <- last_observation / lambda_z
+    auc0_inf <- safe_num(auc_value, 0) + auc_extrapolated
+    if (!is.finite(auc0_inf) || auc0_inf <= 0) {
+      next
+    }
+
+    warnings <- character(0)
+    auc_extrapolated_percent <- auc_extrapolated / auc0_inf * 100
+    if (is.finite(auc_extrapolated_percent) && auc_extrapolated_percent > 20) {
+      warnings <- c(
+        warnings,
+        "AUC extrapolation exceeds 20% of AUC0Inf; treat terminal-phase estimates as screening-level only."
+      )
+    }
+
+    candidate <- list(
+      status = if (length(warnings) > 0) "warning" else "derived",
+      lambdaZ = safe_num(lambda_z),
+      halfLife = safe_num(log(2) / lambda_z),
+      auc0Inf = safe_num(auc0_inf),
+      aucExtrapolatedPercent = safe_num(auc_extrapolated_percent),
+      terminalPhasePointCount = as.integer(point_count),
+      warnings = as.list(warnings),
+      rSquared = safe_num(r_squared)
+    )
+
+    if (r_squared > best_r_squared ||
+        (isTRUE(all.equal(r_squared, best_r_squared)) &&
+         !is.null(best_fit) &&
+         point_count > safe_num(best_fit$terminalPhasePointCount, 0))) {
+      best_fit <- candidate
+      best_r_squared <- r_squared
+    }
+  }
+
+  if (is.null(best_fit)) {
+    return(list(
+      status = "suppressed",
+      warnings = list("Terminal-phase fit suppressed: the positive tail did not satisfy the monotonic log-linear screening rules.")
+    ))
+  }
+
+  best_fit
+}
+
+pk_metric_summary_from_series <- function(series_entry, dose_context = NULL) {
   values <- series_entry$values %||% list()
   if (length(values) == 0) {
     return(list(
@@ -6337,7 +6717,16 @@ pk_metric_summary_from_series <- function(series_entry) {
       cmax = NULL,
       tmax = NULL,
       auc0Tlast = NULL,
-      aucUnitBasis = NULL
+      aucUnitBasis = NULL,
+      auc0Inf = NULL,
+      lambdaZ = NULL,
+      halfLife = NULL,
+      aucExtrapolatedPercent = NULL,
+      terminalPhasePointCount = NULL,
+      ncaStatus = "not-evaluable",
+      ncaWarnings = list("No result points were available for NCA."),
+      clearance = NULL,
+      volumeDistribution = NULL
     ))
   }
 
@@ -6355,7 +6744,16 @@ pk_metric_summary_from_series <- function(series_entry) {
       cmax = NULL,
       tmax = NULL,
       auc0Tlast = NULL,
-      aucUnitBasis = NULL
+      aucUnitBasis = NULL,
+      auc0Inf = NULL,
+      lambdaZ = NULL,
+      halfLife = NULL,
+      aucExtrapolatedPercent = NULL,
+      terminalPhasePointCount = NULL,
+      ncaStatus = "not-evaluable",
+      ncaWarnings = list("No finite numeric concentration-time pairs were available."),
+      clearance = NULL,
+      volumeDistribution = NULL
     ))
   }
 
@@ -6366,6 +6764,30 @@ pk_metric_summary_from_series <- function(series_entry) {
   auc_value <- NULL
   if (length(times) >= 2) {
     auc_value <- sum(diff(times) * (head(observations, -1) + tail(observations, -1)) / 2)
+  }
+  terminal_fit <- terminal_phase_fit_from_series(times, observations, auc_value)
+  warnings <- normalize_text_values(terminal_fit$warnings)
+  clearance_value <- NULL
+  volume_distribution_value <- NULL
+  if (!is.null(terminal_fit$auc0Inf) && dose_context_matches_output(safe_chr(series_entry$parameter), dose_context)) {
+    dose_amount <- extract_dose_amount_from_context(dose_context)
+    dose_unit_basis <- safe_chr((dose_context %||% list())$doseUnitBasis)
+    if (is.null(dose_amount) || !is.finite(dose_amount) || dose_amount <= 0) {
+      warnings <- c(
+        warnings,
+        "Dose context was declared but did not provide a usable positive dose amount."
+      )
+    } else if (is.null(dose_unit_basis) || !nzchar(dose_unit_basis)) {
+      warnings <- c(
+        warnings,
+        "Dose context was declared without an explicit doseUnitBasis; clearance and volume distribution were withheld."
+      )
+    } else {
+      clearance_value <- safe_num(dose_amount / terminal_fit$auc0Inf)
+      if (!is.null(terminal_fit$lambdaZ) && safe_num(terminal_fit$lambdaZ, 0) > 0) {
+        volume_distribution_value <- safe_num(clearance_value / terminal_fit$lambdaZ)
+      }
+    }
   }
 
   list(
@@ -6379,7 +6801,20 @@ pk_metric_summary_from_series <- function(series_entry) {
       sprintf("%s x model-time-axis", safe_chr(series_entry$unit))
     } else {
       "model-output-unit x model-time-axis"
-    }
+    },
+    auc0Inf = safe_num(terminal_fit$auc0Inf, NULL),
+    lambdaZ = safe_num(terminal_fit$lambdaZ, NULL),
+    halfLife = safe_num(terminal_fit$halfLife, NULL),
+    aucExtrapolatedPercent = safe_num(terminal_fit$aucExtrapolatedPercent, NULL),
+    terminalPhasePointCount = as.integer(safe_num(terminal_fit$terminalPhasePointCount, NA_real_)),
+    ncaStatus = if (length(warnings) > 0 && identical(safe_chr(terminal_fit$status), "derived")) {
+      "warning"
+    } else {
+      safe_chr(terminal_fit$status, "suppressed")
+    },
+    ncaWarnings = as.list(unique(normalize_text_values(warnings))),
+    clearance = clearance_value,
+    volumeDistribution = volume_distribution_value
   )
 }
 
@@ -6455,7 +6890,13 @@ internal_exposure_estimate_from_record <- function(record, request = list(), can
   }
 
   series_entries <- result$series %||% list()
-  candidate_summaries <- lapply(series_entries, pk_metric_summary_from_series)
+  candidate_summaries <- lapply(
+    series_entries,
+    function(entry) pk_metric_summary_from_series(
+      entry,
+      dose_context = result$metadata$ncaDoseContext %||% NULL
+    )
+  )
   candidate_count <- length(candidate_summaries)
   if (candidate_count == 0) {
     warnings <- c(warnings, "The referenced deterministic results handle contains no result series.")
@@ -7895,8 +8336,7 @@ verification_artifact_id <- function(simulation_id, suffix) {
 
 record_parameter_count <- function(record) {
   if (identical(record$backend, "ospsuite")) {
-    ensure_ospsuite()
-    return(as.integer(length(unique(getAllParameterPathsIn(record$simulation)))))
+    return(as.integer(length(ospsuite_parameter_paths(record))))
   }
 
   catalog_count <- as.integer(length(record$parameter_catalog %||% list()))
@@ -8859,7 +9299,7 @@ handle_list_parameters <- function(payload) {
   record <- simulation_record(safe_chr(payload$simulationId))
   if (identical(record$backend, "ospsuite")) {
     ensure_ospsuite()
-    paths <- getAllParameterPathsIn(record$simulation)
+    paths <- ospsuite_parameter_paths(record)
     pattern <- safe_chr(payload$pattern)
     if (!is.null(pattern) && nzchar(pattern)) {
       paths <- paths[grepl(glob2rx(pattern), paths)]

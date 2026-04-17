@@ -283,6 +283,12 @@ def _metric_payload(metric: PkMetricGroup) -> dict[str, float | None]:
         "cmax": metric.cmax,
         "tmax": metric.tmax,
         "auc": metric.auc,
+        "auc0Inf": metric.auc0_inf,
+        "lambdaZ": metric.lambda_z,
+        "halfLife": metric.half_life,
+        "aucExtrapolatedPercent": metric.auc_extrapolated_percent,
+        "clearance": metric.clearance,
+        "volumeDistribution": metric.volume_distribution,
     }
 
 

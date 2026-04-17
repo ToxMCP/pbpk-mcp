@@ -31,7 +31,6 @@ figures/
 
 # Runtime state and generated outputs
 var/benchmarks/
-var/contract/
 var/converted/
 var/converted_models/
 var/demos/
@@ -42,7 +41,6 @@ var/population-results/
 var/reports/
 var/release_readiness_summary.json
 var/snapshots/
-var/test-audit-signoff/
 var/workspace_model_smoke*.json
 var/workspace_model_smoke*.txt
 var/models/discovery-tests/

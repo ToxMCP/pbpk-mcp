@@ -47,6 +47,14 @@ These notes summarize the trust-architecture changes that now matter to operator
   - `run_verification_checks`
   - `export_oecd_report`
 - Sign-off remains descriptive. It records bounded review, reviewer identity, rationale, and revocation state, but it does not create regulatory authority or override declared claim boundaries.
+- Existing pre-index sign-off events can be backfilled into the new dedicated sign-off index with `python3 scripts/backfill_review_signoff_index.py var/audit` for local storage or `python3 scripts/backfill_review_signoff_index.py s3://<bucket>/<prefix>` for S3-backed storage.
+
+## Audit Storage Boundary
+
+- The default local stack uses the filesystem-backed audit trail. That gives operators hash-chained JSONL history and viewer-readable `/review_signoff/history`, but off-host immutability and long-term retention still depend on filesystem and backup discipline.
+- The S3 audit backend is the stronger deployment path when a release or operator workflow needs externalized retention. It supports Object Lock expectations and optional KMS encryption instead of relying only on local disk semantics.
+- `python -m mcp_bridge.audit.verify var/audit` verifies the local hash chain. `python -m mcp_bridge.audit.verify s3://<bucket>/<prefix> --object-lock-mode governance --object-lock-days <days>` also checks the declared S3 Object Lock expectations.
+- Viewer-readable sign-off history improves reviewability, but it is not a substitute for retained release evidence or external records-management policy.
 
 ## Client Migration Guidance
 

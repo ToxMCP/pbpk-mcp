@@ -6,7 +6,7 @@ import hashlib
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Protocol
 
-from ..audit import AuditTrail
+from ..audit.trail import AuditTrail
 from ..security.phi import PHIFilter, PHIFinding
 
 
