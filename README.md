@@ -83,7 +83,7 @@ See `docs/architecture/exposure_led_ngra_role.md` for the explicit boundary stat
 See `docs/architecture/toxmcp_suite_index.md` for the shortest cross-service routing guide inside the ToxMCP suite.
 See `benchmarks/regulatory_goldset/regulatory_goldset_summary.md` for the current gold-set documentation benchmark summary derived from the fetched public-code PBPK corpus. Internal examples such as the bundled synthetic reference model remain bounded MCP rehearsal models, not benchmark exemplars.
 
-## What's new in v0.4.4
+## What's new in v0.5.0
 
 - Tightened the end-to-end public release gate around one retained `public_release_preflight` summary so local release-prep and GitHub workflow evidence now point at the same live/runtime contract checks.
 - Reduced the main live PKML release bottleneck by avoiding full OSPSuite parameter-table materialization during small OECD export previews, while keeping parameter provenance covered by dedicated bridge tests.
@@ -341,7 +341,7 @@ The default local packaged stack is defined in `docker-compose.celery.yml`. An e
 | `R_MAX_VSIZE` | `2G` | Caps R virtual memory use inside the current local worker setup. |
 | `DOTNET_GCHeapLimitPercent` | `60` | Constrains the .NET heap used by the OSPSuite runtime. |
 | `PBPK_ENABLE_SRC_OVERLAY` | `false` | Keeps `/app/src` out of import precedence by default; `docker-compose.overlay.yml` sets it to `true` for workspace-override development. |
-| `SERVICE_VERSION` | `0.4.4` | Exposed through `/health` and compose-level runtime metadata. |
+| `SERVICE_VERSION` | `0.5.0` | Exposed through `/health` and compose-level runtime metadata. |
 | `AUTH_ALLOW_ANONYMOUS` | `true` | Development-friendly local default; do not expose beyond localhost without hardening. |
 | `PBPK_BIND_HOST` | `127.0.0.1` | Host/interface used by the hardened overlay when publishing the API port. |
 | `PBPK_BIND_PORT` | `8000` | Host port used by the hardened overlay when publishing the API port. |
