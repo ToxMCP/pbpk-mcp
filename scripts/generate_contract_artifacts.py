@@ -434,6 +434,16 @@ def _check_file(path: Path, expected: str) -> bool:
     current = path.read_text(encoding="utf-8")
     if current != expected:
         print(f"Generated file is out of date: {path}", file=sys.stderr)
+        print(f"  Expected length: {len(expected)}, actual length: {len(current)}", file=sys.stderr)
+        for i, (e, a) in enumerate(zip(expected, current)):
+            if e != a:
+                print(f"  First diff at byte {i}: expected {e!r}, got {a!r}", file=sys.stderr)
+                print(f"  Expected context: {expected[max(0,i-20):i+20]!r}", file=sys.stderr)
+                print(f"  Actual context:   {current[max(0,i-20):i+20]!r}", file=sys.stderr)
+                break
+        else:
+            if len(expected) != len(current):
+                print(f"  One file is a prefix of the other (length mismatch)", file=sys.stderr)
         return False
     return True
 
