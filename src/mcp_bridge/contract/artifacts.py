@@ -296,7 +296,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "docs/architecture/release_bundle_manifest.json",
       "role": "whole release bundle hash inventory",
-      "sha256": "83b2eb081e92415118a9ec61911078e5d05fe84dfa2cadc513ed0024ff71bc22"
+      "sha256": "90f737612ed5dc73b4d99b985249aeb5ca28d7fc2ad29782e93f8873d39433da"
     },
     {
       "classification": "supporting",
@@ -380,7 +380,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "scripts/generate_contract_artifacts.py",
       "role": "contract artifact generator",
-      "sha256": "2003c73be78e39dad25c1bf4b88c63ca88a0c6511d7c68babe49619b19888d5f"
+      "sha256": "6d572e5bd4702d74513ff8017e42b1600caa2f1c9717397126cf5b3cf053d322"
     },
     {
       "classification": "supporting",
@@ -442,9 +442,9 @@ _CONTRACT_MANIFEST_JSON = r"""
 
 _RELEASE_BUNDLE_MANIFEST_JSON = r"""
 {
-  "bundleSha256": "7726b4650350c6e65c26254d13bc5080d0312bf58709f5fafb3429f7dca89de6",
+  "bundleSha256": "0ae2f585c37bbd0e5e31d9655eca06c31e5e740d03af359bb63916e7ec04b36e",
   "contractVersion": "pbpk-mcp.v1",
-  "fileCount": 612,
+  "fileCount": 611,
   "files": [
     {
       "group": "root",
@@ -523,12 +523,6 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
       "relativePath": "Makefile",
       "sha256": "aac56709f984fe07a2e41e3214ed92c54a7af08ddbc69829c73b77691255f9ce",
       "sizeBytes": 8173
-    },
-    {
-      "group": "root",
-      "relativePath": "OECD_PBPK_guidelines.pdf",
-      "sha256": "8624df7a04bef600b325fed55f1fe70ac5af1ffdee77d6283d9dfba73d7b4ab6",
-      "sizeBytes": 8122921
     },
     {
       "group": "root",
@@ -635,8 +629,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "governance",
       "relativePath": ".github/workflows/ci.yml",
-      "sha256": "269ac7922d12d9692f71194d106dcecf4ece9f9edb3e242cef30386bdda4b9bd",
-      "sizeBytes": 1998
+      "sha256": "7e76a0224e87ea7a21009cca3f68463a04184b991a9affdfece4681f691c6e32",
+      "sizeBytes": 1717
     },
     {
       "group": "governance",
@@ -2579,8 +2573,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "operations",
       "relativePath": "scripts/contract_stage_utils.py",
-      "sha256": "56e4c7236e5a343ffddc5cfce5b52ca48ffaf13b28325b4d29cb8c2ec5b63c3c",
-      "sizeBytes": 1208
+      "sha256": "ee33cd48e5944b8d37127aa9d1c0e4932d6fc875e627613f19c9afaadcc072a4",
+      "sizeBytes": 1240
     },
     {
       "group": "operations",
@@ -2645,8 +2639,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "operations",
       "relativePath": "scripts/generate_contract_artifacts.py",
-      "sha256": "2003c73be78e39dad25c1bf4b88c63ca88a0c6511d7c68babe49619b19888d5f",
-      "sizeBytes": 17457
+      "sha256": "6d572e5bd4702d74513ff8017e42b1600caa2f1c9717397126cf5b3cf053d322",
+      "sizeBytes": 16955
     },
     {
       "group": "operations",
@@ -4125,7 +4119,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     "documentation": 134,
     "governance": 8,
     "operations": 41,
-    "root": 186,
+    "root": 185,
     "source": 102,
     "verification": 120
   },
@@ -4152,6 +4146,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
       "build",
       "dist",
       "*.egg-info",
+      "OECD_PBPK_guidelines.pdf",
       "var",
       "reports",
       "output",
@@ -4164,7 +4159,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     ],
     "mode": "staged-source-tree-equivalent"
   },
-  "totalBytes": 12050243
+  "totalBytes": 3926571
 }
 """
 

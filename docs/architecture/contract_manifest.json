@@ -173,7 +173,7 @@
       "classification": "supporting",
       "relativePath": "docs/architecture/release_bundle_manifest.json",
       "role": "whole release bundle hash inventory",
-      "sha256": "83b2eb081e92415118a9ec61911078e5d05fe84dfa2cadc513ed0024ff71bc22"
+      "sha256": "90f737612ed5dc73b4d99b985249aeb5ca28d7fc2ad29782e93f8873d39433da"
     },
     {
       "classification": "supporting",
@@ -257,7 +257,7 @@
       "classification": "supporting",
       "relativePath": "scripts/generate_contract_artifacts.py",
       "role": "contract artifact generator",
-      "sha256": "2003c73be78e39dad25c1bf4b88c63ca88a0c6511d7c68babe49619b19888d5f"
+      "sha256": "6d572e5bd4702d74513ff8017e42b1600caa2f1c9717397126cf5b3cf053d322"
     },
     {
       "classification": "supporting",

@@ -485,13 +485,6 @@ def main() -> int:
         ok = _check_file(RELEASE_BUNDLE_MANIFEST_PATH, release_bundle_manifest_text) and ok
         ok = _check_file(CONTRACT_MANIFEST_PATH, manifest_text) and ok
         ok = _check_file(PACKAGED_MODULE_PATH, packaged_module_text) and ok
-        if not ok:
-            debug_dir = WORKSPACE_ROOT / ".ci-regenerated"
-            debug_dir.mkdir(exist_ok=True)
-            (debug_dir / "release_bundle_manifest.json").write_text(release_bundle_manifest_text, encoding="utf-8")
-            (debug_dir / "contract_manifest.json").write_text(manifest_text, encoding="utf-8")
-            (debug_dir / "artifacts.py").write_text(packaged_module_text, encoding="utf-8")
-            print(f"Wrote regenerated files to {debug_dir}", file=sys.stderr)
         return 0 if ok else 1
 
     RELEASE_BUNDLE_MANIFEST_PATH.write_text(release_bundle_manifest_text, encoding="utf-8")

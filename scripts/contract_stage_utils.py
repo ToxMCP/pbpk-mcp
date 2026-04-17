@@ -20,6 +20,7 @@ COPY_IGNORE_GLOBS = (
     "build",
     "dist",
     "*.egg-info",
+    "OECD_PBPK_guidelines.pdf",
     "var",
     "reports",
     "output",

@@ -54,15 +54,6 @@ jobs:
       - name: Run runtime contract tests
         run: make runtime-contract-test
 
-      - name: Upload regenerated contract artifacts for debugging
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pbpk-runtime-contract-debug-${{ github.sha }}
-          path: |
-            .ci-regenerated/
-          retention-days: 1
-
       - name: Retain validated distribution artifacts
         run: |
           python scripts/check_distribution_artifacts.py \
