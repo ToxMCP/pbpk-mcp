@@ -26,7 +26,9 @@ if str(SRC_ROOT) not in sys.path:
 from mcp_bridge.contract import published_schema_ids, release_probe_required_tools  # noqa: E402
 from mcp_bridge.security.simple_jwt import jwt  # noqa: E402
 
-DEV_AUTH_SECRET = "pbpk-local-dev-secret"
+DEV_AUTH_SECRET = "pbpk-local-dev-secret-32bytes-long"
+LIVE_HTTP_TIMEOUT_SECONDS = 60
+LIVE_SUBPROCESS_TIMEOUT_SECONDS = 420
 
 
 def _auth_headers() -> dict[str, str]:
@@ -51,7 +53,7 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def api_json(path: str, payload: dict | None = None):
+def api_json(path: str, payload: dict | None = None, *, timeout: int = LIVE_HTTP_TIMEOUT_SECONDS):
     url = f"{API_BASE_URL}{path}"
     data = None
     headers = dict(_auth_headers())
@@ -59,7 +61,7 @@ def api_json(path: str, payload: dict | None = None):
         data = json.dumps(payload).encode()
         headers["content-type"] = "application/json"
     req = urllib.request.Request(url, data=data, headers=headers)
-    with urllib.request.urlopen(req) as resp:
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
         return json.loads(resp.read().decode())
 
 
@@ -75,6 +77,7 @@ class ModelDiscoveryLiveStackTests(unittest.TestCase):
             ["docker", "exec", API_CONTAINER, "true"],
             capture_output=True,
             text=True,
+            timeout=30,
         )
         if probe.returncode != 0:
             raise unittest.SkipTest(f"{API_CONTAINER} is not available")
@@ -299,6 +302,7 @@ class ModelDiscoveryLiveStackTests(unittest.TestCase):
             capture_output=True,
             text=True,
             check=False,
+            timeout=LIVE_SUBPROCESS_TIMEOUT_SECONDS,
         )
         self.assertEqual(
             completed.returncode,
@@ -332,6 +336,7 @@ class ModelDiscoveryLiveStackTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 check=False,
+                timeout=LIVE_SUBPROCESS_TIMEOUT_SECONDS,
             )
             self.assertEqual(
                 completed.returncode,

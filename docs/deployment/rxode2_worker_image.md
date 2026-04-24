@@ -53,6 +53,16 @@ The helper script defaults to:
 
 That matches the current local worker image. If the base worker image changes architecture later, override `PLATFORM` when building.
 
+## Fast Refresh
+
+When the current local image already has `rxode2` baked in and you only need to refresh the packaged Python/docs/runtime assets from this workspace, use:
+
+```bash
+./scripts/refresh_rxode2_worker_image.sh
+```
+
+That path rebuilds `pbpk_mcp-worker-rxode2:latest` on top of the existing image without recompiling `rxode2`.
+
 ## Resource Guidance
 
 Recommended practice:
@@ -110,6 +120,8 @@ Bring the stack up or recreate it with:
 ```bash
 ./scripts/deploy_rxode2_stack.sh
 ```
+
+The deploy helpers now give the packaged runtime a longer readiness window because importing the full contract/report stack can exceed the old 5-second health-check budget on slower machines or emulated images.
 
 Current local runtime behavior:
 

@@ -3,6 +3,8 @@ services:
     environment:
       PBPK_ENABLE_SRC_OVERLAY: "true"
     volumes:
+      - ./docs:/app/docs
+      - ./schemas:/app/schemas
       - ./scripts:/app/scripts
       - ./src:/app/src
       - ./var:/app/var
@@ -12,6 +14,8 @@ services:
     environment:
       PBPK_ENABLE_SRC_OVERLAY: "true"
     volumes:
+      - ./docs:/app/docs
+      - ./schemas:/app/schemas
       - ./scripts:/app/scripts
       - ./src:/app/src
       - ./var:/app/var

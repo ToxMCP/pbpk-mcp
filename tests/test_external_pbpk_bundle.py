@@ -42,6 +42,12 @@ class ExternalPbpkBundleTests(unittest.TestCase):
                     "species": "human",
                     "route": "oral",
                     "population": "adult",
+                    "originClassification": "model_output",
+                    "primarySourceVerified": True,
+                    "sourceChain": [
+                        "GastroPlus run GP-001",
+                        "Validated external PBPK output export",
+                    ],
                     "metrics": {
                         "cmax": {"value": 3.2, "unit": "uM"},
                         "tmax": {"value": 1.5},
@@ -81,6 +87,9 @@ class ExternalPbpkBundleTests(unittest.TestCase):
                 pod={
                     "ref": "pod-001",
                     "source": "httr-benchmark",
+                    "originClassification": "primary_observation",
+                    "primarySourceVerified": True,
+                    "sourceChain": ["HTTR benchmark dataset pod-001"],
                     "metric": "cmax",
                     "unit": "uM",
                     "basis": "true-dose-adjusted",
@@ -214,6 +223,17 @@ class ExternalPbpkBundleTests(unittest.TestCase):
             "external-orchestrator",
         )
         self.assertEqual(
+            payload["ngraObjects"]["internalExposureEstimate"]["originClassification"],
+            "model_output",
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["pointOfDepartureReference"]["originClassification"],
+            "primary_observation",
+        )
+        self.assertFalse(
+            payload["ngraObjects"]["berInputBundle"]["lineageFlags"]["internalExposureReviewOnly"],
+        )
+        self.assertEqual(
             payload["ngraObjects"]["berInputBundle"]["internalExposureMetric"]["value"],
             3.2,
         )
@@ -272,6 +292,42 @@ class ExternalPbpkBundleTests(unittest.TestCase):
         self.assertIn(
             "No external point-of-departure reference is attached.",
             payload["ngraObjects"]["berInputBundle"]["blockingReasons"],
+        )
+
+    def test_ingest_external_pbpk_bundle_blocks_review_only_proxy_denominator(self) -> None:
+        payload = ingest_external_pbpk_bundle(
+            IngestExternalPbpkBundleRequest(
+                sourcePlatform="Simcyp",
+                internalExposure={
+                    "originClassification": "derived_proxy",
+                    "bridgingMethod": "active-mass-proportional-scaling",
+                    "metrics": {"cmax": {"value": 1.2, "unit": "uM"}},
+                },
+                pod={
+                    "ref": "pod-001",
+                    "source": "httr-benchmark",
+                    "originClassification": "primary_observation",
+                    "primarySourceVerified": True,
+                    "metric": "cmax",
+                    "unit": "uM",
+                },
+            )
+        ).model_dump(by_alias=True)
+
+        self.assertEqual(
+            payload["ngraObjects"]["internalExposureEstimate"]["supports"]["externalBerHandoff"],
+            False,
+        )
+        self.assertEqual(
+            payload["ngraObjects"]["berInputBundle"]["status"],
+            "incomplete",
+        )
+        self.assertTrue(
+            payload["ngraObjects"]["berInputBundle"]["lineageFlags"]["internalExposureReviewOnly"]
+        )
+        self.assertIn(
+            "derived proxy",
+            " ".join(payload["ngraObjects"]["berInputBundle"]["blockingReasons"]).lower(),
         )
 
     def test_ingest_external_pbpk_bundle_keeps_unresolved_reviewer_dissent_conservative(self) -> None:

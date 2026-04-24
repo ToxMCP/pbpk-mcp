@@ -25,6 +25,130 @@
         "title": "AdapterCapabilities",
         "type": "object"
       },
+      "AuditVerifyRequest": {
+        "properties": {
+          "bucket": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "S3 bucket (overrides config)",
+            "title": "Bucket"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional end date key (YYYY/MM/DD)",
+            "title": "End"
+          },
+          "objectLockDays": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Expected retention days for S3 Object Lock",
+            "title": "Objectlockdays"
+          },
+          "objectLockMode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Expected S3 Object Lock mode (governance or compliance)",
+            "title": "Objectlockmode"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Filesystem path for local audit storage (overrides config)",
+            "title": "Path"
+          },
+          "prefix": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "S3 prefix (overrides config)",
+            "title": "Prefix"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional start date key (YYYY/MM/DD)",
+            "title": "Start"
+          },
+          "storage": {
+            "default": "local",
+            "description": "Audit storage backend to verify",
+            "enum": [
+              "local",
+              "s3"
+            ],
+            "title": "Storage",
+            "type": "string"
+          }
+        },
+        "title": "AuditVerifyRequest",
+        "type": "object"
+      },
+      "AuditVerifyResponse": {
+        "properties": {
+          "checkedEvents": {
+            "title": "Checkedevents",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "checkedEvents",
+          "message"
+        ],
+        "title": "AuditVerifyResponse",
+        "type": "object"
+      },
       "CalculatePkParametersRequestBody": {
         "properties": {
           "outputPath": {
@@ -977,6 +1101,39 @@
         "title": "OutputsConfig",
         "type": "object"
       },
+      "ParameterGovernancePayload": {
+        "description": "Governance metadata returned with a successful parameter change.",
+        "properties": {
+          "boundsReference": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Boundsreference",
+            "type": "array"
+          },
+          "snapshotId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshotid"
+          },
+          "sweepAlerts": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Sweepalerts",
+            "type": "array"
+          }
+        },
+        "title": "ParameterGovernancePayload",
+        "type": "object"
+      },
       "ParameterResource": {
         "properties": {
           "category": {
@@ -1131,6 +1288,62 @@
         "title": "ParameterValueModel",
         "type": "object"
       },
+      "ParameterValuePayload": {
+        "properties": {
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displayname"
+          },
+          "lastUpdatedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastupdatedat"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "path",
+          "value",
+          "unit"
+        ],
+        "title": "ParameterValuePayload",
+        "type": "object"
+      },
       "ParameterValueResponse": {
         "properties": {
           "parameter": {
@@ -1156,6 +1369,39 @@
             ],
             "title": "Auc"
           },
+          "auc0Inf": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auc0Inf"
+          },
+          "aucExtrapolatedPercent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aucextrapolatedpercent"
+          },
+          "clearance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clearance"
+          },
           "cmax": {
             "anyOf": [
               {
@@ -1167,9 +1413,60 @@
             ],
             "title": "Cmax"
           },
+          "halfLife": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Halflife"
+          },
+          "lambdaZ": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lambdaz"
+          },
+          "ncaStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ncastatus"
+          },
+          "ncaWarnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ncawarnings",
+            "type": "array"
+          },
           "parameter": {
             "title": "Parameter",
             "type": "string"
+          },
+          "terminalPhasePointCount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Terminalphasepointcount"
           },
           "tmax": {
             "anyOf": [
@@ -1192,6 +1489,17 @@
               }
             ],
             "title": "Unit"
+          },
+          "volumeDistribution": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volumedistribution"
           }
         },
         "required": [
@@ -2097,6 +2405,21 @@
         "title": "SetParameterValueRequest",
         "type": "object"
       },
+      "SetParameterValueResponse": {
+        "properties": {
+          "governance": {
+            "$ref": "#/components/schemas/ParameterGovernancePayload"
+          },
+          "parameter": {
+            "$ref": "#/components/schemas/ParameterValuePayload"
+          }
+        },
+        "required": [
+          "parameter"
+        ],
+        "title": "SetParameterValueResponse",
+        "type": "object"
+      },
       "SimulationMetadata": {
         "properties": {
           "createdAt": {
@@ -2355,13 +2678,6 @@
       },
       "ValidationError": {
         "properties": {
-          "ctx": {
-            "title": "Context",
-            "type": "object"
-          },
-          "input": {
-            "title": "Input"
-          },
           "loc": {
             "items": {
               "anyOf": [
@@ -2397,7 +2713,7 @@
   },
   "info": {
     "title": "MCP Bridge",
-    "version": "0.4.2"
+    "version": "0.5.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -2465,6 +2781,47 @@
           }
         },
         "summary": "List Audit Events",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
+    "/audit/verify": {
+      "post": {
+        "operationId": "verify_audit_audit_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuditVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditVerifyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Audit",
         "tags": [
           "audit"
         ]
@@ -2874,6 +3231,24 @@
       }
     },
     "/mcp": {
+      "get": {
+        "description": "Return 405 because this transport does not expose an SSE stream.",
+        "operationId": "jsonrpc_get_endpoint_mcp_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Jsonrpc Get Endpoint",
+        "tags": [
+          "mcp-jsonrpc"
+        ]
+      },
       "post": {
         "operationId": "jsonrpc_endpoint_mcp_post",
         "responses": {
@@ -3789,7 +4164,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ParameterValueResponse"
+                  "$ref": "#/components/schemas/SetParameterValueResponse"
                 }
               }
             },

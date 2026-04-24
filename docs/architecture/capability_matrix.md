@@ -2,6 +2,10 @@
 
 This matrix is the adoption-facing summary of what the current public PBPK MCP contract supports for each input class.
 
+Use it together with [toxmcp_suite_index.md](./toxmcp_suite_index.md) when the
+question is "should PBPK MCP own this step?" rather than only "does this repo
+support this input class?".
+
 Machine-readable source of truth:
 
 - `docs/architecture/capability_matrix.json`
@@ -10,8 +14,8 @@ Machine-readable source of truth:
 
 Protocol note:
 
-- JSON-RPC `initialize` advertises MCP tools directly and intentionally keeps `capabilities.resources = false`.
-- The same `initialize` response now declares `companionResources.mode = rest-companion-resources`, pointing clients at `/mcp/resources` for the published schema, capability, contract, and model/resource catalogs.
+- JSON-RPC `initialize` defaults to MCP `2025-11-25` and advertises standard `tools` and `resources` capabilities with `listChanged = false`.
+- Published schema, capability, contract, release-bundle, model, simulation, and parameter catalogs are exposed through standard MCP resources with `pbpk://` URIs; the existing `/mcp/resources/*` REST routes remain compatibility helper surfaces.
 
 Status meaning:
 

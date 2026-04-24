@@ -738,6 +738,53 @@ class OecdBridgeTests(unittest.TestCase):
         self.assertEqual(row["sourceCitation"], "Doe et al. 2026")
         self.assertEqual(row["experimentalConditions"], ["adult healthy volunteers"])
 
+    def test_record_parameter_table_limits_ospsuite_runtime_materialization_to_requested_preview(self) -> None:
+        payload = run_r_json(
+            """
+            parameter_calls <- 0L
+            assign("ensure_ospsuite", function() invisible(TRUE), envir = .GlobalEnv)
+            assign("getAllParameterPathsIn", function(simulation) {
+              c(
+                "Physiology|BodyWeight",
+                "Organism|Liver|Volume",
+                "Administration|Dose",
+                "Simulation|EndTime"
+              )
+            }, envir = .GlobalEnv)
+            assign("getParameter", function(path, container) {
+              parameter_calls <<- parameter_calls + 1L
+              list(path = path, unit = "unitless", value = parameter_calls)
+            }, envir = .GlobalEnv)
+            assign("parameter_payload", function(parameter) {
+              list(path = parameter$path, unit = parameter$unit, value = parameter$value)
+            }, envir = .GlobalEnv)
+            record <- list(
+              backend = "ospsuite",
+              simulation_id = "example-ospsuite",
+              simulation = list(),
+              file_path = "/tmp/example.pkml",
+              metadata = list(),
+              capabilities = list(),
+              profile = list()
+            )
+            table <- record_parameter_table(record, limit = 2L)
+            list(
+              callCount = parameter_calls,
+              parameterTable = table
+            )
+            """
+        )
+
+        table = payload["parameterTable"]
+        self.assertEqual(payload["callCount"], 2)
+        self.assertEqual(table["matchedRows"], 4)
+        self.assertEqual(table["returnedRows"], 2)
+        self.assertFalse(table["coverageComplete"])
+        self.assertFalse(table["coverage"]["complete"])
+        self.assertEqual(table["coverage"]["coverageBasis"], "returned-row-preview")
+        self.assertEqual(table["coverage"]["materializedRowCount"], 2)
+        self.assertEqual(table["coverage"]["rowCount"], 4)
+
     def test_with_profile_assessment_handles_unreported_parameter_count(self) -> None:
         payload = run_r_json(
             """
@@ -1403,6 +1450,75 @@ class OecdBridgeTests(unittest.TestCase):
         self.assertFalse(payload["supportsExternalQualificationEvidence"])
         self.assertEqual(payload["evidenceClassCounts"]["runtime-smoke"], 1)
         self.assertEqual(payload["evidenceClassCounts"]["internal-reference"], 1)
+
+    def test_performance_evidence_adds_objective_metrics_and_acceptance_evaluation(self) -> None:
+        payload = run_r_json(
+            """
+            rows <- normalize_performance_evidence_rows(
+              list(
+                list(
+                  id = "obs-vs-pred-cmax",
+                  kind = "observed-vs-predicted",
+                  status = "declared",
+                  metric = "Cmax",
+                  observedValue = 10,
+                  predictedValue = 11,
+                  acceptanceCriterion = "Relative error <= 20%",
+                  dataset = "adult-plasma"
+                )
+              )
+            )
+            list(
+              row = rows[[1]],
+              summary = performance_evidence_summary(rows)
+            )
+            """
+        )
+
+        objective = payload["row"]["objectiveEvidence"]
+        self.assertAlmostEqual(objective["foldError"], 1.1, places=6)
+        self.assertAlmostEqual(objective["absoluteFoldError"], 1.1, places=6)
+        self.assertAlmostEqual(objective["rmse"], 1.0, places=6)
+        self.assertEqual(objective["acceptanceEvaluation"]["status"], "met")
+        self.assertEqual(
+            payload["summary"]["objectiveMetrics"]["rowsMeetingAcceptanceCriterion"],
+            1,
+        )
+        self.assertAlmostEqual(payload["summary"]["objectiveMetrics"]["rmse"], 1.0, places=6)
+
+    def test_pk_metric_summary_from_series_returns_extended_nca_fields(self) -> None:
+        payload = run_r_json(
+            """
+            pk_metric_summary_from_series(
+              list(
+                parameter = "Central|Concentration",
+                unit = "unitless",
+                values = list(
+                  list(time = 0, value = 10),
+                  list(time = 1, value = 5),
+                  list(time = 2, value = 2.5),
+                  list(time = 3, value = 1.25),
+                  list(time = 4, value = 0.625)
+                )
+              ),
+              list(
+                doseAmount = 100,
+                doseUnitBasis = "unitless",
+                outputPath = "Central|Concentration"
+              )
+            )
+            """
+        )
+
+        self.assertAlmostEqual(payload["auc0Tlast"], 14.0625, places=6)
+        self.assertAlmostEqual(payload["lambdaZ"], 0.6931, places=4)
+        self.assertAlmostEqual(payload["halfLife"], 1.0, places=6)
+        self.assertAlmostEqual(payload["auc0Inf"], 14.9642, places=4)
+        self.assertEqual(payload["terminalPhasePointCount"], 5)
+        self.assertEqual(payload["ncaStatus"], "derived")
+        self.assertEqual(payload["ncaWarnings"], [])
+        self.assertGreater(payload["clearance"], 0)
+        self.assertGreater(payload["volumeDistribution"], 0)
 
     def test_record_performance_evidence_reads_companion_sidecar(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

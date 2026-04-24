@@ -10,6 +10,13 @@
   "status": "attached-external-reference",
   "podRef": "pod-001",
   "source": "httr-benchmark",
+  "originClassification": "primary_observation",
+  "primarySourceVerified": true,
+  "sourceChain": [
+    "HTTR benchmark dataset pod-001"
+  ],
+  "underlyingPrimarySourceRef": "pod-001",
+  "bridgingMethod": null,
   "metric": "cmax",
   "unit": "uM",
   "basis": "true-dose-adjusted",

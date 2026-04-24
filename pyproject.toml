@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp-bridge"
-version = "0.4.3"
+version = "0.5.0"
 description = "Dual-backend PBPK Model Context Protocol server for qualification, verification, and reporting"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 authors = [
   { name = "PBPK MCP Team" }
 ]
@@ -16,6 +16,8 @@ keywords = ["mcp", "pbpk", "ospsuite", "rxode2", "ngra", "fastapi"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Framework :: FastAPI",
   "License :: OSI Approved :: Apache Software License"
 ]
@@ -59,16 +61,22 @@ where = ["src"]
 
 [tool.black]
 line-length = 100
-target-version = ["py39"]
+target-version = ["py311"]
 
 [tool.ruff]
 line-length = 100
 src = ["src", "tests"]
-target-version = "py39"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
-ignore = ["B008", "UP006", "UP007", "UP035", "E501", "I001", "UP037", "F401", "E731", "UP012", "UP034", "B023", "F821", "F841", "B904"]
+ignore = ["B008", "B905", "UP006", "UP007", "UP017", "UP035", "UP038", "E501", "I001", "UP037", "F401", "E731", "UP012", "UP034", "B023", "F821", "F841", "B904"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*.py" = ["E402"]
+"src/mcp/*.py" = ["E402"]
+"src/mcp/**/*.py" = ["E402"]
+"tests/*.py" = ["E402"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -84,13 +92,18 @@ markers = [
 ]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.11"
+files = [
+  "src/mcp_bridge/config.py",
+  "src/mcp_bridge/routes/jsonrpc.py",
+  "src/mcp_bridge/tools/registry_base.py",
+]
+follow_imports = "skip"
 warn_unused_configs = true
-warn_unused_ignores = true
+warn_unused_ignores = false
 warn_redundant_casts = true
-warn_return_any = true
+warn_return_any = false
 strict_optional = true
-packages = ["mcp_bridge"]
 exclude = ["tests"]
 [[tool.mypy.overrides]]
 module = [

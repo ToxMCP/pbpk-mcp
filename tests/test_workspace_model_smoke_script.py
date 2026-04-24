@@ -20,7 +20,7 @@ class WorkspaceModelSmokeScriptTests(unittest.TestCase):
     def test_build_auth_headers_uses_dev_secret(self) -> None:
         headers = module.build_auth_headers(
             bearer_token=None,
-            auth_dev_secret="pbpk-local-dev-secret",
+            auth_dev_secret="pbpk-local-dev-secret-32bytes-long",
             auth_role="operator",
         )
 

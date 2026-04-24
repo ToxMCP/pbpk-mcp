@@ -20,7 +20,7 @@ The `rxode2` path is a direct execution backend for PBPK models authored nativel
   - MCP-friendly synthetic reference `rxode2` model module.
 - `src/mcp_bridge/adapter/ospsuite.py`
   - Packaged subprocess adapter with `.R` support and population result persistence.
-- `src/mcp/tools/load_simulation.py`
+- `src/mcp_bridge/pbpk_tools/load_simulation.py`
   - Packaged tool validation so `.R` model modules are accepted.
 - `docker/rxode2-worker.Dockerfile`
   - Bakes the runtime overlay hook, bridge script, and bundled reference model into the dedicated worker image.

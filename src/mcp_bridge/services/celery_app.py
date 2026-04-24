@@ -26,6 +26,7 @@ def configure_celery(config: AppConfig) -> Celery:
         task_always_eager=config.celery_task_always_eager,
         task_eager_propagates=config.celery_task_eager_propagates,
         task_store_eager_result=store_eager,
+        task_track_started=True,
         timezone="UTC",
         task_serializer="json",
         accept_content=["json"],

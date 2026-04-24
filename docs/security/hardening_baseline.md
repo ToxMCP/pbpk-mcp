@@ -1,6 +1,6 @@
 # Hardening Baseline
 
-Date: 2026-03-29
+Date: 2026-04-23
 
 This document records the current exposure model and the highest-value hardening findings confirmed in the repository. It is meant to keep future security and scientific-assurance work grounded in the actual implementation rather than generic concerns.
 
@@ -18,7 +18,7 @@ This document records the current exposure model and the highest-value hardening
 | `/mcp/resources/parameters` | Authenticated read | Reveals simulation structure and parameter metadata. |
 | `/mcp/list_tools` | Authenticated read | Now filtered by caller role; anonymous dev mode sees viewer-safe tools only. |
 | `/mcp/call_tool` | Authenticated by role | Critical tools still require explicit confirmation. |
-| `/mcp` JSON-RPC | Authenticated after `initialize` | `initialize` remains unauthenticated transport negotiation. |
+| `/mcp` JSON-RPC | Authenticated after `initialize` and public contract resources | `initialize` remains unauthenticated transport negotiation; public `pbpk://` contract resources remain readable, while model/session/parameter resources match REST auth boundaries. |
 | `/simulation/*` REST routes | Authenticated by role | Viewer/operator/admin separation already present on most routes. |
 | `/audit/*` | Admin only | Audit log access remains privileged. |
 | `/metrics` | Admin only | Prometheus payload is no longer implicitly public. |
@@ -42,6 +42,8 @@ This document records the current exposure model and the highest-value hardening
 6. Anonymous-development responses now carry `X-PBPK-Security-Mode: anonymous-development` so local screenshots and demos are harder to mistake for production posture.
 7. The config loader now accepts the legacy env names already used in docs and compose files, but emits warnings pointing operators toward the canonical names.
 8. The default compose profile now binds `127.0.0.1:8000:8000` instead of all interfaces.
+9. MCP streamable HTTP requests can enforce browser `Origin` allow-listing through `MCP_ALLOWED_ORIGINS`; absent `Origin` remains valid for CLI clients.
+10. Hardened deployments can set `MCP_STRICT_TRANSPORT=true` to require the MCP `Accept` and `MCP-Protocol-Version` headers.
 
 ## Scientific-assurance findings that still need follow-through
 

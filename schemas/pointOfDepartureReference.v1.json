@@ -69,6 +69,33 @@
         "null"
       ]
     },
+    "originClassification": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "primarySourceVerified": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "sourceChain": {
+      "$ref": "#/$defs/nullableStringArray"
+    },
+    "underlyingPrimarySourceRef": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "bridgingMethod": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "metric": {
       "type": [
         "string",
@@ -152,6 +179,15 @@
     },
     "stringArray": {
       "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "nullableStringArray": {
+      "type": [
+        "array",
+        "null"
+      ],
       "items": {
         "type": "string"
       }

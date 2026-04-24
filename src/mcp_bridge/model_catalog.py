@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from mcp.session_registry import SessionRecord
+from mcp_bridge.session_registry import SessionRecord
 from mcp_bridge.model_manifest import (
     build_manifest_curation_summary,
     validate_model_manifest as validate_manifest_payload,

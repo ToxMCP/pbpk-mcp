@@ -47,6 +47,10 @@ class TrustSurfaceTests(unittest.TestCase):
             "curationSummary.regulatoryBenchmarkReadiness",
             surface["requiredAdjacentPaths"],
         )
+        self.assertIn(
+            "curationSummary.regulatoryBenchmarkReadiness.prioritizedGaps",
+            surface["requiredAdjacentPaths"],
+        )
         self.assertIn("curationSummary.cautionSummary", surface["requiredAdjacentPaths"])
         self.assertIn("detached-summary-blocked", surface["primaryBlockReasonCodes"])
 
@@ -58,8 +62,12 @@ class TrustSurfaceTests(unittest.TestCase):
                         "blockReasons": [
                             {"code": "detached-summary-blocked"},
                         ]
-                    }
+                    },
+                    "summaryTransportRisk": {"plainLanguageSummary": "Detached summaries can overread."},
                 },
+                "missingEvidence": ["Predictive dataset not attached."],
+                "dossierImprovementSignals": {"advisoryOnly": True},
+                "performanceEvidence": {"objectiveMetrics": {"rowCount": 1}},
                 "ngraObjects": {
                     "pbpkQualificationSummary": {
                         "exportBlockPolicy": {
@@ -79,6 +87,9 @@ class TrustSurfaceTests(unittest.TestCase):
         surface_paths = {surface["surfacePath"] for surface in contract["surfaces"]}
         self.assertIn("report.humanReviewSummary", surface_paths)
         self.assertIn("report.ngraObjects.pbpkQualificationSummary", surface_paths)
+        human_surface = next(surface for surface in contract["surfaces"] if surface["surfacePath"] == "report.humanReviewSummary")
+        self.assertIn("report.dossierImprovementSignals", human_surface["requiredAdjacentPaths"])
+        self.assertIn("report.performanceEvidence.objectiveMetrics", human_surface["requiredAdjacentPaths"])
 
     def test_builds_verification_contract_for_runtime_checks(self) -> None:
         payload = {
@@ -94,6 +105,10 @@ class TrustSurfaceTests(unittest.TestCase):
                     "directRegulatoryDoseDerivation": "not-supported",
                 },
             },
+            "evidenceBasis": {"basisType": "ivive-linked"},
+            "workflowClaimBoundaries": {"directRegulatoryDoseDerivation": "not-supported"},
+            "missingEvidence": ["Predictive evaluation dataset not attached."],
+            "dossierImprovementSignals": {"advisoryOnly": True},
             "warnings": ["Human review required."],
             "operatorReviewSignoff": {"status": "not-recorded"},
             "operatorReviewGovernance": {"supportsOverride": False},
@@ -106,10 +121,47 @@ class TrustSurfaceTests(unittest.TestCase):
         self.assertEqual(contract["surfaceCount"], 1)
         surface = contract["surfaces"][0]
         self.assertEqual(surface["surfacePath"], "qualificationState")
+        self.assertIn("evidenceBasis", surface["requiredAdjacentPaths"])
+        self.assertIn("workflowClaimBoundaries", surface["requiredAdjacentPaths"])
+        self.assertIn("missingEvidence", surface["requiredAdjacentPaths"])
+        self.assertIn("dossierImprovementSignals", surface["requiredAdjacentPaths"])
         self.assertIn("profile.workflowRole", surface["requiredAdjacentPaths"])
         self.assertIn("operatorReviewSignoff", surface["requiredAdjacentPaths"])
         self.assertIn("operatorReviewGovernance", surface["requiredAdjacentPaths"])
         self.assertEqual(surface["operatorReviewGovernancePath"], "operatorReviewGovernance")
+
+    def test_builds_validation_contract_with_missing_evidence_and_advisory_signals(self) -> None:
+        payload = {
+            "qualificationState": {"state": "research-use"},
+            "evidenceBasis": {"basisType": "ivive-linked"},
+            "workflowClaimBoundaries": {"directRegulatoryDoseDerivation": "not-supported"},
+            "cautionSummary": {"highestSeverity": "high"},
+            "missingEvidence": ["Predictive dataset not attached."],
+            "dossierImprovementSignals": {"advisoryOnly": True},
+            "warnings": ["Keep context attached."],
+            "operatorReviewSignoff": {"status": "not-recorded"},
+            "operatorReviewGovernance": {"supportsOverride": False},
+            "ngraObjects": {
+                "pbpkQualificationSummary": {
+                    "reviewStatus": {"status": "not-declared"},
+                    "evidenceBasis": {"basisType": "ivive-linked"},
+                    "workflowClaimBoundaries": {"directRegulatoryDoseDerivation": "not-supported"},
+                    "cautionSummary": {"highestSeverity": "high"},
+                    "exportBlockPolicy": {"blockReasons": [{"code": "detached-summary-blocked"}]},
+                }
+            },
+        }
+
+        contract = build_trust_surface_contract(payload, tool_name="validate_simulation_request")
+
+        self.assertIsNotNone(contract)
+        surface = contract["surfaces"][0]
+        self.assertEqual(surface["surfacePath"], "ngraObjects.pbpkQualificationSummary")
+        self.assertIn("evidenceBasis", surface["requiredAdjacentPaths"])
+        self.assertIn("workflowClaimBoundaries", surface["requiredAdjacentPaths"])
+        self.assertIn("missingEvidence", surface["requiredAdjacentPaths"])
+        self.assertIn("warnings", surface["requiredAdjacentPaths"])
+        self.assertIn("dossierImprovementSignals", surface["requiredAdjacentPaths"])
 
 
 if __name__ == "__main__":

@@ -50,6 +50,8 @@ def run_scheduled_verification(
             bucket=config.audit_s3_bucket,
             prefix=config.audit_s3_prefix,
             region=config.audit_s3_region,
+            endpoint_url=config.audit_s3_endpoint_url,
+            force_path_style=config.audit_s3_force_path_style,
             start=start_key,
             end=end_key,
             expected_lock_mode=config.audit_s3_object_lock_mode,

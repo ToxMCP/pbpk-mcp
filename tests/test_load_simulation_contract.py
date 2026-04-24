@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
-LOAD_SIMULATION_TOOL = WORKSPACE_ROOT / "src" / "mcp" / "tools" / "load_simulation.py"
+LOAD_SIMULATION_TOOL = WORKSPACE_ROOT / "src" / "mcp_bridge" / "pbpk_tools" / "load_simulation.py"
 
 
 class LoadSimulationContractTests(unittest.TestCase):

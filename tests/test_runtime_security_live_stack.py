@@ -22,7 +22,7 @@ if str(SRC_ROOT) not in sys.path:
 from mcp_bridge.security.simple_jwt import jwt  # noqa: E402
 
 
-DEV_AUTH_SECRET = "pbpk-local-dev-secret"
+DEV_AUTH_SECRET = "pbpk-local-dev-secret-32bytes-long"
 REFERENCE_MODEL = "/app/var/models/rxode2/reference_compound/reference_compound_population_rxode2_model.R"
 
 
@@ -293,15 +293,14 @@ class RuntimeSecurityLiveStackTests(unittest.TestCase):
         initialize = jsonrpc_request("initialize", headers={"content-type": "application/json"})
         self.assertEqual(initialize["status"], 200)
         self.assertIsInstance(initialize["body"], dict)
-        self.assertEqual(initialize["body"]["result"]["protocolVersion"], "2025-03-26")
-        self.assertFalse(initialize["body"]["result"]["capabilities"]["resources"]["enabled"])
+        self.assertEqual(initialize["body"]["result"]["protocolVersion"], "2025-11-25")
         self.assertEqual(
-            initialize["body"]["result"]["companionResources"]["mode"],
-            "rest-companion-resources",
+            initialize["body"]["result"]["capabilities"]["tools"],
+            {"listChanged": False},
         )
         self.assertEqual(
-            initialize["body"]["result"]["companionResources"]["restBasePath"],
-            "/mcp/resources",
+            initialize["body"]["result"]["capabilities"]["resources"],
+            {"listChanged": False},
         )
 
         anonymous_list = jsonrpc_request("tools/list", headers={"content-type": "application/json"})
@@ -310,6 +309,13 @@ class RuntimeSecurityLiveStackTests(unittest.TestCase):
         anonymous_tools = _tool_names(anonymous_list["body"]["result"])
         self.assertIn("discover_models", anonymous_tools)
         self.assertNotIn("load_simulation", anonymous_tools)
+        discover_tool = next(
+            tool
+            for tool in anonymous_list["body"]["result"]["tools"]
+            if tool["name"] == "discover_models"
+        )
+        self.assertIn("outputSchema", discover_tool)
+        self.assertIn("readOnlyHint", discover_tool["annotations"])
 
         operator_list = jsonrpc_request(
             "tools/list",

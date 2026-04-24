@@ -21,32 +21,32 @@ from langgraph.graph import END, StateGraph
 from langgraph.pregel import empty_checkpoint
 from typing_extensions import Annotated
 
-from mcp.tools.calculate_pk_parameters import (
+from mcp_bridge.pbpk_tools.calculate_pk_parameters import (
     CalculatePkParametersRequest,
     calculate_pk_parameters,
 )
-from mcp.tools.get_job_status import (
+from mcp_bridge.pbpk_tools.get_job_status import (
     GetJobStatusRequest,
     get_job_status,
 )
-from mcp.tools.get_parameter_value import (
+from mcp_bridge.pbpk_tools.get_parameter_value import (
     GetParameterValueRequest,
     get_parameter_value,
 )
-from mcp.tools.list_parameters import (
+from mcp_bridge.pbpk_tools.list_parameters import (
     ListParametersRequest,
     list_parameters,
 )
-from mcp.tools.load_simulation import (
+from mcp_bridge.pbpk_tools.load_simulation import (
     LoadSimulationRequest,
     load_simulation,
 )
-from mcp.tools.run_population_simulation import (
+from mcp_bridge.pbpk_tools.run_population_simulation import (
     RunPopulationSimulationRequest,
     run_population_simulation,
 )
-from mcp.tools.run_simulation import RunSimulationRequest, run_simulation
-from mcp.tools.set_parameter_value import (
+from mcp_bridge.pbpk_tools.run_simulation import RunSimulationRequest, run_simulation
+from mcp_bridge.pbpk_tools.set_parameter_value import (
     SetParameterValueRequest,
     set_parameter_value,
 )
@@ -59,7 +59,7 @@ from mcp_bridge.agent.prompts import (
 from mcp_bridge.services.job_service import BaseJobService
 
 if TYPE_CHECKING:  # pragma: no cover - import only for type hints
-    from mcp.tools.run_sensitivity_analysis import RunSensitivityAnalysisRequest
+    from mcp_bridge.pbpk_tools.run_sensitivity_analysis import RunSensitivityAnalysisRequest
 
 
 class AgentState(TypedDict, total=False):
@@ -358,7 +358,7 @@ def create_tool_registry(
             pollIntervalSeconds: float = 0.25,
             jobTimeoutSeconds: Optional[float] = None,
         ) -> Dict[str, Any]:
-            from mcp.tools.run_sensitivity_analysis import (
+            from mcp_bridge.pbpk_tools.run_sensitivity_analysis import (
                 RunSensitivityAnalysisRequest,
                 run_sensitivity_analysis_tool,
             )

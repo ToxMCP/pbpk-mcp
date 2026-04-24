@@ -58,18 +58,12 @@ jobs:
           echo "Timed out waiting for http://127.0.0.1:8000/health" >&2
           exit 1
 
-      - name: Run release readiness gate
+      - name: Run retained public preflight
         run: |
-          python3 scripts/release_readiness_check.py --skip-unit-tests | tee var/release_readiness_summary.json
-
-      - name: Run live misuse-prevention gate
-        run: |
-          make misuse-prevention-live-test PY=python3
-
-      - name: Run workspace model smoke
-        run: |
-          python3 scripts/workspace_model_smoke.py --include-population --auth-dev-secret pbpk-local-dev-secret | tee var/workspace_model_smoke_summary.txt
-          python3 scripts/workspace_model_smoke.py --search reference_compound --include-population --auth-dev-secret pbpk-local-dev-secret --output var/workspace_model_smoke_rxode2_report.json
+          python3 scripts/public_release_preflight.py \
+            --skip-runtime-contract \
+            --auth-dev-secret pbpk-local-dev-secret-32bytes-long \
+            | tee var/public_release_preflight_stdout.txt
 
       - name: Capture compose diagnostics
         if: always()
@@ -83,10 +77,11 @@ jobs:
         with:
           name: pbpk-model-smoke-${{ github.run_id }}
           path: |
+            var/public_release_preflight_summary.json
+            var/public_release_preflight_stdout.txt
             var/release_readiness_summary.json
             var/workspace_model_smoke_report.json
             var/workspace_model_smoke_rxode2_report.json
-            var/workspace_model_smoke_summary.txt
             var/model_smoke_compose_ps.txt
             var/model_smoke_docker_logs.txt
           if-no-files-found: error

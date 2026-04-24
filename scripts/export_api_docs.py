@@ -38,6 +38,7 @@ if PATCH_ROOT.exists():
     _extend_package_path("mcp_bridge", PATCH_ROOT / "mcp_bridge")
     _extend_package_path("mcp_bridge.routes", PATCH_ROOT / "mcp_bridge" / "routes")
     _extend_package_path("mcp_bridge.tools", PATCH_ROOT / "mcp_bridge" / "tools")
+    _extend_package_path("mcp_bridge.pbpk_tools", PATCH_ROOT / "mcp_bridge" / "pbpk_tools")
     _extend_package_path("mcp", PATCH_ROOT / "mcp")
     _extend_package_path("mcp.tools", PATCH_ROOT / "mcp" / "tools")
     # Importing ``mcp_bridge.tools`` executes its packaged __init__, which eagerly

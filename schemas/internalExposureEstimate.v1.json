@@ -63,6 +63,33 @@
       "type": "string",
       "minLength": 1
     },
+    "originClassification": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "primarySourceVerified": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "sourceChain": {
+      "$ref": "#/$defs/nullableStringArray"
+    },
+    "underlyingPrimarySourceRef": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "bridgingMethod": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "selectionReason": {
       "type": [
         "string",
@@ -286,6 +313,15 @@
     },
     "stringArray": {
       "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "nullableStringArray": {
+      "type": [
+        "array",
+        "null"
+      ],
       "items": {
         "type": "string"
       }

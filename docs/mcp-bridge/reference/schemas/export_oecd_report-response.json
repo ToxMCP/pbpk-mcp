@@ -17,6 +17,19 @@
       "title": "Contractversion",
       "type": "string"
     },
+    "dossierImprovementSignals": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Dossierimprovementsignals"
+    },
     "generatedAt": {
       "anyOf": [
         {
