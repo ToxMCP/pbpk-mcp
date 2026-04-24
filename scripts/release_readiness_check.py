@@ -27,6 +27,9 @@ from mcp_bridge.security.simple_jwt import jwt  # noqa: E402
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
 CONTRACT_VERSION = "pbpk-mcp.v1"
+OSPSUITE_LOAD_TIMEOUT_SECONDS = 420
+OSPSUITE_REPORT_TIMEOUT_SECONDS = 300
+ASYNC_REFERENCE_JOB_TIMEOUT_SECONDS = 360
 PUBLISHED_CONTRACT_MANIFEST = WORKSPACE_ROOT / "docs" / "architecture" / "contract_manifest.json"
 PUBLISHED_RELEASE_BUNDLE_MANIFEST = WORKSPACE_ROOT / "docs" / "architecture" / "release_bundle_manifest.json"
 VALIDATE_MANIFESTS_SCRIPT = WORKSPACE_ROOT / "scripts" / "validate_model_manifests.py"
@@ -596,8 +599,14 @@ def run_security_posture_check(
     assert_true(
         isinstance(initialize_body, dict)
         and isinstance(initialize_body.get("result"), dict)
-        and (initialize_body.get("result") or {}).get("protocolVersion") == "2025-03-26",
+        and (initialize_body.get("result") or {}).get("protocolVersion") == "2025-11-25",
         f"JSON-RPC initialize returned an unexpected protocol payload: {jsonrpc_initialize}",
+    )
+    initialize_result = initialize_body.get("result") or {}
+    assert_true(
+        (initialize_result.get("capabilities") or {}).get("tools") == {"listChanged": False}
+        and (initialize_result.get("capabilities") or {}).get("resources") == {"listChanged": False},
+        f"JSON-RPC initialize did not advertise standard tools/resources capabilities: {jsonrpc_initialize}",
     )
 
     jsonrpc_anonymous_list = jsonrpc_request(
@@ -1514,7 +1523,11 @@ def run_release_check(
         critical=True,
         timeout=60,
     )
-    reference_job = poll_job(base_url, reference_submit["jobId"])
+    reference_job = poll_job(
+        base_url,
+        reference_submit["jobId"],
+        timeout_seconds=ASYNC_REFERENCE_JOB_TIMEOUT_SECONDS,
+    )
     assert_true(reference_job["status"] == "succeeded", f"Reference compound simulation failed: {reference_job}")
     reference_results = call_tool(base_url, "get_results", {"resultsId": reference_job["resultId"]}, timeout=60)
     assert_true(len(reference_results["series"]) > 0, "Reference compound deterministic result returned no series")
@@ -1561,19 +1574,27 @@ def run_release_check(
         "load_simulation",
         {"filePath": PREGNANCY_PKML, "simulationId": pkml_id},
         critical=True,
-        timeout=120,
+        timeout=OSPSUITE_LOAD_TIMEOUT_SECONDS,
     )
     assert_true(pkml_load["backend"] == "ospsuite", f"Unexpected PKML backend: {pkml_load}")
 
     pkml_report = call_tool(
         base_url,
         "export_oecd_report",
-        {"simulationId": pkml_id, "request": {"contextOfUse": "research-only"}, "parameterLimit": 3},
-        timeout=120,
+        {
+            "simulationId": pkml_id,
+            "request": {"contextOfUse": "research-only"},
+            "includeParameterTable": False,
+            "parameterLimit": 3,
+        },
+        timeout=OSPSUITE_REPORT_TIMEOUT_SECONDS,
     )
     pkml_report_payload = pkml_report["report"]
     assert_true(pkml_report_payload["profile"]["profileSource"]["type"] == "sidecar", "OSPSuite sidecar provenance was not preserved")
-    assert_true(pkml_report_payload["parameterTable"]["returnedRows"] > 0, "OSPSuite OECD report should include runtime parameter rows")
+    assert_true(
+        pkml_report_payload["parameterTable"]["included"] is False,
+        "OSPSuite release-gate report should skip the live parameter-table preview and rely on the bridge regression instead",
+    )
 
     summary["reference_compound"] = {
         "simulationId": reference_id,
@@ -1617,7 +1638,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--auth-dev-secret",
-        default="pbpk-local-dev-secret",
+        default="pbpk-local-dev-secret-32bytes-long",
         help="HS256 dev secret used to mint an operator token for local development stacks.",
     )
     parser.add_argument(

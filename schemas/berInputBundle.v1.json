@@ -128,6 +128,9 @@
         "null"
       ]
     },
+    "lineageFlags": {
+      "$ref": "#/$defs/lineageFlags"
+    },
     "podMetadata": {
       "type": "object",
       "properties": {
@@ -256,6 +259,59 @@
             "string",
             "null"
           ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "lineageFlags": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "internalExposureOriginClassification": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "internalExposurePrimarySourceVerified": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "internalExposureSourceChainLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "internalExposureBridgingMethod": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "internalExposureReviewOnly": {
+          "type": "boolean"
+        },
+        "podOriginClassification": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "podPrimarySourceVerified": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "podSourceChainLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "podReviewOnly": {
+          "type": "boolean"
         }
       },
       "additionalProperties": true

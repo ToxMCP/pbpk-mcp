@@ -40,6 +40,7 @@ The local deployment surface is defined by:
 
 - `docker-compose.celery.yml`
 - `docker-compose.overlay.yml`
+  This overlay now bind-mounts `src/`, `scripts/`, `docs/`, `schemas/`, and `var/` so live contract resources follow the current workspace during maintainer release-prep.
 - `docker-compose.hardened.yml`
 - `scripts/deploy_rxode2_stack.sh`
 - `scripts/deploy_source_overlay_stack.sh`
@@ -152,7 +153,7 @@ After deploy:
 curl -s http://127.0.0.1:8000/health
 curl -s http://127.0.0.1:8000/mcp/list_tools
 python3 scripts/release_readiness_check.py
-python3 scripts/workspace_model_smoke.py --auth-dev-secret pbpk-local-dev-secret
+python3 scripts/workspace_model_smoke.py --auth-dev-secret pbpk-local-dev-secret-32bytes-long
 make misuse-prevention-live-test PY=python3
 ```
 
@@ -173,7 +174,7 @@ These checks should confirm:
 When you specifically want to exercise declared `rxode2` population support too, run:
 
 ```bash
-python3 scripts/workspace_model_smoke.py --include-population --auth-dev-secret pbpk-local-dev-secret
+python3 scripts/workspace_model_smoke.py --include-population --auth-dev-secret pbpk-local-dev-secret-32bytes-long
 ```
 
 This emits `var/workspace_model_smoke_report.json` and gives you a catalog-wide view of:
@@ -231,9 +232,9 @@ Symptom:
 
 Fix:
 
-- verify `src/mcp/tools/load_simulation.py`
+- verify `src/mcp_bridge/pbpk_tools/load_simulation.py`
 - rerun `python3 scripts/release_readiness_check.py`
-- rerun `python3 scripts/workspace_model_smoke.py --auth-dev-secret pbpk-local-dev-secret`
+- rerun `python3 scripts/workspace_model_smoke.py --auth-dev-secret pbpk-local-dev-secret-32bytes-long`
 
 ### Hardened overlay fails before startup
 

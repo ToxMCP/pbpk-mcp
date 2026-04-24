@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import time
+from collections.abc import Mapping
 from typing import Any
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
+from ..security.phi import PHIFilter
 from .trail import AuditTrail
 
 
@@ -32,6 +35,30 @@ def _safe_json_decode(data: bytes | None) -> Any:
 def _event_type(path: str) -> str:
     cleaned = path.strip("/").replace("/", ".")
     return f"http.mcp.{cleaned}" if cleaned else "http.mcp"
+
+
+_PHI_FILTER = PHIFilter()
+_SENSITIVE_KEY_PATTERN = re.compile(
+    r"(?i)(token|secret|password|authorization|cookie|api[-_]?key|access[-_]?key|session)"
+)
+
+
+def _redact_payload(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        redacted: dict[str, Any] = {}
+        for raw_key, raw_value in value.items():
+            key = str(raw_key)
+            if _SENSITIVE_KEY_PATTERN.search(key):
+                redacted[key] = "[REDACTED:SECRET]"
+            else:
+                redacted[key] = _redact_payload(raw_value)
+        return redacted
+    if isinstance(value, list):
+        return [_redact_payload(item) for item in value]
+    if isinstance(value, str):
+        redacted_text, _ = _PHI_FILTER.redact(value)
+        return redacted_text
+    return value
 
 
 class AuditMiddleware(BaseHTTPMiddleware):
@@ -80,6 +107,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
             }
 
         body = getattr(request, "_body", b"")
+        decoded_payload = _safe_json_decode(body)
         event = {
             "correlationId": getattr(request.state, "correlation_id", None),
             "identity": identity,
@@ -88,7 +116,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 "path": request.url.path,
                 "query": request.url.query or None,
                 "bodyDigest": _sha256(body),
-                "payload": _safe_json_decode(body),
+                "payload": _redact_payload(decoded_payload),
             },
             "response": {
                 "status": response.status_code if response is not None else None,

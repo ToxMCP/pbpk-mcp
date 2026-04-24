@@ -10,14 +10,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Sequence
 
-from mcp.session_registry import registry
-from mcp.tools.calculate_pk_parameters import (
+from mcp_bridge.session_registry import registry
+from mcp_bridge.pbpk_tools.calculate_pk_parameters import (
     CalculatePkParametersRequest,
     CalculatePkParametersResponse,
     PkMetricGroup,
     calculate_pk_parameters,
 )
-from mcp.tools.load_simulation import LoadSimulationRequest, load_simulation
+from mcp_bridge.pbpk_tools.load_simulation import LoadSimulationRequest, load_simulation
 
 from ..config import AppConfig
 from ..runtime.factory import build_adapter, build_population_store
@@ -283,6 +283,12 @@ def _metric_payload(metric: PkMetricGroup) -> dict[str, float | None]:
         "cmax": metric.cmax,
         "tmax": metric.tmax,
         "auc": metric.auc,
+        "auc0Inf": metric.auc0_inf,
+        "lambdaZ": metric.lambda_z,
+        "halfLife": metric.half_life,
+        "aucExtrapolatedPercent": metric.auc_extrapolated_percent,
+        "clearance": metric.clearance,
+        "volumeDistribution": metric.volume_distribution,
     }
 
 

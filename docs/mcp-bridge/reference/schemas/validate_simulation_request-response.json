@@ -17,10 +17,40 @@
       "title": "Capabilities",
       "type": "object"
     },
+    "cautionSummary": {
+      "additionalProperties": true,
+      "title": "Cautionsummary",
+      "type": "object"
+    },
     "contractVersion": {
       "default": "pbpk-mcp.v1",
       "title": "Contractversion",
       "type": "string"
+    },
+    "dossierImprovementSignals": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Dossierimprovementsignals"
+    },
+    "evidenceBasis": {
+      "additionalProperties": true,
+      "title": "Evidencebasis",
+      "type": "object"
+    },
+    "missingEvidence": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Missingevidence",
+      "type": "array"
     },
     "ngraObjects": {
       "additionalProperties": true,
@@ -65,6 +95,11 @@
       },
       "title": "Warnings",
       "type": "array"
+    },
+    "workflowClaimBoundaries": {
+      "additionalProperties": true,
+      "title": "Workflowclaimboundaries",
+      "type": "object"
     }
   },
   "required": [

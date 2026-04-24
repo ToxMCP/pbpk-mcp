@@ -14,7 +14,7 @@ SRC_ROOT = WORKSPACE_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from mcp.tools.load_simulation import resolve_model_path  # noqa: E402
+from mcp_bridge.pbpk_tools.load_simulation import resolve_model_path  # noqa: E402
 from mcp_bridge.model_catalog import resolve_model_roots as resolve_catalog_roots  # noqa: E402
 
 

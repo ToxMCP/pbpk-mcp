@@ -12,20 +12,20 @@ from fastapi import APIRouter, Depends, Request, status
 from pydantic import BaseModel, Field, ValidationError
 from prometheus_client import Counter, Gauge, Histogram
 
-from mcp.tools.calculate_pk_parameters import CalculatePkParametersValidationError
-from mcp.tools.cancel_job import CancelJobValidationError
-from mcp.tools.get_job_status import GetJobStatusValidationError
-from mcp.tools.get_parameter_value import GetParameterValueValidationError
-from mcp.tools.list_parameters import ListParametersValidationError
-from mcp.tools.load_simulation import DuplicateSimulationError, LoadSimulationValidationError
-from mcp.tools.run_population_simulation import RunPopulationSimulationValidationError
-from mcp.tools.run_simulation import RunSimulationValidationError
-from mcp.tools.run_sensitivity_analysis import RunSensitivityAnalysisValidationError
-from mcp.tools.set_parameter_value import SetParameterValueValidationError
+from mcp_bridge.pbpk_tools.calculate_pk_parameters import CalculatePkParametersValidationError
+from mcp_bridge.pbpk_tools.cancel_job import CancelJobValidationError
+from mcp_bridge.pbpk_tools.get_job_status import GetJobStatusValidationError
+from mcp_bridge.pbpk_tools.get_parameter_value import GetParameterValueValidationError
+from mcp_bridge.pbpk_tools.list_parameters import ListParametersValidationError
+from mcp_bridge.pbpk_tools.load_simulation import DuplicateSimulationError, LoadSimulationValidationError
+from mcp_bridge.pbpk_tools.run_population_simulation import RunPopulationSimulationValidationError
+from mcp_bridge.pbpk_tools.run_simulation import RunSimulationValidationError
+from mcp_bridge.pbpk_tools.run_sensitivity_analysis import RunSensitivityAnalysisValidationError
+from mcp_bridge.pbpk_tools.set_parameter_value import SetParameterValueValidationError
 
 from ..adapter import AdapterError
 from ..adapter.interface import OspsuiteAdapter
-from ..dependencies import get_adapter, get_audit_trail, get_job_service, get_population_store
+from ..dependencies import get_adapter, get_audit_trail, get_job_service, get_population_store, get_snapshot_store
 from ..errors import (
     DetailedHTTPException,
     ErrorCode,
@@ -33,6 +33,7 @@ from ..errors import (
     http_error,
     validation_exception,
 )
+from ..audit.sweep_review import attach_sweep_review
 from ..review_signoff import attach_operator_review_signoff
 from ..security import is_confirmed
 from ..security.auth import AuthContext, auth_dependency
@@ -139,6 +140,10 @@ def _normalize_result(payload: Any) -> Dict[str, Any]:
 
 def _tool_annotations(descriptor: ToolDescriptor) -> Dict[str, Any]:
     return {
+        "readOnlyHint": descriptor.read_only_hint,
+        "destructiveHint": descriptor.destructive_hint,
+        "idempotentHint": descriptor.idempotent_hint,
+        "openWorldHint": descriptor.open_world_hint,
         "critical": descriptor.critical,
         "requiresConfirmation": descriptor.requires_confirmation,
         "roles": list(descriptor.roles),
@@ -434,6 +439,7 @@ async def call_tool(
     job_service: BaseJobService = Depends(get_job_service),
     population_store: PopulationResultStore = Depends(get_population_store),
     audit_trail: Any = Depends(get_audit_trail),
+    snapshot_store: Any = Depends(get_snapshot_store),
     auth: AuthContext = Depends(auth_dependency),
 ) -> CallToolResponse:
     registry = get_tool_registry()
@@ -466,10 +472,14 @@ async def call_tool(
     except ValidationError as exc:
         raise validation_exception(exc) from exc
 
+    config = getattr(http_request.app.state, "config", None)
     dependency_map = {
         "adapter": adapter,
         "job_service": job_service,
         "population_store": population_store,
+        "config": config,
+        "audit_trail": audit_trail,
+        "snapshot_store": snapshot_store,
     }
     call_kwargs = {name: dependency_map[name] for name in descriptor.dependencies}
     call_kwargs["payload"] = tool_request
@@ -501,6 +511,12 @@ async def call_tool(
             result_content,
             audit=audit_trail,
             tool_name=descriptor.name,
+        )
+        attach_sweep_review(
+            result_content,
+            audit=audit_trail,
+            tool_name=descriptor.name,
+            auth=auth_context,
         )
         trust_surface_contract = attach_trust_surface_contract(
             result_content,

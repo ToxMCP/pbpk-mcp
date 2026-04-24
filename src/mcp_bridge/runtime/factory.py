@@ -11,7 +11,7 @@ from ..adapter.ospsuite import SubprocessOspsuiteAdapter
 from ..config import AppConfig, ConfigError
 from ..storage.population_store import PopulationResultStore
 from ..storage.snapshot_store import SimulationSnapshotStore
-from mcp.session_registry import RedisSessionRegistry, SessionRegistry
+from mcp_bridge.session_registry import RedisSessionRegistry, SessionRegistry
 
 
 def build_population_store(config: AppConfig) -> PopulationResultStore:

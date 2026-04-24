@@ -29,13 +29,13 @@ _ENV_ALIASES: dict[str, tuple[str, ...]] = {
 }
 
 _ENV_ALIAS_REMOVAL_RELEASE: dict[str, str] = {
-    "ADAPTER_REQUIRE_R": "0.5.0",
-    "ADAPTER_TIMEOUT_SECONDS": "0.5.0",
-    "R_PATH": "0.5.0",
-    "R_HOME": "0.5.0",
-    "R_LIBS": "0.5.0",
-    "MCP_MODEL_SEARCH_PATHS": "0.5.0",
-    "AUDIT_TRAIL_ENABLED": "0.5.0",
+    "ADAPTER_REQUIRE_R": "0.6.0",
+    "ADAPTER_TIMEOUT_SECONDS": "0.6.0",
+    "R_PATH": "0.6.0",
+    "R_HOME": "0.6.0",
+    "R_LIBS": "0.6.0",
+    "MCP_MODEL_SEARCH_PATHS": "0.6.0",
+    "AUDIT_TRAIL_ENABLED": "0.6.0",
 }
 
 
@@ -144,6 +144,16 @@ class AppConfig(BaseModel):
         ge=0,
         description="Retention window (seconds) for population simulation artefacts",
     )
+    max_population_size: int = Field(
+        default=5000,
+        ge=1,
+        description="Hard upper bound on population cohort size for simulations",
+    )
+    max_memory_per_job_mb: int = Field(
+        default=2048,
+        ge=1,
+        description="Maximum estimated memory quota per population job in megabytes",
+    )
     snapshot_storage_path: str = Field(
         default="var/snapshots",
         description="Filesystem path for persisted simulation baseline snapshots",
@@ -168,6 +178,14 @@ class AppConfig(BaseModel):
     )
     audit_s3_region: Optional[str] = Field(
         default=None, description="AWS region where the audit bucket resides"
+    )
+    audit_s3_endpoint_url: Optional[str] = Field(
+        default=None,
+        description="Custom S3 endpoint URL for S3-compatible stores used outside the default AWS endpoint",
+    )
+    audit_s3_force_path_style: bool = Field(
+        default=False,
+        description="Force path-style addressing for S3-compatible endpoints such as MinIO",
     )
     audit_s3_object_lock_mode: Optional[str] = Field(
         default=None, description="S3 Object Lock mode (governance or compliance)"
@@ -201,11 +219,19 @@ class AppConfig(BaseModel):
     auth_replay_window_seconds: int = Field(
         default=300,
         ge=0,
-        description="Replay protection window applied to tokens with jti claims",
+        description="Retain seen token identifiers after first use to reject replayed jti-bearing tokens",
     )
     auth_allow_anonymous: bool = Field(
         default=False,
         description="Permit anonymous access (development/testing only)",
+    )
+    mcp_allowed_origins: Tuple[str, ...] = Field(
+        default=(),
+        description="Allowed HTTP Origin values for MCP streamable HTTP requests",
+    )
+    mcp_strict_transport: bool = Field(
+        default=False,
+        description="Enforce MCP streamable HTTP Accept and protocol-version headers",
     )
 
     @field_validator("log_level")
@@ -224,7 +250,7 @@ class AppConfig(BaseModel):
     def _normalise_service_metadata(cls, value: Any, info: ValidationInfo) -> str:
         default = cls.model_fields[info.field_name].default
         if info.field_name == "service_version" and not default:
-            default = __version__ or "0.4.3"
+            default = __version__ or "0.5.0"
         if value is None:
             return str(default)
         text = str(value).strip()
@@ -419,6 +445,11 @@ class AppConfig(BaseModel):
                     "AUDIT_S3_PREFIX", cls.model_fields["audit_s3_prefix"].default
                 ),
                 "audit_s3_region": os.getenv("AUDIT_S3_REGION"),
+                "audit_s3_endpoint_url": os.getenv("AUDIT_S3_ENDPOINT_URL"),
+                "audit_s3_force_path_style": cls._env_to_bool(
+                    "AUDIT_S3_FORCE_PATH_STYLE",
+                    cls.model_fields["audit_s3_force_path_style"].default,
+                ),
                 "audit_s3_object_lock_mode": os.getenv("AUDIT_S3_OBJECT_LOCK_MODE"),
                 "audit_s3_object_lock_days": (
                     cls._env_to_int("AUDIT_S3_OBJECT_LOCK_DAYS", 1)
@@ -453,6 +484,14 @@ class AppConfig(BaseModel):
                 "auth_allow_anonymous": cls._env_to_bool(
                     "AUTH_ALLOW_ANONYMOUS",
                     cls.model_fields["auth_allow_anonymous"].default,
+                ),
+                "mcp_allowed_origins": cls._env_to_csv(
+                    os.getenv("MCP_ALLOWED_ORIGINS"),
+                    cls.model_fields["mcp_allowed_origins"].default,
+                ),
+                "mcp_strict_transport": cls._env_to_bool(
+                    "MCP_STRICT_TRANSPORT",
+                    cls.model_fields["mcp_strict_transport"].default,
                 ),
             }
         except ValueError as exc:
@@ -518,6 +557,12 @@ class AppConfig(BaseModel):
         if value is None:
             return default
         return tuple(path.strip() for path in value.split(os.pathsep) if path.strip())
+
+    @staticmethod
+    def _env_to_csv(value: str | None, default: Tuple[str, ...]) -> Tuple[str, ...]:
+        if value is None:
+            return default
+        return tuple(item.strip() for item in value.split(",") if item.strip())
 
 
 def config_env_warnings(environ: Mapping[str, str] | None = None) -> tuple[str, ...]:

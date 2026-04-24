@@ -9,6 +9,14 @@
   "status": "available",
   "resultsId": null,
   "source": "external-import",
+  "originClassification": "model_output",
+  "primarySourceVerified": true,
+  "sourceChain": [
+    "GastroPlus run GP-001",
+    "Validated external PBPK output export"
+  ],
+  "underlyingPrimarySourceRef": "GP-001",
+  "bridgingMethod": null,
   "requestedTargetOutput": "Plasma|Parent|Concentration",
   "selectionStatus": "explicit",
   "selectedOutput": {

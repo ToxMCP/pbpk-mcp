@@ -11,7 +11,7 @@ from typing import Any, Iterable, Optional, Sequence
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from mcp.session_registry import SessionRecord, SessionRegistry
+from mcp_bridge.session_registry import SessionRecord, SessionRegistry
 
 try:  # pragma: no cover - fallback depends on installed package contents
     from mcp_bridge.contract import (

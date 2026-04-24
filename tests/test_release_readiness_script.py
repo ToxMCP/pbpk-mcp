@@ -29,7 +29,7 @@ class ReleaseReadinessScriptTests(unittest.TestCase):
     def test_build_auth_headers_uses_dev_secret(self) -> None:
         headers = module.build_auth_headers(
             bearer_token=None,
-            auth_dev_secret="pbpk-local-dev-secret",
+            auth_dev_secret="pbpk-local-dev-secret-32bytes-long",
         )
 
         self.assertIn("authorization", headers)
@@ -38,14 +38,14 @@ class ReleaseReadinessScriptTests(unittest.TestCase):
     def test_build_auth_headers_uses_requested_role(self) -> None:
         headers = module.build_auth_headers(
             bearer_token=None,
-            auth_dev_secret="pbpk-local-dev-secret",
+            auth_dev_secret="pbpk-local-dev-secret-32bytes-long",
             auth_role="admin",
         )
 
         token = headers["authorization"].split(" ", 1)[1]
         payload = jwt.decode(
             token,
-            "pbpk-local-dev-secret",
+            "pbpk-local-dev-secret-32bytes-long",
             algorithms=["HS256"],
             options={"verify_aud": False},
         )
@@ -68,6 +68,11 @@ class ReleaseReadinessScriptTests(unittest.TestCase):
         self.assertEqual(module.REQUIRED_TOOLS, frozenset(module.release_probe_required_tools()))
         self.assertEqual(module.REQUIRED_SCHEMA_IDS, frozenset(module.published_schema_ids()))
         self.assertEqual(wait_module.DEFAULT_REQUIRED_TOOLS, module.release_probe_required_tools())
+
+    def test_ospsuite_report_timeout_budget_is_raised_for_release_gate(self) -> None:
+        self.assertGreaterEqual(module.OSPSUITE_LOAD_TIMEOUT_SECONDS, 300)
+        self.assertGreaterEqual(module.OSPSUITE_REPORT_TIMEOUT_SECONDS, 300)
+        self.assertGreaterEqual(module.ASYNC_REFERENCE_JOB_TIMEOUT_SECONDS, 300)
 
 
 if __name__ == "__main__":

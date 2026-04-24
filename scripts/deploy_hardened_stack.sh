@@ -15,4 +15,8 @@ docker compose \
   -p pbpk_mcp \
   up -d --force-recreate --remove-orphans redis api worker
 
-python3 "${workspace_root}/scripts/wait_for_runtime_ready.py" --base-url "${base_url}"
+python3 "${workspace_root}/scripts/wait_for_runtime_ready.py" \
+  --base-url "${base_url}" \
+  --timeout-seconds 600 \
+  --per-request-timeout-seconds 30 \
+  --stable-successes 2

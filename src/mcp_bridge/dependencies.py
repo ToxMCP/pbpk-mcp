@@ -6,10 +6,10 @@ from typing import Protocol, cast
 
 from fastapi import Request
 
-from mcp.session_registry import RedisSessionRegistry, SessionRegistry
+from mcp_bridge.session_registry import RedisSessionRegistry, SessionRegistry
 
 from .adapter import OspsuiteAdapter
-from .audit import AuditTrail
+from .audit.trail import AuditTrail
 from .services.job_service import BaseJobService
 from .storage.snapshot_store import SimulationSnapshotStore
 from .storage.population_store import PopulationResultStore

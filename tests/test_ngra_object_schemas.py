@@ -87,6 +87,12 @@ class RuntimeNgraObjectSchemaTests(unittest.TestCase):
                     "species": "human",
                     "route": "oral",
                     "population": "adult",
+                    "originClassification": "model_output",
+                    "primarySourceVerified": True,
+                    "sourceChain": [
+                        "GastroPlus run GP-001",
+                        "Validated external PBPK output export",
+                    ],
                     "metrics": {
                         "cmax": {"value": 3.2, "unit": "uM"},
                         "tmax": {"value": 1.5},
@@ -134,6 +140,9 @@ class RuntimeNgraObjectSchemaTests(unittest.TestCase):
                 pod={
                     "ref": "pod-001",
                     "source": "httr-benchmark",
+                    "originClassification": "primary_observation",
+                    "primarySourceVerified": True,
+                    "sourceChain": ["HTTR benchmark dataset pod-001"],
                     "metric": "cmax",
                     "unit": "uM",
                     "basis": "true-dose-adjusted",

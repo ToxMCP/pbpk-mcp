@@ -80,13 +80,17 @@ The current implementation follows a layered model:
 
 See `docs/architecture/dual_backend_pbpk_mcp.md` for the fuller architecture narrative, `docs/architecture/capability_matrix.md` for the published support matrix, `docs/architecture/mcp_payload_conventions.md` for the response contract, `docs/deployment/runtime_patch_flow.md` for the operator path behind the current local deployment model, and `docs/pbpk_model_onboarding_checklist.md` for the recommended trust pipeline when onboarding another chemical model.
 See `docs/architecture/exposure_led_ngra_role.md` for the explicit boundary statement on what PBPK MCP does and does not own inside exposure-led NGRA workflows.
+See `docs/architecture/toxmcp_suite_index.md` for the shortest cross-service routing guide inside the ToxMCP suite.
 See `benchmarks/regulatory_goldset/regulatory_goldset_summary.md` for the current gold-set documentation benchmark summary derived from the fetched public-code PBPK corpus. Internal examples such as the bundled synthetic reference model remain bounded MCP rehearsal models, not benchmark exemplars.
 
-## What's new in v0.4.3
+## What's new in v0.5.0
 
-- Added benchmark-derived dossier guidance, onboarding guidance, and explicit trust-surface reporting so MCP can show what is still missing before a PBPK model can credibly approach regulatory-grade use.
-- Tightened the public runtime posture by keeping the analyst UI retired, preserving viewer-only anonymous development mode, and keeping critical actions behind confirmation and sign-off surfaces.
-- Hardened release and audit evidence by shipping a reproducible gold-set benchmark dossier, a verifiable synthetic reference-model audit pack, and stricter contract/release-bundle integrity checks on the live stack.
+- Enforced single-use replay rejection for bearer tokens that carry `jti` claims, so repeated presentation of the same token identifier is now treated as an auth failure instead of silently succeeding.
+- Upgraded `/mcp` to the MCP `2025-11-25` JSON-RPC behavior, including clean success/error response shapes, standard tool schemas, structured tool results, and standard MCP resources exposed through `pbpk://` URIs.
+- Moved canonical PBPK tool modules to `mcp_bridge.pbpk_tools` while keeping a temporary deprecated `mcp.*` compatibility shim for existing internal scripts.
+- Aligned REST and MCP parameter writes on one governance path, so snapshots, audit-backed sweep detection, and the returned `governance` payload now behave consistently across both transports.
+- Fixed `set_parameter_value(updateMode="relative")` so relative deltas are applied against the current parameter value before validation, audit, and persistence.
+- Completed the `v0.5.0` release alignment across package metadata, compose/runtime version markers, the README, and the dedicated release-note entry, while moving the remaining legacy env-alias removal target to `v0.6.0`.
 
 ## Why this project exists
 
@@ -105,9 +109,13 @@ The PBPK MCP server wraps those workflows in a **single, programmable interface*
 - **Human-review summary** – OECD report export now includes a compact `humanReviewSummary` block that pulls those boundary fields into one reviewer-facing surface, including reviewer-status, unresolved-dissent context, normalized `cautionSummary`, summary-transport risk, `exportBlockPolicy`, and rendering guardrails, without creating a second hidden score or decision engine.
 - **Anti-misread report section** – OECD report export now also includes a mandatory `misreadRiskSummary` block so common over-interpretations are stated explicitly next to the primary report summary instead of being left implicit.
 - **Audit-backed operator sign-off** – trust-bearing outputs now surface an additive `operatorReviewSignoff` summary plus an explicit `operatorReviewGovernance` block derived from the real workflow contract, and the REST surface now exposes viewer-readable `/review_signoff/history` so recorded acknowledgement, bounded-use sign-off, rejection, and revocation remain auditable without being mistaken for a second qualification score, override path, or decision authority.
+- **Explicit audit-storage boundary** – the default local stack keeps reviewer-readable hash-chained audit history on the local filesystem, while stronger off-host immutability depends on the S3/Object-Lock backend and external retention discipline documented for operators.
+- **Conservative PK/NCA output surface** – `calculate_pk_parameters` and the internal deterministic-result summaries now expose additive `auc0Inf`, `lambdaZ`, `halfLife`, extrapolated-AUC share, terminal-phase point counts, and screening-oriented `ncaStatus`/`ncaWarnings`, while clearance and volume distribution remain withheld unless explicit dose context is declared.
 - **No bundled analyst UI in the current release** – trust-bearing review remains on the MCP and REST surfaces for now; `/console` and `/console/api/*` are intentionally absent until a stronger reviewer-facing client exists.
 - **Thin-client trust-surface contract** – trust-bearing MCP tool results now also expose a top-level `trustSurfaceContract` so thin clients can find the nested summary surfaces, required adjacent caveats, and primary block reasons they must carry together instead of rediscovering those paths tool by tool.
 - **Traceable predictive evidence** – performance bundles can now carry traceability supplements, and the report path now warns when bundled benchmark rows do not actually line up with the declared datasets, target outputs, or acceptance criteria.
+- **Objective performance-evidence metrics** – observed-versus-predicted rows now retain additive `objectiveEvidence` metrics such as fold error, row-level RMSE, and simple acceptance-criterion evaluation when the criterion is machine-interpretable, without replacing the original evidence row semantics.
+- **Reviewer-facing dossier improvement signals** – verification and OECD report export now attach an advisory `dossierImprovementSignals` block sourced from the regulatory benchmark comparison so maintainers can see the highest-leverage dossier/documentation gaps without changing qualification state.
 - **Discovery before execution** – models are discoverable from disk before they are loaded into a live session.
 - **Release-tested local deployment** – the packaged local runtime and the explicit source-overlay maintainer profile are both exercised with unit tests, live-stack tests, and a readiness check.
 - **Model-specific executable qualification checks** – MCP-ready models can add runtime verification hooks for checks such as flow/volume consistency, mass balance, or numerical stability without overstating regulatory qualification.
@@ -217,6 +225,7 @@ PBPK MCP now publishes a dedicated capability matrix for adopters in:
 - `docs/architecture/capability_matrix.json`
 
 The machine-readable matrix is also exposed from the running server at `/mcp/resources/capability-matrix`.
+For the cross-service routing view rather than the per-input capability boundary, read `docs/architecture/toxmcp_suite_index.md`.
 
 This matrix is the crisp public answer to:
 
@@ -249,7 +258,13 @@ cd pbpk-mcp
 ./scripts/deploy_rxode2_stack.sh
 ```
 
-> **Heads-up:** `./scripts/deploy_rxode2_stack.sh` now runs the packaged local runtime by default and waits for stable `/health` and `/mcp/list_tools` responses before returning. When you need workspace `src/` and `scripts/` to override the image for active development, use `./scripts/deploy_source_overlay_stack.sh`.
+When you only need to refresh the packaged runtime image from the current workspace contents, without recompiling `rxode2`, use:
+
+```bash
+./scripts/refresh_rxode2_worker_image.sh
+```
+
+> **Heads-up:** `./scripts/deploy_rxode2_stack.sh` now runs the packaged local runtime by default and waits for stable `/health` and `/mcp/list_tools` responses before returning. The deploy helpers use a longer readiness window than before because the packaged import path is heavy on some machines. When you need workspace `src/` and `scripts/` to override the image for active development, use `./scripts/deploy_source_overlay_stack.sh`.
 
 Once the server is running:
 
@@ -299,22 +314,22 @@ python3 scripts/validate_model_manifests.py --strict --require-explicit-ngra --c
 To smoke-test the actual discovered model inventory in the current workspace, run:
 
 ```bash
-python3 scripts/workspace_model_smoke.py --auth-dev-secret pbpk-local-dev-secret
-python3 scripts/workspace_model_smoke.py --include-population --auth-dev-secret pbpk-local-dev-secret
+python3 scripts/workspace_model_smoke.py --auth-dev-secret pbpk-local-dev-secret-32bytes-long
+python3 scripts/workspace_model_smoke.py --include-population --auth-dev-secret pbpk-local-dev-secret-32bytes-long
 ```
 
-The script discovers runtime-supported models through `/mcp/resources/models`, runs static manifest validation, loads each model, submits a deterministic simulation, retrieves stored results, and optionally runs a small population smoke for `rxode2` models that declare population support. It writes a JSON report to `var/workspace_model_smoke_report.json`. On hardened local stacks, the load/run operations require operator or admin access, so pass `--auth-dev-secret pbpk-local-dev-secret` for the default development profile or provide a real bearer token.
+The script discovers runtime-supported models through `/mcp/resources/models`, runs static manifest validation, loads each model, submits a deterministic simulation, retrieves stored results, and optionally runs a small population smoke for `rxode2` models that declare population support. It writes a JSON report to `var/workspace_model_smoke_report.json`. On hardened local stacks, the load/run operations require operator or admin access, so pass `--auth-dev-secret pbpk-local-dev-secret-32bytes-long` for the default development profile or provide a real bearer token.
 
 For the GitHub-hosted verification path, the repository also carries:
 
-- a lightweight `CI` workflow for patch/runtime contract checks on pushes and pull requests
-- a heavier `Model Smoke` workflow that builds the Docker-backed stack, runs the live readiness gate, executes `workspace_model_smoke.py --include-population --auth-dev-secret pbpk-local-dev-secret`, and uploads the resulting JSON reports as workflow artifacts
+- a lightweight `CI` workflow for patch/runtime contract checks on pushes and pull requests, now retaining a validated `sdist`, wheel, and runtime-contract report as artifacts
+- a heavier `Model Smoke` workflow that builds the Docker-backed stack, runs the live readiness gate, executes `workspace_model_smoke.py --include-population --auth-dev-secret pbpk-local-dev-secret-32bytes-long`, and uploads the resulting JSON reports as workflow artifacts
 
 ---
 
 ## Configuration
 
-The default local packaged stack is defined in `docker-compose.celery.yml`. An explicit source-overlay development profile is available in `docker-compose.overlay.yml`, and a stricter operator overlay is available in `docker-compose.hardened.yml` for deployments that should disable anonymous access and require explicit auth configuration. Key environment variables currently shaping the runtime are:
+The default local packaged stack is defined in `docker-compose.celery.yml`. An explicit source-overlay development profile is available in `docker-compose.overlay.yml`, and a stricter operator overlay is available in `docker-compose.hardened.yml` for deployments that should disable anonymous access and require explicit auth configuration. The source-overlay profile now bind-mounts `src/`, `scripts/`, `docs/`, `schemas/`, and `var/` so the running server stays aligned with regenerated contract artifacts during release-prep. Key environment variables currently shaping the runtime are:
 
 | Variable | Default | Description |
 | --- | --- | --- |
@@ -329,19 +344,22 @@ The default local packaged stack is defined in `docker-compose.celery.yml`. An e
 | `R_MAX_VSIZE` | `2G` | Caps R virtual memory use inside the current local worker setup. |
 | `DOTNET_GCHeapLimitPercent` | `60` | Constrains the .NET heap used by the OSPSuite runtime. |
 | `PBPK_ENABLE_SRC_OVERLAY` | `false` | Keeps `/app/src` out of import precedence by default; `docker-compose.overlay.yml` sets it to `true` for workspace-override development. |
-| `SERVICE_VERSION` | `0.4.3` | Exposed through `/health` and compose-level runtime metadata. |
+| `SERVICE_VERSION` | `0.5.0` | Exposed through `/health` and compose-level runtime metadata. |
 | `AUTH_ALLOW_ANONYMOUS` | `true` | Development-friendly local default; do not expose beyond localhost without hardening. |
 | `PBPK_BIND_HOST` | `127.0.0.1` | Host/interface used by the hardened overlay when publishing the API port. |
 | `PBPK_BIND_PORT` | `8000` | Host port used by the hardened overlay when publishing the API port. |
 | `AUTH_ISSUER_URL` | unset | Required by the hardened overlay. OIDC issuer used for token validation. |
 | `AUTH_AUDIENCE` | unset | Required by the hardened overlay. Audience expected in bearer tokens. |
 | `AUTH_JWKS_URL` | unset | Required by the hardened overlay. JWKS endpoint used to validate bearer tokens. |
+| `AUTH_REPLAY_WINDOW_SECONDS` | `300` | Rejects replay of already-seen `jti` token identifiers; callers must mint fresh jti-bearing tokens when this is enabled. |
+| `MCP_ALLOWED_ORIGINS` | unset | Optional comma-separated allow-list for browser-originated MCP streamable HTTP requests. CLI clients without an `Origin` header remain valid. |
+| `MCP_STRICT_TRANSPORT` | `false` | When `true`, requires MCP streamable HTTP `Accept` and `MCP-Protocol-Version` headers for hardened deployments. |
 
-For the default packaged local runtime, use `docker-compose.celery.yml` through `./scripts/deploy_rxode2_stack.sh`. When you need workspace overrides, use `./scripts/deploy_source_overlay_stack.sh`, which layers `docker-compose.overlay.yml` over the same local stack and enables `/app/src` precedence. For a more production-like local or operator-managed deployment, use `./scripts/deploy_hardened_stack.sh`, which layers `docker-compose.hardened.yml` over the packaged local runtime and waits for stable readiness before returning.
+For the default packaged local runtime, use `docker-compose.celery.yml` through `./scripts/deploy_rxode2_stack.sh`. When you need workspace overrides, use `./scripts/deploy_source_overlay_stack.sh`, which layers `docker-compose.overlay.yml` over the same local stack and enables `/app/src` precedence. For a more production-like local or operator-managed deployment, use `./scripts/deploy_hardened_stack.sh`, which layers `docker-compose.hardened.yml` over the packaged local runtime, forwards the hardened auth plus optional S3/Object-Lock audit env contract, and waits for stable readiness before returning. For a local S3-compatible smoke run, `./scripts/deploy_s3_audit_smoke_stack.sh` layers a MinIO-backed audit overlay over the same packaged runtime.
 
-Legacy aliases such as `R_PATH`, `R_HOME`, `R_LIBS`, `MCP_MODEL_SEARCH_PATHS`, `ADAPTER_TIMEOUT_SECONDS`, and `AUDIT_TRAIL_ENABLED` are still accepted for compatibility, but startup now warns that they are scheduled for removal in `v0.5.0`.
+Legacy aliases such as `R_PATH`, `R_HOME`, `R_LIBS`, `MCP_MODEL_SEARCH_PATHS`, `ADAPTER_TIMEOUT_SECONDS`, and `AUDIT_TRAIL_ENABLED` are still accepted for compatibility, but startup now warns that they are scheduled for removal in `v0.6.0`.
 
-See `docker-compose.celery.yml`, `docker-compose.overlay.yml`, `docker-compose.hardened.yml`, `docs/deployment/runtime_patch_flow.md`, and `docs/deployment/rxode2_worker_image.md` for the current operator-facing deployment surface.
+See `docker-compose.celery.yml`, `docker-compose.overlay.yml`, `docker-compose.hardened.yml`, `docker-compose.s3-audit-smoke.yml`, `docs/deployment/runtime_patch_flow.md`, and `docs/deployment/rxode2_worker_image.md` for the current operator-facing deployment surface. For the current audit-storage guarantees and limits, see `docs/hardening_migration_notes.md`, `docs/adr/0001-audit-storage-boundary.md`, and `docs/deployment/s3_object_lock_audit.md`.
 
 ---
 
@@ -471,7 +489,7 @@ When you want to iterate against the current workspace source tree instead of th
 ./scripts/deploy_source_overlay_stack.sh
 ```
 
-That profile layers `docker-compose.overlay.yml` on top of the packaged stack, bind-mounts `src/`, `scripts/`, and `var/`, enables `PBPK_ENABLE_SRC_OVERLAY=true`, and then waits for stable `/health` and `/mcp/list_tools` responses before returning.
+That profile layers `docker-compose.overlay.yml` on top of the packaged stack, bind-mounts `src/`, `scripts/`, `docs/`, `schemas/`, and `var/`, enables `PBPK_ENABLE_SRC_OVERLAY=true`, and then waits for stable `/health` and `/mcp/list_tools` responses before returning.
 
 When you want the same runtime contract with stricter deployment defaults, use:
 
@@ -488,9 +506,18 @@ That overlay disables anonymous access, switches the stack to `ENVIRONMENT=produ
 
 ## Integrating with coding agents
 
-Add `http://localhost:8000/mcp` as an MCP provider in Codex CLI/Desktop, Gemini CLI, Claude Code, or other MCP-aware hosts.
+Add `http://localhost:8000/mcp` as the standards-compliant MCP provider in Codex CLI/Desktop, Gemini CLI, Claude Code, or other MCP-aware hosts. The endpoint negotiates MCP `2025-11-25` by default while accepting `2025-03-26` clients during the compatibility window.
 
-Useful companion surfaces:
+Standard MCP methods on `/mcp` include:
+
+- `initialize`
+- `tools/list`
+- `tools/call`
+- `resources/list`
+- `resources/read`
+- `resources/templates/list`
+
+Compatibility REST helper surfaces remain available for scripts and notebooks:
 
 - `/mcp/list_tools` for the live tool catalog
 - `/mcp/call_tool` for direct HTTP tool execution
@@ -499,7 +526,9 @@ Useful companion surfaces:
 - `/mcp/resources/schemas` for the published PBPK-side object schemas and example payloads
 - `/mcp/resources/capability-matrix` for the live machine-readable runtime-support matrix
 
-Critical tools still declare MCP-side guardrails such as `critical` and `requiresConfirmation` in the tool catalog. The current live regression suite checks that the documented workflow is actually exposed through `/mcp/list_tools`.
+Critical tools declare standard MCP annotations such as `readOnlyHint`, `destructiveHint`, `idempotentHint`, and `openWorldHint`; PBPK-specific role and confirmation metadata remains in annotation extensions. The current live regression suite checks both the standard `/mcp` JSON-RPC surface and the compatibility REST helpers.
+
+Python import note: new internal code must import PBPK tools from `mcp_bridge.pbpk_tools`. The top-level `mcp.*` package is a deprecated transitional shim and can shadow the official MCP Python SDK when this package is installed in the same environment; only the canonical `mcp_bridge.*` imports are guaranteed during the shim window.
 
 ---
 
@@ -575,13 +604,14 @@ Recommended checks:
 
 ```bash
 python3 scripts/check_runtime_contract_env.py
+python3 scripts/public_release_preflight.py --auth-dev-secret pbpk-local-dev-secret-32bytes-long
 python3 -m unittest -v tests/test_load_simulation_contract.py
 python3 -m unittest -v tests/test_model_manifest.py
 python3 -m unittest -v tests/test_oecd_bridge.py
 python3 -m unittest -v tests/test_model_discovery_live_stack.py
 python3 -m unittest -v tests/test_oecd_live_stack.py
 python3 scripts/release_readiness_check.py
-python3 scripts/workspace_model_smoke.py --auth-dev-secret pbpk-local-dev-secret
+python3 scripts/workspace_model_smoke.py --auth-dev-secret pbpk-local-dev-secret-32bytes-long
 ```
 
 `make runtime-contract-test` in the public repository now runs the same dependency preflight first, runs the named misuse-prevention gate, reruns the strict curated-manifest NGRA gate for the bundled example models, builds a temporary `sdist` and `wheel` outside the repo worktree, validates that the normative contract files survive source distribution packaging, and performs an installed-package check of `mcp_bridge.contract` against the built wheel so the published contract artifacts are validated across both source and distribution boundaries.
@@ -592,6 +622,8 @@ That gate is now selected through `--curated-publication-set`, so the Makefile, 
 
 Human-process release artifacts now live alongside the runtime gates:
 
+- `docs/release_readiness.md`
+- `docs/github_branch_protection.md`
 - `docs/hardening_migration_notes.md`
 - `docs/pbpk_model_onboarding_checklist.md`
 - `docs/pbk_reviewer_signoff_checklist.md`
@@ -616,22 +648,28 @@ If you are maintaining the local stack in the current convergence stage:
 1. Change the authoritative runtime files in the packaged modules under `src/`, the local runtime helpers under `scripts/`, `scripts/ospsuite_bridge.R`, or the bundled `.R` model modules.
    - generic MCP namespaces, tool modules, and adapter/runtime files now live under `src/`
    - the local operator/runtime helper surface now lives in the deploy scripts, worker Dockerfile, and overlay hook rather than a tracked `patches/` implementation layer
-2. If the worker image baseline should change, rebuild it with `./scripts/build_rxode2_worker_image.sh`.
+2. If the worker image baseline should change, rebuild it with `./scripts/build_rxode2_worker_image.sh`. If you only need to sync the packaged runtime contents to the current workspace, use `./scripts/refresh_rxode2_worker_image.sh`.
 3. Recreate the packaged local stack with `./scripts/deploy_rxode2_stack.sh`.
    - When you need workspace overrides for active development, use `./scripts/deploy_source_overlay_stack.sh`.
-   - When you need stricter auth defaults, use `./scripts/deploy_hardened_stack.sh` with `AUTH_ISSUER_URL`, `AUTH_AUDIENCE`, and `AUTH_JWKS_URL` set.
+   - When you need stricter auth defaults, use `./scripts/deploy_hardened_stack.sh` with `AUTH_ISSUER_URL`, `AUTH_AUDIENCE`, and `AUTH_JWKS_URL` set. If you want the off-host audit path, also set the `AUDIT_STORAGE_BACKEND` / `AUDIT_S3_*` variables documented in `docs/deployment/s3_object_lock_audit.md`.
+   - When you want a packaged local proof of the S3 backend without real AWS infrastructure, use `./scripts/deploy_s3_audit_smoke_stack.sh` and then `python3 scripts/s3_audit_smoke.py --auth-dev-secret pbpk-local-dev-secret-32bytes-long`.
 4. Verify the live API with:
    - `curl -s http://localhost:8000/health`
    - `curl -s http://localhost:8000/mcp/list_tools`
+   - `python3 scripts/public_release_preflight.py --auth-dev-secret pbpk-local-dev-secret-32bytes-long`
+     - retain `var/public_release_preflight_summary.json` and require `overallStatus = passed` before public release
    - `python3 scripts/release_readiness_check.py`
-   - `python3 scripts/workspace_model_smoke.py --auth-dev-secret pbpk-local-dev-secret`
-   - `python3 scripts/workspace_model_smoke.py --include-population --auth-dev-secret pbpk-local-dev-secret`
+   - `python3 scripts/workspace_model_smoke.py --auth-dev-secret pbpk-local-dev-secret-32bytes-long`
+   - `python3 scripts/workspace_model_smoke.py --include-population --auth-dev-secret pbpk-local-dev-secret-32bytes-long`
+
+   The GitHub `Model Smoke` workflow now retains the same preflight summary alongside the live release-readiness and smoke JSON outputs, so release evidence from local runs and workflow runs stays aligned.
 
 Important boundaries:
 
 - `scripts/deploy_rxode2_stack.sh` is the preferred packaged local operator entrypoint.
 - `scripts/deploy_source_overlay_stack.sh` is the explicit maintainer entrypoint when workspace `src/` and `scripts/` should override the image.
 - `scripts/deploy_hardened_stack.sh` is the stricter operator entrypoint when you need non-anonymous auth defaults on the same packaged local stack.
+- `scripts/deploy_s3_audit_smoke_stack.sh` is the packaged local entrypoint for MinIO-backed audit smoke checks.
 - `docker/rxode2-worker.Dockerfile` now owns the baked baseline worker assets directly, including `scripts/ospsuite_bridge.R` and the bundled reference `.R` model.
 - the local stack now defaults to the packaged runtime, while the overlay `.pth` remains only for the explicit source-overlay maintainer profile.
 
@@ -643,17 +681,8 @@ Important boundaries:
 - `scripts/workspace_model_smoke.py`
 - `src/mcp_bridge/model_catalog.py`
 - `src/mcp_bridge/model_manifest.py`
-- `src/mcp/__init__.py`
-- `src/mcp/tools/discover_models.py`
-- `src/mcp/tools/load_simulation.py`
-- `src/mcp/tools/get_job_status.py`
-- `src/mcp/tools/validate_simulation_request.py`
-- `src/mcp/tools/run_verification_checks.py`
-- `src/mcp/tools/validate_model_manifest.py`
-- `src/mcp/tools/export_oecd_report.py`
-- `src/mcp/tools/get_results.py`
-- `src/mcp/tools/ingest_external_pbpk_bundle.py`
-- `src/mcp/tools/run_population_simulation.py`
+- `src/mcp_bridge/pbpk_tools/`
+- `src/mcp/__init__.py` and `src/mcp/tools/` as deprecated compatibility shims only
 - `src/mcp_bridge/adapter/__init__.py`
 - `src/mcp_bridge/adapter/interface.py`
 - `src/mcp_bridge/adapter/ospsuite.py`
@@ -673,7 +702,9 @@ Important boundaries:
 
 Use the clean GitHub clone as the release source of truth when publishing. Before proposing a release or publication update, run the readiness checks above and review the publication checklist in `docs/github_publication_checklist.md`, the migration notes in `docs/hardening_migration_notes.md`, the model-onboarding checklist in `docs/pbpk_model_onboarding_checklist.md`, the reviewer checklist in `docs/pbk_reviewer_signoff_checklist.md`, and the post-release audit plan in `docs/post_release_audit_plan.md`.
 
-For the published repo, follow `CONTRIBUTING.md`.
+For the published repo, follow `CONTRIBUTING.md` and use the GitHub issue and pull-request templates for normal contributions.
+
+Maintainers should also keep `docs/github_branch_protection.md`, `docs/deployment/s3_object_lock_audit.md`, `docs/architecture/sensitivity_v2.md`, and `docs/architecture/ospsuite_population_feasibility.md` aligned with the actual runtime and governance posture.
 
 ---
 

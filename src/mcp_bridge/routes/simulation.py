@@ -12,95 +12,98 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from mcp.tools.calculate_pk_parameters import (
+from mcp_bridge.pbpk_tools.calculate_pk_parameters import (
     CalculatePkParametersRequest as ToolCalculatePkParametersRequest,
 )
-from mcp.tools.calculate_pk_parameters import (
+from mcp_bridge.pbpk_tools.calculate_pk_parameters import (
     CalculatePkParametersValidationError,
 )
-from mcp.tools.calculate_pk_parameters import (
+from mcp_bridge.pbpk_tools.calculate_pk_parameters import (
     calculate_pk_parameters as execute_calculate_pk_parameters,
 )
-from mcp.tools.cancel_job import (
+from mcp_bridge.pbpk_tools.cancel_job import (
     CancelJobRequest as ToolCancelJobRequest,
 )
-from mcp.tools.cancel_job import (
+from mcp_bridge.pbpk_tools.cancel_job import (
     CancelJobResponse as ToolCancelJobResponse,
 )
-from mcp.tools.cancel_job import (
+from mcp_bridge.pbpk_tools.cancel_job import (
     CancelJobValidationError,
 )
-from mcp.tools.cancel_job import (
+from mcp_bridge.pbpk_tools.cancel_job import (
     cancel_job as execute_cancel_job,
 )
-from mcp.tools.get_job_status import (
+from mcp_bridge.pbpk_tools.get_job_status import (
     GetJobStatusRequest as ToolGetJobStatusRequest,
 )
-from mcp.tools.get_job_status import (
+from mcp_bridge.pbpk_tools.get_job_status import (
     GetJobStatusValidationError,
 )
-from mcp.tools.get_job_status import (
+from mcp_bridge.pbpk_tools.get_job_status import (
     get_job_status as execute_get_job_status,
 )
-from mcp.tools.get_parameter_value import (
+from mcp_bridge.pbpk_tools.get_parameter_value import (
     GetParameterValueRequest as ToolGetParameterValueRequest,
 )
-from mcp.tools.get_parameter_value import (
+from mcp_bridge.pbpk_tools.get_parameter_value import (
     GetParameterValueValidationError,
 )
-from mcp.tools.get_parameter_value import (
+from mcp_bridge.pbpk_tools.get_parameter_value import (
     get_parameter_value as execute_get_parameter_value,
 )
-from mcp.tools.list_parameters import (
+from mcp_bridge.pbpk_tools.list_parameters import (
     ListParametersRequest as ToolListParametersRequest,
 )
-from mcp.tools.list_parameters import (
+from mcp_bridge.pbpk_tools.list_parameters import (
     ListParametersValidationError,
 )
-from mcp.tools.list_parameters import (
+from mcp_bridge.pbpk_tools.list_parameters import (
     list_parameters as execute_list_parameters,
 )
-from mcp.tools.load_simulation import (
+from mcp_bridge.pbpk_tools.load_simulation import (
     DuplicateSimulationError,
     LoadSimulationValidationError,
 )
-from mcp.tools.load_simulation import (
+from mcp_bridge.pbpk_tools.load_simulation import (
     LoadSimulationRequest as ToolLoadSimulationRequest,
 )
-from mcp.tools.load_simulation import (
+from mcp_bridge.pbpk_tools.load_simulation import (
     load_simulation as execute_load_simulation,
 )
-from mcp.tools.run_simulation import (
+from mcp_bridge.pbpk_tools.run_simulation import (
     RunSimulationRequest as ToolRunSimulationRequest,
 )
-from mcp.tools.run_simulation import (
+from mcp_bridge.pbpk_tools.run_simulation import (
     RunSimulationValidationError,
 )
-from mcp.tools.run_simulation import (
+from mcp_bridge.pbpk_tools.run_simulation import (
     run_simulation as execute_run_simulation,
 )
-from mcp.tools.run_population_simulation import (
+from mcp_bridge.pbpk_tools.run_population_simulation import (
     RunPopulationSimulationRequest as ToolRunPopulationSimulationRequest,
 )
-from mcp.tools.run_population_simulation import (
+from mcp_bridge.pbpk_tools.run_population_simulation import (
     RunPopulationSimulationValidationError,
 )
-from mcp.tools.run_population_simulation import (
+from mcp_bridge.pbpk_tools.run_population_simulation import (
     run_population_simulation as execute_run_population_simulation,
 )
-from mcp.tools.set_parameter_value import (
+from mcp_bridge.pbpk_tools.set_parameter_value import (
     SetParameterValueRequest as ToolSetParameterValueRequest,
 )
-from mcp.tools.set_parameter_value import (
+from mcp_bridge.pbpk_tools.set_parameter_value import (
+    SetParameterValueResponse as ToolSetParameterValueResponse,
+)
+from mcp_bridge.pbpk_tools.set_parameter_value import (
     SetParameterValueValidationError,
 )
-from mcp.tools.set_parameter_value import (
+from mcp_bridge.pbpk_tools.set_parameter_value import (
     set_parameter_value as execute_set_parameter_value,
 )
 
 from ..adapter import AdapterError, AdapterErrorCode, OspsuiteAdapter
 from ..adapter.schema import SimulationResult
-from ..audit import AuditTrail
+from ..audit.trail import AuditTrail
 from ..dependencies import (
     get_adapter,
     get_audit_trail,
@@ -317,6 +320,15 @@ class PkMetricModel(CamelModel):
     cmax: Optional[float] = Field(default=None, alias="cmax")
     tmax: Optional[float] = Field(default=None, alias="tmax")
     auc: Optional[float] = Field(default=None, alias="auc")
+    auc0_inf: Optional[float] = Field(default=None, alias="auc0Inf")
+    lambda_z: Optional[float] = Field(default=None, alias="lambdaZ")
+    half_life: Optional[float] = Field(default=None, alias="halfLife")
+    auc_extrapolated_percent: Optional[float] = Field(default=None, alias="aucExtrapolatedPercent")
+    terminal_phase_point_count: Optional[int] = Field(default=None, alias="terminalPhasePointCount")
+    nca_status: Optional[str] = Field(default=None, alias="ncaStatus")
+    nca_warnings: List[str] = Field(default_factory=list, alias="ncaWarnings")
+    clearance: Optional[float] = Field(default=None, alias="clearance")
+    volume_distribution: Optional[float] = Field(default=None, alias="volumeDistribution")
 
 
 class CalculatePkParametersResponseBody(CamelModel):
@@ -718,13 +730,15 @@ async def get_parameter_value(
     return ParameterValueResponse(parameter=model)
 
 
-@router.post("/set_parameter_value", response_model=ParameterValueResponse)
+@router.post("/set_parameter_value", response_model=ToolSetParameterValueResponse)
 async def set_parameter_value(
     payload: SetParameterValueRequest,
-   request: Request,
+    request: Request,
     adapter: OspsuiteAdapter = Depends(get_adapter),
+    audit_trail: AuditTrail = Depends(get_audit_trail),
+    snapshot_store: SimulationSnapshotStore = Depends(get_snapshot_store),
     _auth: AuthContext = Depends(require_roles("operator", "admin")),
-) -> ParameterValueResponse:
+) -> ToolSetParameterValueResponse:
     require_confirmation(request, confirmed=payload.confirm)
     try:
         tool_payload = ToolSetParameterValueRequest.model_validate(
@@ -747,6 +761,8 @@ async def set_parameter_value(
             execute_set_parameter_value,
             adapter,
             tool_payload,
+            audit_trail=audit_trail,
+            snapshot_store=snapshot_store,
         )
     except SetParameterValueValidationError as exc:
         detail = str(exc)
@@ -777,22 +793,13 @@ async def set_parameter_value(
     except AdapterError as exc:
         raise adapter_error_to_http(exc) from exc
 
-    value = tool_response.parameter
-    model = ParameterValueModel(
-        path=value.path,
-        value=value.value,
-        unit=value.unit,
-        displayName=value.display_name,
-        lastUpdatedAt=value.last_updated_at,
-        source=value.source,
-    )
     logger.info(
         "simulation.parameter.updated",
         simulationId=payload.simulation_id,
         parameterPath=payload.parameter_path,
-        unit=value.unit,
+        unit=tool_response.parameter.unit,
     )
-    return ParameterValueResponse(parameter=model)
+    return tool_response
 
 
 @router.post(
@@ -1347,6 +1354,15 @@ async def calculate_pk_parameters(
             cmax=item.cmax,
             tmax=item.tmax,
             auc=item.auc,
+            auc0Inf=item.auc0_inf,
+            lambdaZ=item.lambda_z,
+            halfLife=item.half_life,
+            aucExtrapolatedPercent=item.auc_extrapolated_percent,
+            terminalPhasePointCount=item.terminal_phase_point_count,
+            ncaStatus=item.nca_status,
+            ncaWarnings=item.nca_warnings,
+            clearance=item.clearance,
+            volumeDistribution=item.volume_distribution,
         )
         for item in tool_response.metrics
     ]

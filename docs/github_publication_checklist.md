@@ -3,6 +3,8 @@
 ## Before Push
 
 - review `docs/hardening_migration_notes.md` and confirm client-facing migration notes still match the release
+- review `docs/release_readiness.md` and confirm the required gates and retained artifacts still match the active workflows
+- review `docs/github_branch_protection.md` and confirm the intended `main` ruleset is still the one you want enforced publicly
 - review `docs/pbpk_model_onboarding_checklist.md` and confirm the recommended trust pipeline still matches the current MCP surfaces
 - review `docs/pbk_reviewer_signoff_checklist.md` and confirm sign-off language still matches the actual operator workflow
 - review `docs/post_release_audit_plan.md` and confirm the first post-release audit owner/date are assigned
@@ -13,6 +15,8 @@
 - confirm example models included in the repo are intended for public distribution
 - confirm no internal test-model assets or study-specific generated artifacts remain in the public release surface unless they are explicitly intended for public distribution
 - confirm no credentials, tokens, or machine-specific paths remain in docs or scripts
+- confirm the live GitHub `main` ruleset is active and matches `docs/github_branch_protection.md`
+- confirm the ruleset bypass list is empty, or that any remaining bypass is explicitly accepted for this release
 - run `python3 -m unittest -v tests/test_oecd_bridge.py`
 - run `python3 -m unittest -v tests/test_load_simulation_contract.py`
 - run `python3 -m unittest -v tests/test_model_manifest.py`
@@ -23,10 +27,13 @@
 - run `python3 scripts/generate_regulatory_goldset_audit.py --check`
 - run `make misuse-prevention-test PY=python3`
 - run `python3 scripts/validate_model_manifests.py --strict --require-explicit-ngra --curated-publication-set`
+- run `python3 scripts/public_release_preflight.py --auth-dev-secret pbpk-local-dev-secret-32bytes-long`
+- retain `var/public_release_preflight_summary.json` and confirm it ends with `overallStatus = passed`
 - run `python3 scripts/release_readiness_check.py`
-- run `python3 scripts/workspace_model_smoke.py --auth-dev-secret pbpk-local-dev-secret`
-- run `python3 scripts/workspace_model_smoke.py --include-population --auth-dev-secret pbpk-local-dev-secret`
+- run `python3 scripts/workspace_model_smoke.py --auth-dev-secret pbpk-local-dev-secret-32bytes-long`
+- run `python3 scripts/workspace_model_smoke.py --include-population --auth-dev-secret pbpk-local-dev-secret-32bytes-long`
 - if preparing a release, run the repository `Model Smoke` workflow and keep the uploaded smoke JSON artifact with the release evidence
+  - confirm the uploaded artifact includes `var/public_release_preflight_summary.json`
 - if preparing a release tag, run the repository `Release Artifacts` workflow and retain the uploaded `sdist`/`wheel` bundle plus `release-artifact-report.json` with the release evidence
 
 ## Public Positioning
@@ -52,6 +59,8 @@
 - `docs/integration_guides/performance_evidence_bundles.md`
 - `docs/integration_guides/uncertainty_evidence_bundles.md`
 - `docs/hardening_migration_notes.md`
+- `docs/github_branch_protection.md`
+- `docs/release_readiness.md`
 - `docs/pbpk_model_onboarding_checklist.md`
 - `benchmarks/regulatory_goldset/regulatory_goldset_summary.md`
 - `docs/pbk_reviewer_signoff_checklist.md`
@@ -62,6 +71,7 @@
 
 - create the GitHub release matching the current tag
 - use the matching file under `docs/releases/` as the draft release body
+- verify the live GitHub `main` ruleset still applies after any repository-level settings change made during release prep
 - verify Mermaid rendering on GitHub
 - verify relative links in `README.md`
 - verify the repository description and topics match the README positioning

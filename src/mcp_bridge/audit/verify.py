@@ -16,7 +16,7 @@ except ImportError:  # pragma: no cover - optional dependency
     ClientError = Exception  # type: ignore
     StreamingBody = None  # type: ignore
 
-from .trail import compute_event_hash
+from .trail import build_s3_client, compute_event_hash
 
 
 @dataclass
@@ -29,8 +29,7 @@ class VerificationResult:
 def iter_event_files(base_dir: Path, *, start: Optional[str] = None, end: Optional[str] = None) -> Iterable[Path]:
     base = Path(base_dir)
     for path in sorted(base.rglob("*.jsonl")):
-        rel = path.relative_to(base)
-        date_key = "/".join(rel.parts[:3]) if len(rel.parts) >= 3 else rel.stem
+        date_key = _local_date_key(base, path)
         if start and date_key < start:
             continue
         if end and date_key > end:
@@ -43,7 +42,7 @@ def verify_audit_trail(base_dir: Path | str, *, start: str | None = None, end: s
     if not base.exists():
         return VerificationResult(ok=False, checked_events=0, message="Audit directory not found")
 
-    previous_hash = "0" * 64
+    previous_hash = _initial_previous_hash(base, start=start)
     checked = 0
 
     for path in iter_event_files(base, start=start, end=end):
@@ -86,6 +85,33 @@ def verify_audit_trail(base_dir: Path | str, *, start: str | None = None, end: s
     return VerificationResult(ok=True, checked_events=checked, message="Verified")
 
 
+def _initial_previous_hash(base: Path, *, start: str | None) -> str:
+    if not start:
+        return "0" * 64
+    previous_path: Path | None = None
+    for path in sorted(base.rglob("*.jsonl")):
+        date_key = _local_date_key(base, path)
+        if date_key >= start:
+            break
+        previous_path = path
+    if previous_path is None:
+        return "0" * 64
+    try:
+        lines = previous_path.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        return "0" * 64
+    for line in reversed(lines):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        return str(event.get("hash") or ("0" * 64))
+    return "0" * 64
+
+
 def _iter_s3_keys(
     client,
     bucket: str,
@@ -119,6 +145,8 @@ def verify_s3_audit_trail(
     prefix: str,
     client=None,
     region: Optional[str] = None,
+    endpoint_url: Optional[str] = None,
+    force_path_style: bool = False,
     start: Optional[str] = None,
     end: Optional[str] = None,
     expected_lock_mode: Optional[str] = None,
@@ -127,7 +155,11 @@ def verify_s3_audit_trail(
     if boto3 is None:  # pragma: no cover - defensive
         raise RuntimeError("boto3 is required to verify S3 audit trails")
 
-    client = client or boto3.client("s3", region_name=region)
+    client = client or build_s3_client(
+        region=region,
+        endpoint_url=endpoint_url,
+        force_path_style=force_path_style,
+    )
     lock_mode = expected_lock_mode.upper() if expected_lock_mode else None
     min_delta = None
     if expected_lock_days:
@@ -135,7 +167,12 @@ def verify_s3_audit_trail(
 
         min_delta = timedelta(days=expected_lock_days)
 
-    previous_hash = "0" * 64
+    previous_hash = _initial_s3_previous_hash(
+        client,
+        bucket=bucket,
+        prefix=prefix.rstrip("/"),
+        start=start,
+    )
     checked = 0
 
     for key in _iter_s3_keys(client, bucket, prefix.rstrip("/"), start=start, end=end):
@@ -237,6 +274,49 @@ def verify_s3_audit_trail(
     return VerificationResult(ok=True, checked_events=checked, message="Verified")
 
 
+def _initial_s3_previous_hash(
+    client,
+    *,
+    bucket: str,
+    prefix: str,
+    start: Optional[str],
+) -> str:
+    if not start:
+        return "0" * 64
+    previous_key: Optional[str] = None
+    for key in _iter_s3_keys(client, bucket, prefix):
+        date_key = "/".join(key[len(prefix.strip("/")) + 1 :].split("/")[:3])
+        if date_key >= start:
+            break
+        previous_key = key
+    if previous_key is None:
+        return "0" * 64
+    try:
+        response = client.get_object(Bucket=bucket, Key=previous_key)
+    except ClientError:
+        return "0" * 64
+    body: StreamingBody = response["Body"]
+    data = body.read().decode("utf-8").splitlines()
+    for line in reversed(data):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        return str(event.get("hash") or ("0" * 64))
+    return "0" * 64
+
+
+def _local_date_key(base: Path, path: Path) -> str:
+    rel = path.relative_to(base)
+    if len(rel.parts) >= 3:
+        year, month, day_file = rel.parts[:3]
+        return f"{year}/{month}/{Path(day_file).stem}"
+    return path.stem
+
+
 def _main() -> None:  # pragma: no cover - CLI helper
     import argparse
     from urllib.parse import urlparse
@@ -248,6 +328,12 @@ def _main() -> None:  # pragma: no cover - CLI helper
     parser.add_argument("--object-lock-mode", help="Expected S3 Object Lock mode (governance/compliance)")
     parser.add_argument("--object-lock-days", type=int, help="Expected retention days for S3 Object Lock")
     parser.add_argument("--region", help="S3 region override")
+    parser.add_argument("--endpoint-url", help="Custom S3 endpoint URL for S3-compatible stores")
+    parser.add_argument(
+        "--force-path-style",
+        action="store_true",
+        help="Force path-style S3 addressing for S3-compatible endpoints",
+    )
     args = parser.parse_args()
 
     if args.path.startswith("s3://"):
@@ -262,6 +348,8 @@ def _main() -> None:  # pragma: no cover - CLI helper
             start=args.start,
             end=args.end,
             region=args.region,
+            endpoint_url=args.endpoint_url,
+            force_path_style=args.force_path_style,
             expected_lock_mode=args.object_lock_mode,
             expected_lock_days=args.object_lock_days,
         )

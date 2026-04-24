@@ -48,9 +48,12 @@ Those contract resources now expose SHA-256 values for the published artifacts s
 
 JSON-RPC transport note:
 
-- `initialize` advertises `capabilities.resources = false` on purpose
-- the same `initialize` result now carries `companionResources`, which states that the published schema, capability, contract, and model/resource catalogs live under the REST companion surface at `/mcp/resources`
-- this keeps the transport story truthful: MCP JSON-RPC is the tool channel here, while the richer published artifact surface remains a REST companion contract
+- `/mcp` implements MCP `2025-11-25` JSON-RPC by default and accepts legacy `2025-03-26` during the compatibility window
+- `initialize` advertises standard `tools: {listChanged: false}` and `resources: {listChanged: false}` capabilities
+- `tools/list` exposes `inputSchema`, `outputSchema`, and standard tool annotations for every visible tool
+- `tools/call` returns both serialized JSON text content and `structuredContent`
+- `resources/list`, `resources/read`, and `resources/templates/list` expose the published contract resources through `pbpk://` URIs
+- REST routes under `/mcp/list_tools`, `/mcp/call_tool`, and `/mcp/resources/*` remain compatibility/helper surfaces for scripts and notebooks
 
 ## Stable Top-Level Fields
 

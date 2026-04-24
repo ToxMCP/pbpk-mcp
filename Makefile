@@ -3,7 +3,7 @@
 PY ?= python3
 IMAGE_NAME ?= mcp-bridge
 
-.PHONY: help install lint format type test test-e2e test-hpc compliance benchmark benchmark-celery fetch-bench-data parity docs-export sbom check clean build-image run-image celery-worker runtime-patch-check runtime-contract-test misuse-prevention-test misuse-prevention-live-test workspace-smoke
+.PHONY: help install lint format type test test-e2e test-hpc compliance benchmark benchmark-celery fetch-bench-data parity docs-export sbom check clean build-image refresh-rxode2-image run-image celery-worker runtime-patch-check runtime-contract-test misuse-prevention-test misuse-prevention-live-test workspace-smoke s3-audit-smoke backfill-review-signoff-index public-release-preflight
 
 help:
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*?##/ {printf "\033[36m%s\033[0m\t%s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -20,7 +20,7 @@ format: ## Format source code
 	$(PY) -m ruff check src tests --fix-only --no-cache
 
 type: ## Run static type checks
-	$(PY) -m mypy src
+	$(PY) -m mypy
 
 test: ## Execute unit tests
 	$(PY) -m pytest
@@ -67,10 +67,13 @@ runtime-patch-check: ## Compile the local runtime/deploy helper files used by th
 	$(PY) -m py_compile \
 		scripts/check_runtime_contract_env.py \
 		scripts/check_distribution_artifacts.py \
-		scripts/check_release_metadata.py \
-		scripts/check_installed_package_contract.py \
-		scripts/generate_contract_artifacts.py \
-		scripts/release_readiness_check.py \
+			scripts/check_release_metadata.py \
+			scripts/check_installed_package_contract.py \
+			scripts/generate_contract_artifacts.py \
+			scripts/backfill_review_signoff_index.py \
+			scripts/public_release_preflight.py \
+			scripts/release_readiness_check.py \
+			scripts/s3_audit_smoke.py \
 		scripts/wait_for_runtime_ready.py \
 		scripts/workspace_model_smoke.py \
 		src/mcp/__init__.py \
@@ -92,15 +95,19 @@ runtime-patch-check: ## Compile the local runtime/deploy helper files used by th
 		src/mcp_bridge/contract/artifacts.py \
 		src/mcp_bridge/model_catalog.py \
 		src/mcp_bridge/model_manifest.py \
+		src/mcp_bridge/pbpk_tools/*.py \
 		src/mcp_bridge/routes/resources.py \
 		src/mcp_bridge/routes/resources_base.py \
 		src/mcp_bridge/tools/registry.py \
 		src/mcp_bridge/tools/registry_base.py
-	bash -n scripts/deploy_rxode2_stack.sh scripts/deploy_source_overlay_stack.sh scripts/deploy_hardened_stack.sh
+		bash -n scripts/build_rxode2_worker_image.sh scripts/refresh_rxode2_worker_image.sh scripts/deploy_rxode2_stack.sh scripts/deploy_source_overlay_stack.sh scripts/deploy_hardened_stack.sh scripts/deploy_s3_audit_smoke_stack.sh
 
 misuse-prevention-test: ## Run the named non-live misuse-prevention regression suite
 	$(PY) -m pytest \
+		tests/test_calculate_pk_parameters.py \
 		tests/test_review_signoff.py \
+		tests/test_reviewer_advisory.py \
+		tests/test_sensitivity_analysis.py \
 		tests/test_trust_surface.py \
 		tests/test_model_manifest.py \
 		tests/test_external_pbpk_bundle.py \
@@ -123,7 +130,14 @@ runtime-contract-test: ## Run the local runtime contract tests that do not requi
 	$(PY) scripts/check_distribution_artifacts.py
 	$(PY) scripts/check_installed_package_contract.py
 	$(PY) -m unittest -v \
+		tests/test_calculate_pk_parameters.py \
+		tests/test_docs_reference_drift.py \
+		tests/test_github_contributor_surface.py \
+		tests/test_import_footprint.py \
+		tests/test_reviewer_advisory.py \
+		tests/test_sensitivity_analysis.py \
 		tests/test_capability_matrix.py \
+		tests/test_config_contract.py \
 		tests/test_deployment_profiles.py \
 		tests/test_distribution_artifacts.py \
 		tests/test_export_api_docs.py \
@@ -134,6 +148,9 @@ runtime-contract-test: ## Run the local runtime contract tests that do not requi
 		tests/test_packaged_tool_registry.py \
 		tests/test_release_metadata.py \
 		tests/test_release_readiness_script.py \
+		tests/test_s3_audit_smoke_script.py \
+		tests/test_backfill_review_signoff_index_script.py \
+		tests/test_public_release_preflight_script.py \
 		tests/test_packaged_contract_artifacts.py \
 		tests/test_load_simulation_contract.py \
 		tests/test_model_manifest.py \
@@ -143,13 +160,26 @@ runtime-contract-test: ## Run the local runtime contract tests that do not requi
 	$(PY) -m pytest tests/unit/test_adapter_interface.py tests/unit/test_subprocess_adapter.py
 
 workspace-smoke: ## Run the live workspace model smoke with rxode2 population enabled
-	$(PY) scripts/workspace_model_smoke.py --include-population --auth-dev-secret pbpk-local-dev-secret
+	$(PY) scripts/workspace_model_smoke.py --include-population --auth-dev-secret pbpk-local-dev-secret-32bytes-long
+
+s3-audit-smoke: ## Deploy the packaged stack with a local S3-compatible audit backend and run the smoke check
+	bash scripts/deploy_s3_audit_smoke_stack.sh
+	$(PY) scripts/s3_audit_smoke.py --auth-dev-secret pbpk-local-dev-secret-32bytes-long
+
+backfill-review-signoff-index: ## Backfill the dedicated review-signoff audit index for a local audit store
+	$(PY) scripts/backfill_review_signoff_index.py var/audit
+
+public-release-preflight: ## Run the maintainer pre-public release gate against a running local stack
+	$(PY) scripts/public_release_preflight.py --auth-dev-secret pbpk-local-dev-secret-32bytes-long
 
 clean: ## Remove build artifacts
 	rm -rf .pytest_cache .mypy_cache .ruff_cache dist build
 
 build-image: ## Build Docker image
 	docker build --pull --tag $(IMAGE_NAME) .
+
+refresh-rxode2-image: ## Refresh the packaged rxode2 runtime image from the current workspace without recompiling rxode2
+	bash scripts/refresh_rxode2_worker_image.sh
 
 run-image: ## Run Docker image locally
 	docker run --rm -p 8000:8000 --env-file .env.example $(IMAGE_NAME)

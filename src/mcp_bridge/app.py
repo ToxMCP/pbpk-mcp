@@ -23,7 +23,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from starlette.types import ASGIApp
 
-from .audit import AuditTrail, LocalAuditTrail, S3AuditTrail
+from .audit.trail import AuditTrail, S3AuditTrail
 from .audit.middleware import AuditMiddleware
 from .config import AppConfig, ConfigError, config_env_warnings, load_config
 from .constants import CORRELATION_HEADER
@@ -38,11 +38,6 @@ from .errors import (
     redact_sensitive,
 )
 from .logging import DEFAULT_LOG_LEVEL, bind_context, clear_context, get_logger, setup_logging
-from .routes import audit as audit_routes
-from .routes import jsonrpc as jsonrpc_routes
-from .routes import mcp as mcp_routes
-from .routes import resources as resource_routes
-from .routes import simulation as simulation_routes
 from .runtime.factory import (
     build_adapter,
     build_population_store,
@@ -50,9 +45,10 @@ from .runtime.factory import (
     build_snapshot_store,
     should_offload_adapter_calls,
 )
+from .adapter.errors import AdapterError
 from .security.auth import AuthContext, require_roles
 from .services.job_service import create_job_service
-from mcp.session_registry import set_registry
+from mcp_bridge.session_registry import set_registry, SessionRegistry, RedisSessionRegistry
 
 
 _REQUEST_COUNT = Counter(
@@ -159,6 +155,88 @@ def _resolve_route_template(request: Request) -> str:
     return str(request.url.path)
 
 
+def _rehydrate_sessions(
+    adapter,
+    session_registry: SessionRegistry | RedisSessionRegistry,
+    snapshot_store,
+    logger,
+) -> None:
+    """Reload simulations from the persisted session registry on startup.
+
+    This restores adapter runtime state after an API container restart so
+    that previously-loaded simulations remain usable without requiring
+    clients to call ``load_simulation`` again.
+    """
+
+    records = session_registry.snapshot()
+    if not records:
+        return
+
+    logger.info("session.rehydration.start", count=len(records))
+    reloaded = 0
+    restored = 0
+    failed = 0
+
+    for record in records:
+        simulation_id = record.handle.simulation_id
+        file_path = record.handle.file_path
+        try:
+            adapter.load_simulation(file_path, simulation_id=simulation_id)
+            reloaded += 1
+        except AdapterError as exc:
+            logger.warning(
+                "session.rehydration.load_failed",
+                simulation_id=simulation_id,
+                file_path=file_path,
+                error=str(exc),
+                code=exc.code.value,
+            )
+            failed += 1
+            continue
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning(
+                "session.rehydration.load_failed",
+                simulation_id=simulation_id,
+                file_path=file_path,
+                error=str(exc),
+            )
+            failed += 1
+            continue
+
+        if snapshot_store is not None:
+            try:
+                snapshot = snapshot_store.load(simulation_id)
+                if snapshot is not None:
+                    for entry in snapshot.state.get("parameters", []):
+                        path = entry.get("path")
+                        value = entry.get("value")
+                        unit = entry.get("unit")
+                        if path is None or value is None:
+                            continue
+                        adapter.set_parameter_value(
+                            simulation_id, path, float(value), unit
+                        )
+                    restored += 1
+                    logger.info(
+                        "session.rehydration.snapshot_restored",
+                        simulation_id=simulation_id,
+                        snapshot_id=snapshot.snapshot_id,
+                    )
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning(
+                    "session.rehydration.snapshot_failed",
+                    simulation_id=simulation_id,
+                    error=str(exc),
+                )
+
+    logger.info(
+        "session.rehydration.complete",
+        reloaded=reloaded,
+        restored=restored,
+        failed=failed,
+    )
+
+
 def create_app(config: AppConfig | None = None, log_level: str | None = None) -> FastAPI:
     """Create the FastAPI application."""
     if config is None:
@@ -207,6 +285,8 @@ def create_app(config: AppConfig | None = None, log_level: str | None = None) ->
             bucket=config.audit_s3_bucket,
             prefix=config.audit_s3_prefix,
             region=config.audit_s3_region,
+            endpoint_url=config.audit_s3_endpoint_url,
+            force_path_style=config.audit_s3_force_path_style,
             enabled=config.audit_enabled,
             object_lock_mode=config.audit_s3_object_lock_mode,
             object_lock_retain_days=config.audit_s3_object_lock_days,
@@ -222,10 +302,17 @@ def create_app(config: AppConfig | None = None, log_level: str | None = None) ->
 
     adapter = build_adapter(config, population_store=population_store)
     adapter.init()
+    _rehydrate_sessions(adapter, session_registry, snapshot_store, logger)
     app.state.adapter = adapter
     app.state.adapter_offload = should_offload_adapter_calls(config)
     job_service = create_job_service(config=config, audit_trail=audit_trail, population_store=population_store)
     app.state.jobs = job_service
+
+    from .routes import audit as audit_routes
+    from .routes import jsonrpc as jsonrpc_routes
+    from .routes import mcp as mcp_routes
+    from .routes import resources as resource_routes
+    from .routes import simulation as simulation_routes
 
     router = APIRouter()
 

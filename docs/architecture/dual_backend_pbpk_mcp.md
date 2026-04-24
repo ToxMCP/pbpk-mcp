@@ -79,7 +79,7 @@ flowchart LR
     api --> run
     api --> results
 
-    discover --> registry["Filesystem-backed model registry<br/>MCP_MODEL_SEARCH_PATHS"]
+    discover --> registry["Filesystem-backed model registry<br/>ADAPTER_MODEL_PATHS"]
     manifest --> registry
     load --> router["Model router<br/>backend selected from model type"]
 

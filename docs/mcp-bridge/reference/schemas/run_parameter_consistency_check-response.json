@@ -1,0 +1,54 @@
+{
+  "properties": {
+    "checkedRules": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Checkedrules",
+      "type": "array"
+    },
+    "contractVersion": {
+      "default": "pbpk-mcp.v1",
+      "title": "Contractversion",
+      "type": "string"
+    },
+    "ok": {
+      "title": "Ok",
+      "type": "boolean"
+    },
+    "simulationId": {
+      "title": "Simulationid",
+      "type": "string"
+    },
+    "summary": {
+      "title": "Summary",
+      "type": "string"
+    },
+    "tool": {
+      "default": "run_parameter_consistency_check",
+      "title": "Tool",
+      "type": "string"
+    },
+    "violationCount": {
+      "title": "Violationcount",
+      "type": "integer"
+    },
+    "violations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Violations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "simulationId",
+    "ok",
+    "violationCount",
+    "violations",
+    "summary",
+    "checkedRules"
+  ],
+  "title": "RunParameterConsistencyCheckResponse",
+  "type": "object"
+}
