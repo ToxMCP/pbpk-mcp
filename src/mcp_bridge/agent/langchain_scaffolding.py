@@ -11,15 +11,20 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple, TypedDict
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from langchain_core.pydantic_v1 import BaseModel, Field, validator
+from pydantic.v1 import BaseModel, Field, validator
 from langchain_core.tools import StructuredTool
 from langchain_core.utils.function_calling import convert_to_openai_function
+from langgraph.checkpoint.base import empty_checkpoint
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
-from langgraph.constants import INTERRUPT
 from langgraph.graph import END, StateGraph
-from langgraph.pregel import empty_checkpoint
 from typing_extensions import Annotated
+
+# ``INTERRUPT`` is LangGraph's stable interrupt-channel sentinel. It was importable
+# from ``langgraph.constants`` in 0.x but is private (and deprecation-warned) in 1.x.
+# The value itself is a stable protocol constant, so define it locally to avoid the
+# deprecated import path being removed in a future LangGraph release.
+INTERRUPT = "__interrupt__"
 
 from mcp_bridge.pbpk_tools.calculate_pk_parameters import (
     CalculatePkParametersRequest,
