@@ -306,7 +306,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "docs/architecture/release_bundle_manifest.json",
       "role": "whole release bundle hash inventory",
-      "sha256": "08756dd978c4a6c1bef2943efa37da8f53dc14f33365c2c3465d20fd58200a8c"
+      "sha256": "f1cc642cc0b2303a27a076033c393f750bffd78d38e9a4bcf6703e0566451c8a"
     },
     {
       "classification": "supporting",
@@ -452,7 +452,7 @@ _CONTRACT_MANIFEST_JSON = r"""
 
 _RELEASE_BUNDLE_MANIFEST_JSON = r"""
 {
-  "bundleSha256": "cf881e1e674ab497f37f2c9e5d8bc17b781bec38072fbf94c04441621f4e8ba2",
+  "bundleSha256": "7306951747ee143d53d1960e1d5726ce247af92df1a0819d469bf718432588c2",
   "contractVersion": "pbpk-mcp.v1",
   "fileCount": 341,
   "files": [
@@ -555,14 +555,14 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "root",
       "relativePath": "pyproject.toml",
-      "sha256": "2761b24fa1434cb22b50bc85b671457469c49177942430bde6b6116de2ed41f4",
-      "sizeBytes": 2911
+      "sha256": "3590ccf864d8003d21fcb9db8f92f91c61ace70f13fe9286de79253ee6e90516",
+      "sizeBytes": 2955
     },
     {
       "group": "root",
       "relativePath": "uv.lock",
-      "sha256": "4820d4338ae252a3eb9c0f8969f11d5be79281815d362b3198298ea2277af4fc",
-      "sizeBytes": 644183
+      "sha256": "cf65762b02663f7baa3e7f4618195dfc2a1a939233c402b7f1779c75356999ea",
+      "sizeBytes": 784826
     },
     {
       "group": "root",
@@ -1737,8 +1737,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "source",
       "relativePath": "src/mcp_bridge/agent/langchain_scaffolding.py",
-      "sha256": "aef8f72b2c2c68c83a89e3d26b5ae364697e0039cb2240e21e10e7b60234854c",
-      "sizeBytes": 39767
+      "sha256": "9ed49dbeabfcb2d1e6cdd70e62516eb8b05483a69424515f5b92c5803a91d272",
+      "sizeBytes": 40072
     },
     {
       "group": "source",
@@ -2553,7 +2553,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     ],
     "mode": "staged-source-tree-equivalent"
   },
-  "totalBytes": 3622025
+  "totalBytes": 3763017
 }
 """
 

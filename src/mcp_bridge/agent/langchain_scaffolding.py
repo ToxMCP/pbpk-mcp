@@ -20,12 +20,6 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import END, StateGraph
 from typing_extensions import Annotated
 
-# ``INTERRUPT`` is LangGraph's stable interrupt-channel sentinel. It was importable
-# from ``langgraph.constants`` in 0.x but is private (and deprecation-warned) in 1.x.
-# The value itself is a stable protocol constant, so define it locally to avoid the
-# deprecated import path being removed in a future LangGraph release.
-INTERRUPT = "__interrupt__"
-
 from mcp_bridge.pbpk_tools.calculate_pk_parameters import (
     CalculatePkParametersRequest,
     calculate_pk_parameters,
@@ -62,6 +56,12 @@ from mcp_bridge.agent.prompts import (
     format_success_response,
 )
 from mcp_bridge.services.job_service import BaseJobService
+
+# ``INTERRUPT`` is LangGraph's stable interrupt-channel sentinel. It was importable
+# from ``langgraph.constants`` in 0.x but is private (and deprecation-warned) in 1.x.
+# The value itself is a stable protocol constant, so define it locally to avoid the
+# deprecated import path being removed in a future LangGraph release.
+INTERRUPT = "__interrupt__"
 
 if TYPE_CHECKING:  # pragma: no cover - import only for type hints
     from mcp_bridge.pbpk_tools.run_sensitivity_analysis import RunSensitivityAnalysisRequest
