@@ -306,7 +306,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "docs/architecture/release_bundle_manifest.json",
       "role": "whole release bundle hash inventory",
-      "sha256": "f1cc642cc0b2303a27a076033c393f750bffd78d38e9a4bcf6703e0566451c8a"
+      "sha256": "827f183f40bb5c7522d99a86fa1e827304797f82e3138e18502cb8be491d3e1c"
     },
     {
       "classification": "supporting",
@@ -452,9 +452,9 @@ _CONTRACT_MANIFEST_JSON = r"""
 
 _RELEASE_BUNDLE_MANIFEST_JSON = r"""
 {
-  "bundleSha256": "7306951747ee143d53d1960e1d5726ce247af92df1a0819d469bf718432588c2",
+  "bundleSha256": "59e5e26e01925805eac0c0f811a880220502343ac6398801d468507d36ba998a",
   "contractVersion": "pbpk-mcp.v1",
-  "fileCount": 341,
+  "fileCount": 342,
   "files": [
     {
       "group": "root",
@@ -561,8 +561,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "root",
       "relativePath": "uv.lock",
-      "sha256": "cf65762b02663f7baa3e7f4618195dfc2a1a939233c402b7f1779c75356999ea",
-      "sizeBytes": 784826
+      "sha256": "5186657ec2fbc872d8be43ab0d8ac9a35e8b19d3599f48ce28eaa608f88fc2e0",
+      "sizeBytes": 784825
     },
     {
       "group": "root",
@@ -611,6 +611,12 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
       "relativePath": ".github/workflows/release-artifacts.yml",
       "sha256": "8568d1e668844f199b409e7f1b610baee3a33f034459e97e3f313941e2aad1cd",
       "sizeBytes": 1465
+    },
+    {
+      "group": "governance",
+      "relativePath": ".github/workflows/semgrep.yml",
+      "sha256": "9f307f8e7acc6223255ae1e1a2fd6de730a4dd831bc683213a3f47cce63361d3",
+      "sizeBytes": 810
     },
     {
       "group": "root",
@@ -1647,8 +1653,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "source",
       "relativePath": "src/mcp_bridge/model_catalog.py",
-      "sha256": "1cce10144462f2bc2aa0bc0c50bcb09e1711c1637388d088e790d96e2b13d740",
-      "sizeBytes": 12150
+      "sha256": "916578c2d38e5ed5bb194d4d48875f23cfeef21d463765eac4cc7fe8ff0397e5",
+      "sizeBytes": 12508
     },
     {
       "group": "source",
@@ -2043,8 +2049,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "source",
       "relativePath": "src/mcp_bridge/routes/resources_base.py",
-      "sha256": "5a5033c368967c36490cab284f2e665946dd1a437b7c05222b9aeb613afc68b7",
-      "sizeBytes": 34535
+      "sha256": "7180a45dbc231d6dfcbfa1e0e1f011088bcface448f77a83befe6273860d0a7a",
+      "sizeBytes": 35057
     },
     {
       "group": "source",
@@ -2507,7 +2513,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     "container": 3,
     "contract": 17,
     "documentation": 79,
-    "governance": 7,
+    "governance": 8,
     "operations": 31,
     "root": 30,
     "source": 122,
@@ -2553,7 +2559,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     ],
     "mode": "staged-source-tree-equivalent"
   },
-  "totalBytes": 3763017
+  "totalBytes": 3764706
 }
 """
 
