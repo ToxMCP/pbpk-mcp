@@ -239,6 +239,7 @@ RELEASE_BUNDLE_MANIFEST_PATH = _resolve_existing_path(
 
 def _weak_etag(tokens: Sequence[str]) -> str:
     payload = "|".join(tokens) if tokens else "empty"
+    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1 -- HTTP weak ETag (cache validator), not a security signature
     digest = hashlib.sha1(payload.encode("utf-8")).hexdigest()
     return f'W/"{digest}"'
 
@@ -250,6 +251,7 @@ def _fingerprint_metadata(metadata: dict[str, Any]) -> str:
         serialised = json.dumps(metadata, sort_keys=True, default=str)
     except TypeError:
         serialised = str(sorted(metadata.items()))
+    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1 -- non-cryptographic metadata fingerprint for change detection, not a security signature
     return hashlib.sha1(serialised.encode("utf-8")).hexdigest()
 
 
@@ -358,6 +360,7 @@ def _schema_index() -> list[dict[str, Any]]:
                     ),
                     "schema": document,
                     "example": example,
+                    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1 -- non-cryptographic content fingerprint / cache key, not a security signature
                     "_fingerprint": hashlib.sha1(
                         json.dumps({"schema": document, "example": example}, sort_keys=True).encode("utf-8")
                     ).hexdigest(),
