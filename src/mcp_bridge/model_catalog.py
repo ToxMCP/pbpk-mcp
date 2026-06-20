@@ -142,6 +142,7 @@ def model_catalog_fingerprint(items: Sequence[Mapping[str, Any]]) -> str:
         payload = json.dumps(list(items), sort_keys=True, default=str)
     except TypeError:
         payload = json.dumps([str(item) for item in items], sort_keys=True)
+    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1 -- non-cryptographic content fingerprint for change detection, not a security signature
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()
 
 
@@ -316,6 +317,7 @@ def _suggested_simulation_id(relative_path: Path) -> str:
     candidate = "-".join(tokens) or _normalise_token(without_suffix.stem) or "model"
     if len(candidate) <= 64:
         return candidate
+    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1 -- short collision-tolerant slug suffix for a simulation id, not a security signature
     digest = hashlib.sha1(without_suffix.as_posix().encode("utf-8")).hexdigest()[:8]
     return f"{candidate[:55].rstrip('-')}-{digest}"
 

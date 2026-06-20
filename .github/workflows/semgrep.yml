@@ -1,0 +1,33 @@
+name: Semgrep SAST
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+  schedule:
+    # Weekly scan to catch newly published rules against the existing codebase.
+    - cron: "27 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    name: Semgrep (p/python + p/secrets)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Semgrep
+        run: pip install semgrep==1.167.0
+
+      - name: Run Semgrep SAST gate
+        # --error fails the job on any blocking finding (no GHAS / SARIF upload required).
+        run: semgrep scan --config p/python --config p/secrets --error --metrics=off src
