@@ -306,7 +306,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "docs/architecture/release_bundle_manifest.json",
       "role": "whole release bundle hash inventory",
-      "sha256": "49d8fbb84b7535be27c7cb9e55b03aa5ea2a55a730892dc67eec99bc3ed23025"
+      "sha256": "4dda782be4da70416301aba0fe258ba379a44f450ec5a7cb76f0496afecd09eb"
     },
     {
       "classification": "supporting",
@@ -452,9 +452,9 @@ _CONTRACT_MANIFEST_JSON = r"""
 
 _RELEASE_BUNDLE_MANIFEST_JSON = r"""
 {
-  "bundleSha256": "15b1f78bba5c5ece27828b85a7f44b1c804c7d1ca9289ead52d2fb4fb0018429",
+  "bundleSha256": "34b65ceb07c5ed6ef0b6c3a9c91983a5555a80f73ebef08b248bbe58c8b72477",
   "contractVersion": "pbpk-mcp.v1",
-  "fileCount": 342,
+  "fileCount": 343,
   "files": [
     {
       "group": "root",
@@ -555,14 +555,14 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "root",
       "relativePath": "pyproject.toml",
-      "sha256": "3590ccf864d8003d21fcb9db8f92f91c61ace70f13fe9286de79253ee6e90516",
-      "sizeBytes": 2955
+      "sha256": "6af4e55f231a2200ffbeb792473d450645f772c4afefa8289923b41783e73809",
+      "sizeBytes": 2959
     },
     {
       "group": "root",
       "relativePath": "uv.lock",
-      "sha256": "042667bf2b76da1140bedaadf308b5ca43d1901612023d4cd1ee54240f90eea0",
-      "sizeBytes": 784826
+      "sha256": "aed96b8139829aadca8be9f977e61341bd64ddba691c5b498c7e23015dedbdba",
+      "sizeBytes": 796373
     },
     {
       "group": "root",
@@ -599,6 +599,12 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
       "relativePath": ".github/workflows/ci.yml",
       "sha256": "4d15e4021796b168a80cece1f43eb0cad99b784f319d986e87300278ff172d35",
       "sizeBytes": 2155
+    },
+    {
+      "group": "governance",
+      "relativePath": ".github/workflows/dep-audit.yml",
+      "sha256": "ef5e62f77541b8fab6683405101dba9322726be5c73eb10b54766b0912dae515",
+      "sizeBytes": 2357
     },
     {
       "group": "governance",
@@ -2513,7 +2519,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     "container": 3,
     "contract": 17,
     "documentation": 79,
-    "governance": 7,
+    "governance": 8,
     "operations": 31,
     "root": 30,
     "source": 122,
@@ -2559,7 +2565,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     ],
     "mode": "staged-source-tree-equivalent"
   },
-  "totalBytes": 3771966
+  "totalBytes": 3785874
 }
 """
 

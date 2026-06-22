@@ -1,0 +1,61 @@
+name: Dependency Audit
+
+# Hardened, advisory dependency-vulnerability gate (additive).
+#
+# Audits the project's full, resolved dependency set with pip-audit in
+# FAIL-ON-ANY mode (no severity filter, no `|| true`): pip-audit exits
+# non-zero on ANY advisory regardless of severity, and `--strict` also
+# fails on audit errors. This deliberately replaces the toothless pattern
+# of severity-gating + parsing a single output format.
+#
+# The WEEKLY schedule matters: pip-audit queries a LIVE advisory database,
+# so a green `main` can go stale when a NEW CVE lands on an already-pinned
+# dependency. The scheduled run re-checks the committed lock against the
+# current advisory feed without any code change.
+#
+# Advisory note: this org is on the GitHub Free plan, so this job is a
+# VISIBLE signal rather than a hard, required merge block on private repos.
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+  schedule:
+    # Weekly, off-peak (Mondays 07:17 UTC). Catches new CVEs on pinned deps.
+    - cron: "17 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  pip-audit:
+    name: pip-audit (fail-on-any)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          # Match the committed uv.lock (revision 3); pin uv for reproducibility.
+          version: "0.11.14"
+
+      - name: Sync the locked dependency set (runtime + dev)
+        # --frozen audits exactly what uv.lock pins (the committed, resolved
+        # dependency surface), and includes the dev extra because the repo's
+        # own CI installs `.[dev]` everywhere — so dev tooling is part of the
+        # effective dependency set that ships through this project's pipeline.
+        run: uv sync --frozen --extra dev
+
+      - name: Run pip-audit (fail on ANY advisory)
+        # FAIL-ON-ANY: no severity filter, no `|| true`. pip-audit exits
+        # non-zero on any known advisory; --strict additionally fails on
+        # audit/resolution errors. --desc prints the advisory description so
+        # the log is actionable. The local first-party package
+        # (mcp-bridge 0.5.0, not on PyPI) is skipped by pip-audit — expected.
+        run: uv run --no-sync --with pip-audit pip-audit --strict --desc
