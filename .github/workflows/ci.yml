@@ -51,6 +51,13 @@ jobs:
       - name: Compile patch-first runtime files
         run: make runtime-patch-check
 
+      - name: MCP tool conformance baseline (advisory)
+        # Track-A mcp-conformance gate: spawns the built app and asserts the
+        # live, advertised MCP tools/list surface equals the committed expected
+        # set (both viewer and operator+admin role views). Advisory under the
+        # GitHub Free plan (no required checks); enforced by merge discipline.
+        run: python -m unittest -v tests.test_mcp_tool_conformance
+
       - name: Run runtime contract tests
         run: make runtime-contract-test
 

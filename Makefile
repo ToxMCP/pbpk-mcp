@@ -146,6 +146,7 @@ runtime-contract-test: ## Run the local runtime contract tests that do not requi
 		tests/test_packaged_resource_routes.py \
 		tests/test_packaged_mcp_namespace.py \
 		tests/test_packaged_tool_registry.py \
+		tests/test_mcp_tool_conformance.py \
 		tests/test_release_metadata.py \
 		tests/test_release_readiness_script.py \
 		tests/test_s3_audit_smoke_script.py \
