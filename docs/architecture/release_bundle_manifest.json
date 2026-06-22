@@ -1,5 +1,5 @@
 {
-  "bundleSha256": "6a8ebea3b3b3c0c2a05dec2a71b144ec6ae425b35b8402f4a7ee4c65f2a3645c",
+  "bundleSha256": "15b1f78bba5c5ece27828b85a7f44b1c804c7d1ca9289ead52d2fb4fb0018429",
   "contractVersion": "pbpk-mcp.v1",
   "fileCount": 342,
   "files": [
@@ -108,8 +108,8 @@
     {
       "group": "root",
       "relativePath": "uv.lock",
-      "sha256": "5186657ec2fbc872d8be43ab0d8ac9a35e8b19d3599f48ce28eaa608f88fc2e0",
-      "sizeBytes": 784825
+      "sha256": "042667bf2b76da1140bedaadf308b5ca43d1901612023d4cd1ee54240f90eea0",
+      "sizeBytes": 784826
     },
     {
       "group": "root",
@@ -2106,5 +2106,5 @@
     ],
     "mode": "staged-source-tree-equivalent"
   },
-  "totalBytes": 3771965
+  "totalBytes": 3771966
 }
