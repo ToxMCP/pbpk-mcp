@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/TKParameterProvenance.v1.schema.json",
+  "title": "TKParameterProvenance.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "tkParameterProvenanceId",
+    "parameterName",
+    "parameterValue",
+    "biologicalMatrix",
+    "species",
+    "population",
+    "sourceType",
+    "sourceRefs",
+    "transformationApplied",
+    "applicabilityBoundaryRefs",
+    "uncertaintyRefs",
+    "limitations"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/TKParameterProvenance.v1.schema.json"
+    },
+    "tkParameterProvenanceId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "parameterName": {
+      "enum": [
+        "fup",
+        "clint",
+        "rbp",
+        "mw",
+        "logp",
+        "pka",
+        "partition_coefficient",
+        "other"
+      ]
+    },
+    "parameterValue": {
+      "$ref": "https://schemas.ngra.ai/toxmcp/MeasurementValue.v1.schema.json"
+    },
+    "biologicalMatrix": {
+      "type": "string",
+      "minLength": 1
+    },
+    "species": {
+      "type": "string",
+      "minLength": 1
+    },
+    "population": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceType": {
+      "enum": [
+        "measured",
+        "literature",
+        "qsar",
+        "default",
+        "expert_judgment",
+        "unknown_with_blocker",
+        "not_assessed"
+      ]
+    },
+    "sourceRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "transformationApplied": {
+      "type": "string",
+      "minLength": 1
+    },
+    "applicabilityBoundaryRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "uncertaintyRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

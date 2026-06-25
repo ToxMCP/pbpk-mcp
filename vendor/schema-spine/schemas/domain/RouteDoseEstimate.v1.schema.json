@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/RouteDoseEstimate.v1.schema.json",
+  "title": "RouteDoseEstimate.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "routeDoseEstimateId",
+    "exposureScenarioContextRef",
+    "route",
+    "doseMetric",
+    "doseValue",
+    "doseBasis",
+    "temporalBasis",
+    "population",
+    "aggregationMethod",
+    "uncertaintyRefs",
+    "confidenceCeilingRefs",
+    "allowedDownstreamUses",
+    "prohibitedDownstreamUses",
+    "limitations",
+    "notAnInternalDoseConclusion",
+    "notARegulatoryConclusion"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/RouteDoseEstimate.v1.schema.json"
+    },
+    "routeDoseEstimateId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "exposureScenarioContextRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "route": {
+      "enum": [
+        "oral",
+        "inhalation",
+        "dermal",
+        "ocular",
+        "aggregate",
+        "not_assessed"
+      ]
+    },
+    "doseMetric": {
+      "enum": [
+        "external_administered_dose",
+        "external_contact_dose",
+        "intake_rate",
+        "air_concentration",
+        "surface_loading",
+        "not_assessed"
+      ]
+    },
+    "doseValue": {
+      "$ref": "https://schemas.ngra.ai/toxmcp/MeasurementValue.v1.schema.json"
+    },
+    "doseBasis": {
+      "enum": [
+        "body_weight_normalized",
+        "absolute_amount",
+        "medium_concentration",
+        "event_based",
+        "not_assessed"
+      ]
+    },
+    "temporalBasis": {
+      "type": "string",
+      "minLength": 1
+    },
+    "population": {
+      "type": "string",
+      "minLength": 1
+    },
+    "aggregationMethod": {
+      "enum": [
+        "single_route",
+        "aggregate_route_sum",
+        "distribution_percentile",
+        "screening_default",
+        "not_assessed"
+      ]
+    },
+    "uncertaintyRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "confidenceCeilingRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "allowedDownstreamUses": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "prohibitedDownstreamUses": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "notAnInternalDoseConclusion": {
+      "type": "boolean",
+      "const": true
+    },
+    "notARegulatoryConclusion": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}

@@ -1,0 +1,204 @@
+{
+  "objectType": "pbpkQualificationSummary.v1",
+  "objectId": "simcyp-qualification-summary",
+  "simulationId": null,
+  "backend": "external-import",
+  "sourcePlatform": "Simcyp",
+  "assessmentBoundary": "external-pbpk-normalization-only",
+  "decisionBoundary": "no-ngra-decision-policy",
+  "state": "qualified-within-context",
+  "label": "Qualified within declared forward-dosimetry context",
+  "summary": "External PBPK qualification metadata normalized; not executed in PBPK MCP.",
+  "qualificationLevel": "fit-for-purpose",
+  "oecdReadiness": "fit-for-context",
+  "validationDecision": null,
+  "withinDeclaredContext": null,
+  "scientificProfile": true,
+  "riskAssessmentReady": true,
+  "checklistScore": 0.82,
+  "evidenceStatus": "verified-externally",
+  "profileSource": "external-import",
+  "missingEvidenceCount": 0,
+  "reviewStatus": {
+    "status": "not-declared",
+    "declaredStatus": "unreported",
+    "summary": "No peer-review, reviewer stance, or prior-use workflow metadata are declared.",
+    "reviewRecordCount": 0,
+    "priorUseCount": 0,
+    "revisionEntryCount": 0,
+    "unresolvedDissentCount": 0,
+    "resolvedDissentCount": 0,
+    "revisionStatus": null,
+    "focusTopics": [],
+    "openTopics": [],
+    "resolvedTopics": [],
+    "interventionSummary": {
+      "status": "no-review-interventions-recorded",
+      "summary": "No explicit review interventions are recorded in the current metadata.",
+      "openTopicCount": 0,
+      "resolvedTopicCount": 0,
+      "openTopics": [],
+      "resolvedTopics": []
+    },
+    "requiresReviewerAttention": true
+  },
+  "performanceEvidenceBoundary": "runtime-or-internal-evidence-only",
+  "executableVerificationStatus": "verified-externally",
+  "platformClass": "regulatory-grade-platform",
+  "validationReferences": [
+    "EMA-2018-PBPK-guideline",
+    "FDA-2020-PBPK"
+  ],
+  "evidenceBasis": {
+    "basisType": "external-imported",
+    "inVivoSupportStatus": "not-declared",
+    "iviveLinkageStatus": "external-or-not-declared",
+    "parameterizationBasis": "inspect-parameter-provenance",
+    "populationVariabilityStatus": "declared-or-characterized"
+  },
+  "workflowClaimBoundaries": {
+    "forwardDosimetry": "external-imported-not-executed-by-pbpk-mcp",
+    "reverseDosimetry": "not-performed-directly-external-workflow-required",
+    "exposureLedPrioritization": "supported-only-as-pbpk-substrate-with-external-orchestrator",
+    "directRegulatoryDoseDerivation": "not-supported"
+  },
+  "supports": {
+    "nativeExecution": false,
+    "externalImportNormalization": true,
+    "manifestValidation": false,
+    "preflightValidation": false,
+    "executableVerification": false,
+    "oecdDossierExport": true,
+    "typedNgraHandoff": true,
+    "externalBerHandoff": true,
+    "regulatoryDecision": false
+  },
+  "requiredExternalInputs": [
+    "higher-level NGRA decision policy or orchestrator outside PBPK MCP",
+    "observed-vs-predicted, predictive-dataset, or external qualification evidence"
+  ],
+  "limitations": [
+    "Imported performance evidence is limited to runtime or internal supporting evidence."
+  ],
+  "exportBlockPolicy": {
+    "policyVersion": "pbpk-export-block-policy.v1",
+    "defaultAction": "block-lossy-or-decision-leaning-exports",
+    "contextualizedRenderOnly": true,
+    "workflow": "not-declared",
+    "blockedViewModes": [
+      "report-card",
+      "screenshot",
+      "chat-snippet",
+      "forwarded-bundle",
+      "thin-api-response"
+    ],
+    "requiredFields": [
+      "qualificationState",
+      "reviewStatus",
+      "evidenceBasis",
+      "claimBoundaries",
+      "misreadRiskSummary.plainLanguageSummary",
+      "summaryTransportRisk.plainLanguageSummary"
+    ],
+    "blockReasons": [
+      {
+        "code": "detached-summary-blocked",
+        "severity": "high",
+        "appliesTo": [
+          "report-card",
+          "screenshot",
+          "chat-snippet",
+          "forwarded-bundle",
+          "thin-api-response"
+        ],
+        "message": "Block lossy report cards, screenshots, chat snippets, or forwarded bundles when qualification state, review status, evidence basis, claim boundaries, and anti-misread guidance cannot travel with them.",
+        "requiredFields": [
+          "qualificationState",
+          "reviewStatus",
+          "evidenceBasis",
+          "claimBoundaries",
+          "misreadRiskSummary.plainLanguageSummary",
+          "summaryTransportRisk.plainLanguageSummary"
+        ],
+        "currentStatus": "high"
+      },
+      {
+        "code": "bare-review-summary-blocked",
+        "severity": "high",
+        "appliesTo": [
+          "review-badge",
+          "report-card",
+          "thin-api-response"
+        ],
+        "message": "Do not render the trust-bearing PBPK review summary alone. Adjacent caveats and anti-misread guidance are required.",
+        "requiredFields": [
+          "qualificationState",
+          "reviewStatus",
+          "evidenceBasis",
+          "claimBoundaries",
+          "misreadRiskSummary.plainLanguageSummary",
+          "summaryTransportRisk.plainLanguageSummary"
+        ],
+        "currentStatus": "context-required"
+      },
+      {
+        "code": "direct-regulatory-dose-derivation-blocked",
+        "severity": "high",
+        "appliesTo": [
+          "regulatory-dose-claim",
+          "regulatory-decision-summary",
+          "decision-recommendation"
+        ],
+        "message": "Block downstream presentations that frame this PBPK output as a direct regulatory dose derivation or final decision recommendation.",
+        "currentStatus": "not-supported"
+      }
+    ],
+    "notes": [
+      "This policy is descriptive and machine-readable so analyst-facing clients can refuse unsafe thin views.",
+      "Imported or operator-reviewed state does not create regulatory decision authority inside PBPK MCP."
+    ]
+  },
+  "cautionSummary": {
+    "summaryVersion": "pbpk-caution-summary.v1",
+    "highestSeverity": "high",
+    "blockingCount": 2,
+    "advisoryCount": 1,
+    "requiresHumanReview": true,
+    "blockingRecommended": true,
+    "cautions": [
+      {
+        "code": "detached-summary-overread",
+        "cautionType": "summary-transport-risk",
+        "severity": "high",
+        "handling": "blocking",
+        "scope": "summary-surface",
+        "sourceSurface": "exportBlockPolicy",
+        "message": "Thin report cards, screenshots, or forwarded imported summaries can detach the trust-bearing PBPK label from the caveats it needs.",
+        "requiresHumanReview": true,
+        "currentStatus": "detached-summary-unsafe"
+      },
+      {
+        "code": "direct-regulatory-dose-derivation-blocked",
+        "cautionType": "decision-overclaim-risk",
+        "severity": "high",
+        "handling": "blocking",
+        "scope": "workflow-claim",
+        "sourceSurface": "workflowClaimBoundaries",
+        "message": "Imported PBPK outputs should not be presented as direct regulatory dose derivations or final decision recommendations.",
+        "requiresHumanReview": true,
+        "currentStatus": "not-supported"
+      },
+      {
+        "code": "ivive-linkage-limited",
+        "cautionType": "weak-ivive-linkage",
+        "severity": "medium",
+        "handling": "advisory",
+        "scope": "evidence-basis",
+        "sourceSurface": "evidenceBasis",
+        "message": "IVIVE linkage remains weak or externally undeclared, so reverse-dosimetry or exposure-led interpretations need extra review.",
+        "requiresHumanReview": true,
+        "currentStatus": "external-or-not-declared"
+      }
+    ]
+  }
+}

@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/PointOfDepartureRecord.v1.schema.json",
+  "title": "PointOfDepartureRecord.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "podId",
+    "sourceBioactivityRefs",
+    "podType",
+    "podValue",
+    "derivationMethod",
+    "modelSelectionRationale",
+    "fitDiagnostics",
+    "uncertaintyQuantification",
+    "uncertaintyRefs",
+    "applicabilityBoundaryRefs",
+    "confidenceCeilingRefs",
+    "qualificationStatus",
+    "supportLevel",
+    "actionability",
+    "allowedDownstreamUses",
+    "prohibitedDownstreamUses",
+    "limitations",
+    "notAnAdversityConclusion",
+    "notARiskConclusion",
+    "notARegulatoryConclusion"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/PointOfDepartureRecord.v1.schema.json"
+    },
+    "podId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceBioactivityRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "podType": {
+      "enum": [
+        "BMD",
+        "BMDL",
+        "BMDU",
+        "AC10",
+        "AC50",
+        "LOEC",
+        "NOEC",
+        "minimum_platform_pod",
+        "imported_external_pod",
+        "not_assessed"
+      ]
+    },
+    "podValue": {
+      "$ref": "https://schemas.ngra.ai/toxmcp/MeasurementValue.v1.schema.json"
+    },
+    "derivationMethod": {
+      "enum": [
+        "benchmark_dose_model",
+        "concentration_response_model",
+        "minimum_platform",
+        "external_import",
+        "heuristic_screening",
+        "not_assessed"
+      ]
+    },
+    "modelSelectionRationale": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fitDiagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modelConverged", "goodnessOfFit", "residualPattern", "benchmarkResponse"],
+      "properties": {
+        "modelConverged": {
+          "type": "boolean"
+        },
+        "goodnessOfFit": {
+          "enum": ["acceptable", "questionable", "failed", "not_assessed"]
+        },
+        "residualPattern": {
+          "enum": ["acceptable", "problematic", "not_assessed"]
+        },
+        "benchmarkResponse": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "uncertaintyQuantification": {
+      "enum": [
+        "formal_ci",
+        "bootstrap_interval",
+        "bayesian_interval",
+        "heuristic_bracket",
+        "none",
+        "not_assessed"
+      ]
+    },
+    "uncertaintyRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "applicabilityBoundaryRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "applicabilityDomainStatus": {
+      "enum": [
+        "inside",
+        "partial",
+        "outside",
+        "not_assessed",
+        "unknown_with_blocker"
+      ]
+    },
+    "confidenceCeilingRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "qualificationStatus": {
+      "enum": [
+        "exploratory",
+        "fit_for_screening",
+        "fit_for_prioritization",
+        "review_required",
+        "risk_assessment_ready",
+        "regulatory_submission_ready",
+        "blocked",
+        "not_assessed"
+      ]
+    },
+    "supportLevel": {
+      "enum": [
+        "not_assessed",
+        "context_only",
+        "weak",
+        "moderate",
+        "strong",
+        "conflicting",
+        "insufficient",
+        "unknown_with_blocker"
+      ]
+    },
+    "actionability": {
+      "enum": [
+        "none",
+        "screening",
+        "prioritization",
+        "requires_review",
+        "decision_support",
+        "not_assessed",
+        "unknown_with_blocker"
+      ]
+    },
+    "allowedDownstreamUses": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "prohibitedDownstreamUses": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "notAnAdversityConclusion": {
+      "type": "boolean",
+      "const": true
+    },
+    "notARiskConclusion": {
+      "type": "boolean",
+      "const": true
+    },
+    "notARegulatoryConclusion": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.ngra.ai/pbpk-mcp/governance/PbpkQualificationSummaryEmission.v1.schema.json",
+  "title": "pbpkQualificationSummary producer STRICT emission contract (Track-B source-contract guard)",
+  "description": "The producer-emission contract for the RELEASED pbpkQualificationSummary.v1 object, the anti-overclaim governance surface the Track-B gate projects onto the spine InternalExposureSummary shape. This is the additionalProperties:false TIGHTENING of the producer seam src/mcp_bridge/pbpk_tools/ingest_external_pbpk_bundle.py::_build_pbpk_qualification_summary (whose output dict is NOT validated against a strict schema at emit time) and of the STALE published schemas/pbpkQualificationSummary.v1.json (which is additionalProperties:true and under-declares supports.* / semanticCoverage / nested objects). EVERY field the real producer seam stamps is DECLARED here, verified against the AUTHENTIC emitted golden governance/fixtures/pbpk-qualification-summary.pristine.json captured by running the real producer (scripts/build_spine_projection_goldens.py) over a clean external PBPK qualification bundle, NOT the stale published mirror. The projection-driving fields (qualificationLevel, oecdReadiness, state, riskAssessmentReady, withinDeclaredContext, supports.regulatoryDecision/oecdDossierExport/externalBerHandoff, workflowClaimBoundaries.directRegulatoryDoseDerivation, performanceEvidenceBoundary) carry their real producer types/enums so an out-of-contract value the producer cannot emit, or an undeclared/forbidden root field, is rejected here BEFORE projection, never silently exercising a dead arm.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "objectType",
+    "objectId",
+    "backend",
+    "assessmentBoundary",
+    "decisionBoundary",
+    "state",
+    "qualificationLevel",
+    "oecdReadiness",
+    "scientificProfile",
+    "riskAssessmentReady",
+    "evidenceStatus",
+    "missingEvidenceCount",
+    "supports",
+    "requiredExternalInputs",
+    "limitations",
+    "workflowClaimBoundaries"
+  ],
+  "properties": {
+    "objectType": { "type": "string", "const": "pbpkQualificationSummary.v1" },
+    "objectId": { "type": "string", "minLength": 1 },
+    "simulationId": { "type": ["string", "null"] },
+    "backend": { "type": "string", "enum": ["ospsuite", "rxode2", "external-import"] },
+    "sourcePlatform": { "type": ["string", "null"] },
+    "assessmentBoundary": {
+      "type": "string",
+      "enum": [
+        "pbpk-execution-and-qualification-substrate-only",
+        "external-pbpk-normalization-only"
+      ]
+    },
+    "decisionBoundary": { "type": "string", "const": "no-ngra-decision-policy" },
+    "state": { "type": "string", "minLength": 1 },
+    "label": { "type": ["string", "null"] },
+    "summary": { "type": ["string", "null"] },
+    "qualificationLevel": { "type": "string", "minLength": 1 },
+    "oecdReadiness": { "type": "string", "minLength": 1 },
+    "validationDecision": { "type": ["string", "null"] },
+    "withinDeclaredContext": { "type": ["boolean", "null"] },
+    "scientificProfile": { "type": "boolean" },
+    "riskAssessmentReady": { "type": "boolean" },
+    "checklistScore": { "type": ["number", "null"] },
+    "evidenceStatus": { "type": "string", "minLength": 1 },
+    "profileSource": { "type": ["string", "null"] },
+    "missingEvidenceCount": { "type": "integer" },
+    "reviewStatus": { "type": ["object", "null"] },
+    "performanceEvidenceBoundary": { "type": ["string", "null"] },
+    "executableVerificationStatus": { "type": ["string", "null"] },
+    "platformClass": { "type": ["string", "null"] },
+    "validationReferences": { "type": "array", "items": { "type": "string" } },
+    "evidenceBasis": { "type": ["object", "null"] },
+    "workflowClaimBoundaries": {
+      "type": "object",
+      "properties": {
+        "forwardDosimetry": { "type": ["string", "null"] },
+        "reverseDosimetry": { "type": ["string", "null"] },
+        "exposureLedPrioritization": { "type": ["string", "null"] },
+        "directRegulatoryDoseDerivation": { "type": ["string", "null"] }
+      }
+    },
+    "supports": {
+      "type": "object",
+      "required": [
+        "oecdDossierExport",
+        "typedNgraHandoff",
+        "externalBerHandoff",
+        "regulatoryDecision"
+      ],
+      "properties": {
+        "nativeExecution": { "type": "boolean" },
+        "externalImportNormalization": { "type": "boolean" },
+        "manifestValidation": { "type": "boolean" },
+        "preflightValidation": { "type": "boolean" },
+        "executableVerification": { "type": "boolean" },
+        "oecdDossierExport": { "type": "boolean" },
+        "typedNgraHandoff": { "type": "boolean" },
+        "externalBerHandoff": { "type": "boolean" },
+        "regulatoryDecision": { "type": "boolean" }
+      }
+    },
+    "requiredExternalInputs": { "type": "array", "items": { "type": "string" } },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "exportBlockPolicy": { "type": ["object", "null"] },
+    "cautionSummary": { "type": ["object", "null"] }
+  }
+}

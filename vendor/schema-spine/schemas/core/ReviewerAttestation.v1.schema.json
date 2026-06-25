@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/ReviewerAttestation.v1.schema.json",
+  "title": "ReviewerAttestation.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "attestationId",
+    "reviewId",
+    "reviewerIdentityPolicy",
+    "qualificationRole",
+    "reviewProtocolRef",
+    "reviewScope",
+    "decisionRationaleDigest",
+    "correctionsRequested",
+    "signatureDigest",
+    "attestedAt"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/ReviewerAttestation.v1.schema.json"
+    },
+    "attestationId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reviewId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reviewerIdentityPolicy": {
+      "enum": [
+        "identified_in_private_audit",
+        "identified_publicly",
+        "role_only_public",
+        "not_applicable"
+      ]
+    },
+    "qualificationRole": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reviewProtocolRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reviewScope": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "decisionRationaleDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "correctionsRequested": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "adjudicationRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "signatureDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "attestedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

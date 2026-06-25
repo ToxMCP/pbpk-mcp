@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/ApplicabilityBoundary.v1.schema.json",
+  "title": "ApplicabilityBoundary.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "applicabilityId",
+    "chemicalDomain",
+    "biologicalDomain",
+    "exposureDomain",
+    "modelDomain",
+    "routeDomain",
+    "populationDomain",
+    "endpointDomain",
+    "outsideDomainAction"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/ApplicabilityBoundary.v1.schema.json"
+    },
+    "applicabilityId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "chemicalDomain": {
+      "type": "string",
+      "minLength": 1
+    },
+    "biologicalDomain": {
+      "type": "string",
+      "minLength": 1
+    },
+    "exposureDomain": {
+      "type": "string",
+      "minLength": 1
+    },
+    "modelDomain": {
+      "type": "string",
+      "minLength": 1
+    },
+    "routeDomain": {
+      "type": "string",
+      "minLength": 1
+    },
+    "populationDomain": {
+      "type": "string",
+      "minLength": 1
+    },
+    "endpointDomain": {
+      "type": "string",
+      "minLength": 1
+    },
+    "domainMatch": {
+      "enum": [
+        "inside",
+        "partial",
+        "outside",
+        "not_assessed",
+        "unknown_with_blocker"
+      ]
+    },
+    "outsideDomainAction": {
+      "enum": [
+        "block",
+        "review_required",
+        "downgrade_to_context",
+        "not_assessed"
+      ]
+    }
+  }
+}

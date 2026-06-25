@@ -77,3 +77,40 @@ jobs:
             dist/runtime-contract-report.json
           if-no-files-found: error
           retention-days: 14
+
+  scientific-invariants:
+    # Track-B scientific-invariants gate: project the RELEASED pbpkQualificationSummary
+    # onto the canonical schema-spine InternalExposureSummary shape and run the
+    # vendored, digest-pinned spine policy engine over the projection via a
+    # fail-closed Python bridge. ADDITIVE + advisory (its own uv side-toolchain; it
+    # touches no PBPK src/, no schemas/, no contract artifacts, and does NOT dispatch
+    # or modify the release-artifacts / model-smoke workflows, so those gates are
+    # untouched). PROMOTE-TO-BLOCKING: when this repo gains branch protection /
+    # rulesets, mark this job a required status check — the gate already exits
+    # non-zero on any blocking code. See
+    # docs/governance/adr/0001-track-b-scientific-invariants-gate.md.
+    name: Scientific invariants (Track-B spine gate)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node (vendored spine policy engine runtime)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up uv (isolated Python side-toolchain)
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install Python 3.11
+        run: uv python install 3.11
+
+      - name: Verify vendored spine engine digests (vendor:verify)
+        run: uv run --no-project python scripts/vendor_verify.py
+
+      - name: Run the scientific-invariants gate (pristine corpus must be green)
+        run: uv run --no-project python scripts/scientific_invariants_gate.py
+
+      - name: Run governance gate tests (per-code bites + source-contract guard + fail-closed)
+        run: uv run --with pytest --no-project python -m pytest tests/governance -q

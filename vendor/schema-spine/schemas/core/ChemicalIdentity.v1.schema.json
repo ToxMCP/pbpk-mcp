@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/ChemicalIdentity.v1.schema.json",
+  "title": "ChemicalIdentity.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "chemicalId",
+    "identifiers",
+    "identityConfidence",
+    "ambiguity"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/ChemicalIdentity.v1.schema.json"
+    },
+    "chemicalId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "identifiers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dtxsid": {
+          "type": "string",
+          "pattern": "^DTXSID[0-9]+$"
+        },
+        "casrn": {
+          "type": "string",
+          "minLength": 1
+        },
+        "inchikey": {
+          "type": "string",
+          "pattern": "^[A-Z]{14}-[A-Z]{10}-[A-Z]$"
+        },
+        "smiles": {
+          "type": "string",
+          "minLength": 1
+        },
+        "preferredName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "synonyms": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "anyOf": [
+        { "required": ["dtxsid"] },
+        { "required": ["casrn"] },
+        { "required": ["inchikey"] },
+        { "required": ["smiles"] },
+        { "required": ["preferredName"] }
+      ]
+    },
+    "identityConfidence": {
+      "enum": [
+        "high",
+        "moderate",
+        "low",
+        "ambiguous",
+        "not_assessed",
+        "unknown_with_blocker"
+      ]
+    },
+    "ambiguity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ambiguous", "reason"],
+      "properties": {
+        "ambiguous": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "candidateIdentifiers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

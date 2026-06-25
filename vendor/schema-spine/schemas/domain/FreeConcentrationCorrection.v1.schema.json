@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/FreeConcentrationCorrection.v1.schema.json",
+  "title": "FreeConcentrationCorrection.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "freeConcentrationCorrectionId",
+    "nominalConcentration",
+    "correctedFreeConcentration",
+    "assayMatrix",
+    "proteinBindingAssumption",
+    "lipidBindingAssumption",
+    "plasticSorptionAssumption",
+    "headspaceVolatilizationAssumption",
+    "algorithm",
+    "algorithmVersion",
+    "domainWarnings",
+    "uncertaintyRefs",
+    "confidenceCeilingRefs",
+    "limitations",
+    "notAnInternalDoseConclusion",
+    "notARegulatoryConclusion"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/FreeConcentrationCorrection.v1.schema.json"
+    },
+    "freeConcentrationCorrectionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nominalConcentration": {
+      "$ref": "https://schemas.ngra.ai/toxmcp/MeasurementValue.v1.schema.json"
+    },
+    "correctedFreeConcentration": {
+      "$ref": "https://schemas.ngra.ai/toxmcp/MeasurementValue.v1.schema.json"
+    },
+    "assayMatrix": {
+      "type": "string",
+      "minLength": 1
+    },
+    "proteinBindingAssumption": {
+      "enum": [
+        "measured",
+        "modeled",
+        "default",
+        "not_applicable",
+        "not_assessed",
+        "unknown_with_blocker"
+      ]
+    },
+    "lipidBindingAssumption": {
+      "enum": [
+        "measured",
+        "modeled",
+        "default",
+        "not_applicable",
+        "not_assessed",
+        "unknown_with_blocker"
+      ]
+    },
+    "plasticSorptionAssumption": {
+      "enum": [
+        "measured",
+        "modeled",
+        "default",
+        "not_applicable",
+        "not_assessed",
+        "unknown_with_blocker"
+      ]
+    },
+    "headspaceVolatilizationAssumption": {
+      "enum": [
+        "measured",
+        "modeled",
+        "default",
+        "not_applicable",
+        "not_assessed",
+        "unknown_with_blocker"
+      ]
+    },
+    "algorithm": {
+      "type": "string",
+      "minLength": 1
+    },
+    "algorithmVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "domainWarnings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "uncertaintyRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "confidenceCeilingRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "notAnInternalDoseConclusion": {
+      "type": "boolean",
+      "const": true
+    },
+    "notARegulatoryConclusion": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}

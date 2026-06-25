@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/SpineReleaseReadinessEvidenceOverlay.v1.schema.json",
+  "title": "SpineReleaseReadinessEvidenceOverlay.v1",
+  "description": "Spine EVIDENCE OVERLAY over a Hub-owned release-readiness report. It does NOT restate the Hub's go/no-go decision, gate status, or metrics (those live in the referenced Hub artifact); it references the Hub artifact by id+digest and adds only the net-new scientific evidence-gating layer (scope, claim boundaries, human-review boundary, evidence-artifact refs, non-claim guards). See docs/adr/0001-spine-hub-reconciliation.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "refList": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+    "nonEmptyRefList": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmptyString" } }
+  },
+  "required": [
+    "schemaId",
+    "overlayId",
+    "mcpId",
+    "hubArtifactRef",
+    "hubSchemaId",
+    "hubSchemaVersion",
+    "hubArtifactDigest",
+    "assessmentRunRef",
+    "releaseChannel",
+    "scientificScope",
+    "claimBoundaries",
+    "requiredHumanReviewStatus",
+    "validationEvidenceBundleRefs",
+    "schemaSignatureRefs",
+    "auditEventChainRefs",
+    "releaseVisibilityPolicyRef",
+    "waiverRefs",
+    "unresolvedRisks",
+    "limitations",
+    "notRegulatoryAcceptance",
+    "notScientificValidationByItself"
+  ],
+  "properties": {
+    "schemaId": { "const": "https://schemas.ngra.ai/toxmcp/SpineReleaseReadinessEvidenceOverlay.v1.schema.json" },
+    "overlayId": { "$ref": "#/$defs/nonEmptyString" },
+    "mcpId": { "type": "string", "pattern": "^toxmcp\\.[a-z0-9][a-z0-9-]*\\.[a-z0-9][a-z0-9-]*$" },
+    "hubArtifactRef": { "$ref": "#/$defs/nonEmptyString" },
+    "hubSchemaId": { "type": "string", "format": "uri", "minLength": 1 },
+    "hubSchemaVersion": { "$ref": "#/$defs/nonEmptyString" },
+    "hubArtifactDigest": { "$ref": "#/$defs/digest" },
+    "assessmentRunRef": { "$ref": "#/$defs/nonEmptyString" },
+    "releaseChannel": { "enum": ["local", "internal", "private_beta", "public_preview", "public_release"] },
+    "scientificScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intendedUse", "excludedUses", "oecdAlignmentStatus"],
+      "properties": {
+        "intendedUse": { "$ref": "#/$defs/nonEmptyString" },
+        "excludedUses": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "oecdAlignmentStatus": { "enum": ["not_assessed", "mapped_with_gaps", "qualified_for_scope", "external_validation_required"] }
+      }
+    },
+    "claimBoundaries": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmptyString" } },
+    "requiredHumanReviewStatus": { "enum": ["completed", "waived", "pending", "blocked", "not_assessed"] },
+    "validationEvidenceBundleRefs": { "$ref": "#/$defs/nonEmptyRefList" },
+    "schemaSignatureRefs": { "$ref": "#/$defs/nonEmptyRefList" },
+    "auditEventChainRefs": { "$ref": "#/$defs/nonEmptyRefList" },
+    "releaseVisibilityPolicyRef": { "$ref": "#/$defs/nonEmptyString" },
+    "waiverRefs": { "$ref": "#/$defs/refList" },
+    "unresolvedRisks": { "$ref": "#/$defs/refList" },
+    "limitations": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmptyString" } },
+    "notRegulatoryAcceptance": { "type": "boolean", "const": true },
+    "notScientificValidationByItself": { "type": "boolean", "const": true }
+  }
+}
