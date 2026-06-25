@@ -1,7 +1,7 @@
 {
-  "bundleSha256": "15b1f78bba5c5ece27828b85a7f44b1c804c7d1ca9289ead52d2fb4fb0018429",
+  "bundleSha256": "549d42285315a2cf5253cb52e842ddcd14ad424878880677458fb5a6da224ca7",
   "contractVersion": "pbpk-mcp.v1",
-  "fileCount": 342,
+  "fileCount": 417,
   "files": [
     {
       "group": "root",
@@ -144,8 +144,8 @@
     {
       "group": "governance",
       "relativePath": ".github/workflows/ci.yml",
-      "sha256": "4d15e4021796b168a80cece1f43eb0cad99b784f319d986e87300278ff172d35",
-      "sizeBytes": 2155
+      "sha256": "fea4ab1ec2cad4d42ccf34ddc9ab7fd5a1c749f14630e3a316e68abecd1e45e0",
+      "sizeBytes": 3892
     },
     {
       "group": "governance",
@@ -332,6 +332,12 @@
       "relativePath": "docs/deployment/s3_object_lock_audit.md",
       "sha256": "72f109d2e7d7fdd11190bd987ea9cc5e3aef439f116c0fc064e478ccaead0ed3",
       "sizeBytes": 3609
+    },
+    {
+      "group": "documentation",
+      "relativePath": "docs/governance/adr/0001-track-b-scientific-invariants-gate.md",
+      "sha256": "217798dd0bf198f43ad89c0ae31a6dc98f03680cb8c73624dcc98fa7074540e6",
+      "sizeBytes": 8550
     },
     {
       "group": "documentation",
@@ -713,6 +719,48 @@
     },
     {
       "group": "root",
+      "relativePath": "governance/__init__.py",
+      "sha256": "d3be7a0bf15ba98039be6c5d5ac80b70a84933f9dbed68a0b5d07a39e951db1e",
+      "sizeBytes": 69
+    },
+    {
+      "group": "root",
+      "relativePath": "governance/errors.py",
+      "sha256": "148574709142d314fbd1c06ff55f818403fb8783c250f677878d3af400a568dd",
+      "sizeBytes": 3877
+    },
+    {
+      "group": "root",
+      "relativePath": "governance/project_to_spine.py",
+      "sha256": "a20897912f0189cb4d030bce5d6b9d8c1b825271a0247aaa493debefb9ceb613",
+      "sizeBytes": 16523
+    },
+    {
+      "group": "root",
+      "relativePath": "governance/source_contract.py",
+      "sha256": "98637bf0d01f13b4053ca04d7375fbe5c25cc10294bce4aa19bfcf7b13e61ad2",
+      "sizeBytes": 11730
+    },
+    {
+      "group": "root",
+      "relativePath": "governance/spine_bridge.py",
+      "sha256": "fad5f2bb5660d8efdc008cc043c6cfb7a975aabf4e92f067dbc3328c0b6a69a1",
+      "sizeBytes": 21028
+    },
+    {
+      "group": "root",
+      "relativePath": "governance/emission-contracts/pbpk-qualification-summary-emission.v1.schema.json",
+      "sha256": "887a51d19fe908beb0f759fae75d4a327859e9516c0a52de121743c6d1ff662b",
+      "sizeBytes": 5144
+    },
+    {
+      "group": "root",
+      "relativePath": "governance/fixtures/pbpk-qualification-summary.pristine.json",
+      "sha256": "265b82138876e174d159ea78a665fa6d73f80ea5baf92ee78ec42cc4059234e0",
+      "sizeBytes": 7530
+    },
+    {
+      "group": "root",
       "relativePath": "reference_models/reference_compound_population_rxode2_model.R",
       "sha256": "89b6c44e75ebf77f66906e910c2118bfa33475b7b8b0a03ca43c6f3d9c773e22",
       "sizeBytes": 58551
@@ -836,6 +884,12 @@
       "relativePath": "scripts/build_rxode2_worker_image.sh",
       "sha256": "5174a4bc04a96f68cbcfdf6e45729f987875eb3df0d918cebeb8d366284cad2f",
       "sizeBytes": 702
+    },
+    {
+      "group": "operations",
+      "relativePath": "scripts/build_spine_projection_goldens.py",
+      "sha256": "9683c80d375428ca60e2c04662d00dcada2512f8bad483079ee4321905eef428",
+      "sizeBytes": 3531
     },
     {
       "group": "operations",
@@ -989,9 +1043,21 @@
     },
     {
       "group": "operations",
+      "relativePath": "scripts/scientific_invariants_gate.py",
+      "sha256": "6177608ef9deb19b80bed5dd93cb2f0e38a22e0da02419d10ed8ccfd5b73dded",
+      "sizeBytes": 9675
+    },
+    {
+      "group": "operations",
       "relativePath": "scripts/validate_model_manifests.py",
       "sha256": "773d26392adcae0e748a3f5c3738e61ec7798eb6a0a8da779f9535f8985f6001",
       "sizeBytes": 7954
+    },
+    {
+      "group": "operations",
+      "relativePath": "scripts/vendor_verify.py",
+      "sha256": "fd53730405631b193aaf2e927b4aa32039ff84b749c15e451bb07fb18774240f",
+      "sizeBytes": 5185
     },
     {
       "group": "operations",
@@ -2039,6 +2105,30 @@
     },
     {
       "group": "verification",
+      "relativePath": "tests/governance/conftest.py",
+      "sha256": "8ae70e68f0bf7b966746cfccdf18206eb39dcdcb4bfeabdae3b9b26676103dd3",
+      "sizeBytes": 159
+    },
+    {
+      "group": "verification",
+      "relativePath": "tests/governance/test_scientific_invariants_adversarial.py",
+      "sha256": "c46127486733be54329af767c7e2f9812501f8864a40d18e9258d9496ec74ff1",
+      "sizeBytes": 6137
+    },
+    {
+      "group": "verification",
+      "relativePath": "tests/governance/test_source_contract_guard.py",
+      "sha256": "f60ed64ff04462c17af0f0c64e715b65816b7f898fabcea3dd6c2066825c2633",
+      "sizeBytes": 4125
+    },
+    {
+      "group": "verification",
+      "relativePath": "tests/governance/test_spine_projection_golden.py",
+      "sha256": "98078fc9ef58c2b54c2e60969a4c42f2578231e690d70cc2f836dee2f63d1674",
+      "sizeBytes": 4504
+    },
+    {
+      "group": "verification",
       "relativePath": "tests/unit/test_adapter_interface.py",
       "sha256": "ea8ff31d6714576dce67df4e480a4b7d35947d507614e2c1621c9b08ec9632e9",
       "sizeBytes": 3673
@@ -2054,17 +2144,377 @@
       "relativePath": "tests/unit/test_subprocess_adapter.py",
       "sha256": "9030315f50274036fd4943f490d9a8856eb384b34aebd1179d7d946c5bbd6b3c",
       "sizeBytes": 16625
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/VENDORED_FROM.json",
+      "sha256": "44667cd2f2286ba7dd0f0241a7b4163057ec293f5423270c90f4862cbd27a647",
+      "sizeBytes": 7706
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/index.mjs",
+      "sha256": "0876da8b30ea001b042585b4699cdaa295edcdc1136f653cf4db80821bee8738",
+      "sizeBytes": 1141
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/policy-validator.mjs",
+      "sha256": "ba07c9fbecfa4c5ebc61a03140af9411d79ab4e445dd7801b93552afb4b8b84c",
+      "sizeBytes": 150397
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/run-policy.mjs",
+      "sha256": "f6e3e4e912766fd0832c6c3c671b52e6ca4b8c2c8f06466d04f050b8b30a7899",
+      "sizeBytes": 2529
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schema-manifest.json",
+      "sha256": "1dd993b70eb09ee422d553c4fa48725e83f655e108f58bc5c3494ae84bde6985",
+      "sizeBytes": 17052
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/AiModelUseRecord.v1.schema.json",
+      "sha256": "8839ddd517911fca4dd5eaa5ce7b96ed5fdf3530ecf1d885eece18383ac07ad4",
+      "sizeBytes": 4835
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/ApplicabilityBoundary.v1.schema.json",
+      "sha256": "b4cc8be1863001681d417a275d5a3ba513e3b03083d23d26aa18fd10b1544061",
+      "sizeBytes": 1535
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/AssessmentRun.v1.schema.json",
+      "sha256": "7c0250385115b5719cde18fff7f78f55914116775072d36b91eca3a73e75fbbd",
+      "sizeBytes": 2200
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/AuditTraceRef.v1.schema.json",
+      "sha256": "a1b48f1eae859ccb09d6a1b41600d4bdd44400f52b80208c85f48c1c335c49aa",
+      "sizeBytes": 1092
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/ChemicalIdentity.v1.schema.json",
+      "sha256": "89716c50f023a7ef1cb2cf299382077f4587c8f604d0a3f0e1d66f739d81d607",
+      "sizeBytes": 2147
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/ClaimRecord.v1.schema.json",
+      "sha256": "7de8ae4fb242eb3eabd9b953341a73b1dc8547a6a0637598e6fd71a39ee51df2",
+      "sizeBytes": 2839
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/ClaimTransitionPolicy.v1.schema.json",
+      "sha256": "b99e0a45e45dfb9d63e169ba1b01a8e76a1478a84aba209e458086708d1d07b8",
+      "sizeBytes": 1899
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/ConfidenceCeiling.v1.schema.json",
+      "sha256": "8d7e3d467a9eed312dcefb337e0226a35739810ee7479e1b15422f0acdc1a7e1",
+      "sizeBytes": 1390
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/DataRightsPolicy.v1.schema.json",
+      "sha256": "612871e3c8b9bc50e0276b298ab30f3f2e215fd52ebfa5f783aec1c06329c64c",
+      "sizeBytes": 1498
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/DecisionContext.v1.schema.json",
+      "sha256": "c2718cc20247831d95301c5b9989b531aae71d33a5c587702bf04c498bb7ff14",
+      "sizeBytes": 1426
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/EvidenceAdmissibility.v1.schema.json",
+      "sha256": "9b9640d394dde072c2a1117c70c7b1b64af0f787d663488fb03e06f89c92bb80",
+      "sizeBytes": 1084
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/EvidenceAnchor.v1.schema.json",
+      "sha256": "fd0a692d79e45e86fec72eeb0f5976316d9d225014d286ebf38f768726c7124f",
+      "sizeBytes": 1761
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/HandoffEnvelope.v1.schema.json",
+      "sha256": "5f73bfc1bbc64cb6b85d853be31457942b499102ea225e898f49065a6dcc7462",
+      "sizeBytes": 1936
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/HumanReviewRecord.v1.schema.json",
+      "sha256": "cb3aa0d7f9abe59b7fd140a3cc1f229841512e0bbb514b7ee8f6fe058a4f3b90",
+      "sizeBytes": 1669
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/MeasurementValue.v1.schema.json",
+      "sha256": "680e32cd14718f3edfe55dff9ed611ac350d55d018868ee820cf5c120508e325",
+      "sizeBytes": 1826
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/NonClaimBoundary.v1.schema.json",
+      "sha256": "d0be4f4eef6b441eb18ded660bac8b533182d75ad2526d189274bda0f0b771d3",
+      "sizeBytes": 1126
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/ProvenanceBundle.v1.schema.json",
+      "sha256": "336d1f52417a7e1fd0e604860d89f8c5cb1954a67285b7dd8d51c64f2d0b80b0",
+      "sizeBytes": 4154
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/ReleaseVisibilityPolicy.v1.schema.json",
+      "sha256": "0d7f486f9171e41f50f834f8ad4482f56864eb9f5e848d6fcecc8d05b4a032cd",
+      "sizeBytes": 1811
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/ReviewState.v1.schema.json",
+      "sha256": "55f89701476e42b7b1e302911ad172101ba1ab2940065e81ba844316aafc8263",
+      "sizeBytes": 1823
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/ReviewerAttestation.v1.schema.json",
+      "sha256": "0d167131eefcbf8543d24b758d4dd3b3319eb61ea91a4b2ba612e612b6ee6cac",
+      "sizeBytes": 1761
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/SemanticLossEvent.v1.schema.json",
+      "sha256": "7acfe054a96b14bb665d45fa021885f4853bb08dc178c4dfe83c3bec49b92cbd",
+      "sizeBytes": 1196
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/ToxMcpObject.v1.schema.json",
+      "sha256": "741a7029ea7e59545621612389627f8b1d4c5ff13acc4ed6141f85377a20aef9",
+      "sizeBytes": 2932
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/core/UncertaintyRecord.v1.schema.json",
+      "sha256": "0b2e5eccb5d084e0b11d8a3b0a35e44e57cea34017d2ea2d1fb3f8e3a70435d8",
+      "sizeBytes": 1635
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/AssayStudyQuality.v1.schema.json",
+      "sha256": "ca357adb41956e5e75ded80a9507c6b3a7cedd9ada6fe0cb8ed4065938fc0fd1",
+      "sizeBytes": 2402
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/AuditEventChain.v1.schema.json",
+      "sha256": "6a317bbddee6bb91f0ce7c316874d99dd65af26cd1bc5dade54483e83204692e",
+      "sizeBytes": 2919
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/BioactivityExposureRatioRecord.v1.schema.json",
+      "sha256": "d8297596953db4c185f6c1f23d004ecfbc7a91cc3f7ba7740858e57db9f297af",
+      "sizeBytes": 3175
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/BioactivityObservation.v1.schema.json",
+      "sha256": "2341255e52302c8b650628b8fa1c9e2425b4ae1e39b16551d417e3232b8784e5",
+      "sizeBytes": 5354
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/BioactivityPodReadiness.v1.schema.json",
+      "sha256": "81784e55e687eb50815029afe31f95f22cd92ec40db673722d2c7c4caff7a4d5",
+      "sizeBytes": 2420
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/ComparabilityQualification.v1.schema.json",
+      "sha256": "25870f2923cc548911e9b52d10e964d26bf2db7744ec68f7e8836aa7cee7fb20",
+      "sizeBytes": 2890
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/ConcentrationResponseDesign.v1.schema.json",
+      "sha256": "34add0d5d1056e4a2121c3de011d189fa0659d68ccd641f7a0106828c16b51ef",
+      "sizeBytes": 2329
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/ExposureScenarioContext.v1.schema.json",
+      "sha256": "6cf8290554cd2b2399a45781761cfcd51ecfb7ed38e374a96af5ef9342924143",
+      "sizeBytes": 2349
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/FreeConcentrationCorrection.v1.schema.json",
+      "sha256": "a2bdca8e3f55c9d4704256b368498009b97fe878b75b94dd7772e5d520328595",
+      "sizeBytes": 3007
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/IataStrategyDecision.v1.schema.json",
+      "sha256": "5a1c99c69c1a8927703a08e0c8d6a4860e6afde25e4899ff024143fb434976c5",
+      "sizeBytes": 3920
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/InternalExposureSummary.v1.schema.json",
+      "sha256": "665117f5b27fc2bb329b6c5a86c9c81701d36144490fe6f37a68e64492e6dee0",
+      "sizeBytes": 4059
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/ModifierEvidenceLane.v1.schema.json",
+      "sha256": "378d21164f8fb2857c32c5f196472fb2876aa8dc3aa2a7430cf642658c3bc923",
+      "sizeBytes": 2582
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/PointOfDepartureRecord.v1.schema.json",
+      "sha256": "3d0be59dcdddf4c63b1f0d8deb48db1afacc74e5ebe9e4a41bb94295cc3a237b",
+      "sizeBytes": 4701
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/PopulationProfile.v1.schema.json",
+      "sha256": "c356d235cb7f9bf3c3ad61b53f81547ccd62168e2afde4e4cacd71b23854fdbc",
+      "sizeBytes": 2429
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/ReadAcrossJustification.v1.schema.json",
+      "sha256": "9b0fe802f376af99e355f65c72e1c5c2646becfe15a56dbb42cb9151a48ee876",
+      "sizeBytes": 3424
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/ReplicateDesign.v1.schema.json",
+      "sha256": "d0bb3b1156da2675e3763622585c17210347625d3dbd31ea4693020898a0e559",
+      "sizeBytes": 1637
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/ReverseDosimetryRecord.v1.schema.json",
+      "sha256": "78c469fc35f9d946485c9063e240ec244d5a42992af91c267ac16d9b06cd8f12",
+      "sizeBytes": 3003
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/RouteDoseEstimate.v1.schema.json",
+      "sha256": "05634b6fbce322ed1da6060ac42910220c3152f45cd126a5dff492428559583e",
+      "sizeBytes": 2900
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/SchemaSignature.v1.schema.json",
+      "sha256": "0e66ab5f7039832643c3a37f038ddb6da94d781f0ddd7e65e75e15aac1a0367b",
+      "sizeBytes": 2289
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/SensitiveDescriptorPolicy.v1.schema.json",
+      "sha256": "51fa28e3d5f92d87e1219eb4aa8f3788341665126478abde257f9eb108cc73d8",
+      "sizeBytes": 2162
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/SpineBenchmarkRunEvidenceOverlay.v1.schema.json",
+      "sha256": "87fa2594d5135cdf45748ca448df0f6f29f7a23c372e7410bf675c5a2e2e3ba2",
+      "sizeBytes": 2538
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/SpineBenchmarkSuiteEvidenceOverlay.v1.schema.json",
+      "sha256": "27591b135e4c9d810450a93e761c85d5b336a8b337c01fcbc205b99233ba9cc6",
+      "sizeBytes": 2245
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/SpineReleaseReadinessEvidenceOverlay.v1.schema.json",
+      "sha256": "5804582a46db8df92bb6633273397740f26543d3d8a83f55d0f0e28f4c8fc5e6",
+      "sizeBytes": 3643
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/SubgroupComparison.v1.schema.json",
+      "sha256": "a4056ff2ca716317f1a4250d1d69fb5358303072e39e7f7f5a2618989694032e",
+      "sizeBytes": 2501
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/SubgroupDefinition.v1.schema.json",
+      "sha256": "0d0a45d1a858cee40eef7698cb32de7d6f7a386429bdb687106290901332c166",
+      "sizeBytes": 2234
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/SubgroupReviewPacket.v1.schema.json",
+      "sha256": "1977ca1d574a1689ba659530983dcf4bd9f138096d0eae13e57d1618a13ae081",
+      "sizeBytes": 3262
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/SusceptibilitySummary.v1.schema.json",
+      "sha256": "166b57ca09fc0c2b21836d91161f3b46b7dfe5a5f85129bd2cea445de13fd6b8",
+      "sizeBytes": 3276
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/TKParameterProvenance.v1.schema.json",
+      "sha256": "a5f0738619e8e7d7377262b29539e5f08a04738550c6490d0b6bf205bbc2d003",
+      "sizeBytes": 2178
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/TransportCapability.v1.schema.json",
+      "sha256": "3d1cdeed5b2e03dc61dd5ffb77628d06339584eb3e0b965282127687fc968919",
+      "sizeBytes": 5042
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/ValidationEvidenceBundle.v1.schema.json",
+      "sha256": "146293512c72c783b1f0208334cedfdd47ba1bed62d219f05fc6d564324d264d",
+      "sizeBytes": 3831
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/VariabilityDimension.v1.schema.json",
+      "sha256": "1654215cbca571f82a064f68c151ea960faa75b6341de13c337d189937240fc4",
+      "sizeBytes": 2130
+    },
+    {
+      "group": "root",
+      "relativePath": "vendor/schema-spine/schemas/domain/WeightOfEvidenceEvaluation.v1.schema.json",
+      "sha256": "52a886dbc0175e80eaa798f7ba28d2430fb5cdd0ff3d80ea6e99868dc66f7fa3",
+      "sizeBytes": 3387
     }
   ],
   "groupCounts": {
     "container": 3,
     "contract": 17,
-    "documentation": 79,
+    "documentation": 80,
     "governance": 7,
-    "operations": 31,
-    "root": 30,
+    "operations": 34,
+    "root": 97,
     "source": 122,
-    "verification": 53
+    "verification": 57
   },
   "id": "pbpk-release-bundle-manifest.v1",
   "packageVersion": "0.5.0",
@@ -2106,5 +2556,5 @@
     ],
     "mode": "staged-source-tree-equivalent"
   },
-  "totalBytes": 3771966
+  "totalBytes": 4202088
 }
