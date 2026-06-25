@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/SemanticLossEvent.v1.schema.json",
+  "title": "SemanticLossEvent.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "semanticLossEventId",
+    "sourceRef",
+    "targetRef",
+    "lossType",
+    "description",
+    "downstreamImpact"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/SemanticLossEvent.v1.schema.json"
+    },
+    "semanticLossEventId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "targetRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lossType": {
+      "enum": [
+        "mapping",
+        "aggregation",
+        "simplification",
+        "unit_conversion",
+        "ontology_alignment",
+        "handoff",
+        "not_assessed"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "downstreamImpact": {
+      "enum": [
+        "none",
+        "cap_confidence",
+        "review_required",
+        "block_claim",
+        "not_assessed"
+      ]
+    }
+  }
+}

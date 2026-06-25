@@ -1,0 +1,246 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/TransportCapability.v1.schema.json",
+  "title": "TransportCapability.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "schemaId",
+    "transportCapabilityId",
+    "mcpId",
+    "transport",
+    "supportStatus",
+    "deploymentScope",
+    "endpoint",
+    "sessionMode",
+    "auth",
+    "originProtection",
+    "rateLimitPolicy",
+    "structuredOutputSupport",
+    "toolAnnotationsSupport",
+    "resourceReadSupport",
+    "promptSupport",
+    "releaseQualified",
+    "limitations",
+    "notAReleaseReadinessClaim"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/TransportCapability.v1.schema.json"
+    },
+    "transportCapabilityId": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "mcpId": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "transport": {
+      "enum": [
+        "stdio",
+        "streamable_http",
+        "sse",
+        "custom"
+      ]
+    },
+    "supportStatus": {
+      "enum": [
+        "supported",
+        "planned",
+        "experimental",
+        "deprecated",
+        "not_supported",
+        "not_assessed"
+      ]
+    },
+    "deploymentScope": {
+      "enum": [
+        "local",
+        "internal",
+        "public",
+        "not_assessed"
+      ]
+    },
+    "endpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "description"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "stdio_command",
+            "http_url",
+            "not_applicable"
+          ]
+        },
+        "command": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "methods": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "GET",
+              "POST",
+              "DELETE",
+              "OPTIONS"
+            ]
+          }
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "sessionMode": {
+      "enum": [
+        "stdio_process",
+        "stateless",
+        "stateful",
+        "not_applicable",
+        "not_assessed"
+      ]
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scheme",
+        "status",
+        "tokenAudienceValidated",
+        "secretsInEnv"
+      ],
+      "properties": {
+        "scheme": {
+          "enum": [
+            "none",
+            "api_key",
+            "oauth2_1",
+            "mcp_client_assertion",
+            "custom",
+            "not_assessed"
+          ]
+        },
+        "status": {
+          "enum": [
+            "implemented",
+            "planned",
+            "not_required_for_local",
+            "missing",
+            "not_assessed"
+          ]
+        },
+        "tokenAudienceValidated": {
+          "type": "boolean"
+        },
+        "secretsInEnv": {
+          "type": "boolean"
+        }
+      }
+    },
+    "originProtection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "originValidation",
+        "dnsRebindingProtection"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "enabled",
+            "not_applicable",
+            "missing",
+            "not_assessed"
+          ]
+        },
+        "originValidation": {
+          "type": "boolean"
+        },
+        "dnsRebindingProtection": {
+          "type": "boolean"
+        }
+      }
+    },
+    "rateLimitPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "strategy"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "enforced",
+            "not_applicable",
+            "missing",
+            "not_assessed"
+          ]
+        },
+        "strategy": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "structuredOutputSupport": {
+      "enum": [
+        "supported",
+        "partial",
+        "not_supported",
+        "not_assessed"
+      ]
+    },
+    "toolAnnotationsSupport": {
+      "enum": [
+        "supported",
+        "partial",
+        "not_supported",
+        "not_assessed"
+      ]
+    },
+    "resourceReadSupport": {
+      "enum": [
+        "supported",
+        "partial",
+        "not_supported",
+        "not_assessed"
+      ]
+    },
+    "promptSupport": {
+      "enum": [
+        "supported",
+        "partial",
+        "not_supported",
+        "not_assessed"
+      ]
+    },
+    "releaseQualified": {
+      "type": "boolean"
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/nonEmptyString"
+      }
+    },
+    "notAReleaseReadinessClaim": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}

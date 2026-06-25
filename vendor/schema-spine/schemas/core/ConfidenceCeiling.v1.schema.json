@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/ConfidenceCeiling.v1.schema.json",
+  "title": "ConfidenceCeiling.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "confidenceCeilingId",
+    "ceilingType",
+    "maxSupportLevel",
+    "maxActionability",
+    "reason",
+    "triggerRefs"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/ConfidenceCeiling.v1.schema.json"
+    },
+    "confidenceCeilingId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ceilingType": {
+      "enum": [
+        "missingness",
+        "conflict",
+        "weak_domain",
+        "dependency",
+        "semantic_loss",
+        "model_applicability",
+        "review_required",
+        "not_assessed"
+      ]
+    },
+    "maxSupportLevel": {
+      "enum": [
+        "not_assessed",
+        "context_only",
+        "weak",
+        "moderate",
+        "strong"
+      ]
+    },
+    "maxActionability": {
+      "enum": [
+        "none",
+        "screening",
+        "prioritization",
+        "requires_review",
+        "decision_support"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "triggerRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

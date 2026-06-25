@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/ClaimTransitionPolicy.v1.schema.json",
+  "title": "ClaimTransitionPolicy.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "transitionPolicyId",
+    "sourceClaimClass",
+    "targetClaimClass",
+    "transitionStatus",
+    "requiredEvidenceRefs",
+    "requiredReviewState",
+    "reason"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/ClaimTransitionPolicy.v1.schema.json"
+    },
+    "transitionPolicyId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceClaimClass": {
+      "enum": [
+        "identity",
+        "context_only",
+        "association",
+        "bioactivity",
+        "mechanistic_support",
+        "causal_support",
+        "adversity",
+        "exposure",
+        "internal_dose",
+        "risk",
+        "regulatory_translation",
+        "not_assessed"
+      ]
+    },
+    "targetClaimClass": {
+      "enum": [
+        "identity",
+        "context_only",
+        "association",
+        "bioactivity",
+        "mechanistic_support",
+        "causal_support",
+        "adversity",
+        "exposure",
+        "internal_dose",
+        "risk",
+        "regulatory_translation",
+        "not_assessed"
+      ]
+    },
+    "transitionStatus": {
+      "enum": [
+        "allowed",
+        "allowed_with_review",
+        "blocked",
+        "not_assessed"
+      ]
+    },
+    "requiredEvidenceRefs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "requiredReviewState": {
+      "enum": [
+        "machine_checked",
+        "human_review_required",
+        "human_reviewed",
+        "adjudicated",
+        "blocked",
+        "not_assessed"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

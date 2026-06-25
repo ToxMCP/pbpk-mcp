@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/ReviewState.v1.schema.json",
+  "title": "ReviewState.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "reviewStateId",
+    "machineReview",
+    "humanReview",
+    "adjudication",
+    "publicationReadiness",
+    "blockers"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/ReviewState.v1.schema.json"
+    },
+    "reviewStateId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "machineReview": {
+      "enum": [
+        "not_run",
+        "passed",
+        "failed",
+        "not_applicable"
+      ]
+    },
+    "humanReview": {
+      "enum": [
+        "not_required",
+        "required",
+        "completed",
+        "failed",
+        "waived"
+      ]
+    },
+    "adjudication": {
+      "enum": [
+        "not_required",
+        "required",
+        "completed",
+        "blocked"
+      ]
+    },
+    "waiver": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["waiverId", "reason", "approvedBy", "approvedAt"],
+      "properties": {
+        "waiverId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "approvedBy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "approvedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "publicationReadiness": {
+      "enum": [
+        "not_ready",
+        "internal_only",
+        "review_required",
+        "ready",
+        "blocked"
+      ]
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

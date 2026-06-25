@@ -1,0 +1,392 @@
+{
+  "manifestType": "ToxMcpSchemaDigestManifest.v1",
+  "generatedAt": "2026-06-17T13:33:01.494Z",
+  "schemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "entries": [
+    {
+      "name": "AiModelUseRecord.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/AiModelUseRecord.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "19acfb3d111741d2f35d9c14fa2aa74b5fa118cc0984ab29f242ccba57b81c30"
+    },
+    {
+      "name": "ApplicabilityBoundary.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ApplicabilityBoundary.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "791edcd91632f99e269a8536b984d0b463bd4db97ecc2cb846173be347cd2603"
+    },
+    {
+      "name": "AssayStudyQuality.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/AssayStudyQuality.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "3e506c17590e85f3f2291b6d41fea50a7aa7b7de26b1c2408dbcf00d2ab03656"
+    },
+    {
+      "name": "AssessmentRun.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/AssessmentRun.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "6118bc94a30519f5e4e2f6a596cb2cae6531790cf067642d47b45c04108b25bc"
+    },
+    {
+      "name": "AuditEventChain.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/AuditEventChain.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "22fa2e34c03751d0e788af171751939d643f9646028f3b54543b783dcd00ddd6"
+    },
+    {
+      "name": "AuditTraceRef.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/AuditTraceRef.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "1e2deccaacd22369d8647f3bdb38cc8e6c2dae12dc77f91f3cf7c4d078edc6de"
+    },
+    {
+      "name": "BioactivityExposureRatioRecord.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/BioactivityExposureRatioRecord.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "fde4e0690af9cf3860b775e69b43e26fa7960ef145345af2aa80591b8a312a2c"
+    },
+    {
+      "name": "BioactivityObservation.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/BioactivityObservation.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "ad258fc2e80f6fd5c60174498bcc6a1d69df315fb03ec372f3eea3945ea1b168"
+    },
+    {
+      "name": "BioactivityPodReadiness.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/BioactivityPodReadiness.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "1bb757636f413324d99b83fc6a16bee799f05d8e6c42aad1bf27341c86770fc2"
+    },
+    {
+      "name": "ChemicalIdentity.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ChemicalIdentity.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "dcf6ab0ede5ca4c56ed5d2be64d2604595086903af4a954c30fd0cbdcb31f589"
+    },
+    {
+      "name": "ClaimRecord.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ClaimRecord.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "c95369d278fadf41f5f96ee2318b8f794bde85a662f81cdc51965a0651d276ca"
+    },
+    {
+      "name": "ClaimTransitionPolicy.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ClaimTransitionPolicy.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "692e825bef893bc8b66acb23e5c0c6ee0c6d0d25537eaaefd7dc37abe9ad2050"
+    },
+    {
+      "name": "ComparabilityQualification.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ComparabilityQualification.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "8b511826073702836b0ed63b877cc1e1ec5611e8d986499139ef884487bd2efb"
+    },
+    {
+      "name": "ConcentrationResponseDesign.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ConcentrationResponseDesign.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "80679791b2b7bbe69aaa5b9e665cc088caf3a1cbbcd31b20c177ac6452f5b665"
+    },
+    {
+      "name": "ConfidenceCeiling.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ConfidenceCeiling.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "a76885770246eaac53a1ba15e09bc30891bff10a3f4aa4185ab898258d5bb63d"
+    },
+    {
+      "name": "DataRightsPolicy.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/DataRightsPolicy.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "3aba0e18232e21f629040c614fcff31e879d67572454ed67830bdd013a58f7a6"
+    },
+    {
+      "name": "DecisionContext.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/DecisionContext.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "365dba6393ea2be832a1cface84dbe1e475d4e7ac77f44635edebcc2d98ffc1c"
+    },
+    {
+      "name": "EvidenceAdmissibility.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/EvidenceAdmissibility.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "f6e46c0d0e8f04974a3161a46e89abc33ce61f2cc6bad5fc648db30451c6c2a8"
+    },
+    {
+      "name": "EvidenceAnchor.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/EvidenceAnchor.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "acbece67ff61d3500883b341f71470c87c1a387ea2ada6d12c2710baca49c6cc"
+    },
+    {
+      "name": "ExposureScenarioContext.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ExposureScenarioContext.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "3526c203e1be9cde57635fa9b0194fe8ce79de867cba4aee37f93ec08fe2ff5e"
+    },
+    {
+      "name": "FreeConcentrationCorrection.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/FreeConcentrationCorrection.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "84e5ce121b68479b5185140f8a668a61eb96916b31ac3902f5316d50bb58b5b9"
+    },
+    {
+      "name": "HandoffEnvelope.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/HandoffEnvelope.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "8af743544137a75502434df45d9784da4f14dfb8881528d53602e3c1a110b899"
+    },
+    {
+      "name": "HumanReviewRecord.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/HumanReviewRecord.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "3a7e199c5421401247011d26d485bdb2cc1af20719b984579ed7627cc14125c5"
+    },
+    {
+      "name": "IataStrategyDecision.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/IataStrategyDecision.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "03ccbd20343c58b90d5f95c5c844be719c1242bbbc5db5cb234b610bed834ff1"
+    },
+    {
+      "name": "InternalExposureSummary.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/InternalExposureSummary.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "27d5d15820fb16be09a4f98a2700ee5dc1a2dcf5aa7852feb072d3fabb035b86"
+    },
+    {
+      "name": "MeasurementValue.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/MeasurementValue.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "dc2afe9b346e29f1083657b7938fe885e97b37b1daa0e9e5aab7a42c5d93602c"
+    },
+    {
+      "name": "ModifierEvidenceLane.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ModifierEvidenceLane.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "a16a83460044e370b5fae75280060892f71cab61e0954b9bcbb4062c64b42500"
+    },
+    {
+      "name": "NonClaimBoundary.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/NonClaimBoundary.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "f27221fd82245944204a0a2ed7f102874cb972878cfd5ff989651ee44033c0f7"
+    },
+    {
+      "name": "PointOfDepartureRecord.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/PointOfDepartureRecord.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "9e30cbf1447e489c72b5bfcdb312a258075eb0104fd8f7a121d583194da0c972"
+    },
+    {
+      "name": "PopulationProfile.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/PopulationProfile.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "fd2189635f7575910294342961824f61b08c03e0d44803e1c663478349e6383d"
+    },
+    {
+      "name": "ProvenanceBundle.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ProvenanceBundle.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "b4a48325eeec964d32e27c535056d82b345e8daa9a5584b72a30d060833a3ab6"
+    },
+    {
+      "name": "ReadAcrossJustification.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ReadAcrossJustification.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "890216d670c7ab48337fbc9a1f12f6ec25303df73310f82c732a724f1055e4b3"
+    },
+    {
+      "name": "ReleaseVisibilityPolicy.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ReleaseVisibilityPolicy.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "388889b12b4f76df9735272b2514723b73d0a4a0975ad1f555d79e4a57e057c4"
+    },
+    {
+      "name": "ReplicateDesign.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ReplicateDesign.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "f22613255858d97eb386514dc0bcdc8de8bcf67065370ba7e43554b518657656"
+    },
+    {
+      "name": "ReverseDosimetryRecord.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ReverseDosimetryRecord.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "2e633906670fe09e23e2ec4d5b78f3c22669219293349b754612baf88f357233"
+    },
+    {
+      "name": "ReviewerAttestation.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ReviewerAttestation.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "aaf0bd8a8dd5fd5b0dd369079b5d78d7bf44dc0e4ff867be259d9c0870f59b70"
+    },
+    {
+      "name": "ReviewState.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ReviewState.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "366525fbb10e7641af89eaeb2bca5efee1344eedf149feac0c212787020decce"
+    },
+    {
+      "name": "RouteDoseEstimate.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/RouteDoseEstimate.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "d3105b55695d38e4012f7ed44f6745b981b7854fb4e975d08389d77a7b6e8a64"
+    },
+    {
+      "name": "SchemaSignature.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/SchemaSignature.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "de6f80e6f6147389ee896fd94482001a3faa8b9f01fe60ca8b4e6f3cb4325a09"
+    },
+    {
+      "name": "SemanticLossEvent.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/SemanticLossEvent.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "db751e0659fca90ca6f30a446fff1d5ef355fd5bf32f076bbe05566b8f61f0d6"
+    },
+    {
+      "name": "SensitiveDescriptorPolicy.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/SensitiveDescriptorPolicy.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "9744e4ddb8328b48892e7ca7781186bdeffaa67f12eec446620d89aa4cee66b3"
+    },
+    {
+      "name": "SpineBenchmarkRunEvidenceOverlay.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/SpineBenchmarkRunEvidenceOverlay.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "afeaf743be45815f2199b3de683a30991d26e72ef068b6372abfbbedca578355"
+    },
+    {
+      "name": "SpineBenchmarkSuiteEvidenceOverlay.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/SpineBenchmarkSuiteEvidenceOverlay.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "77a4374c5e51921fa18e1eee07a319a49e876d2f58d257a79b2c9c2f96ed064a"
+    },
+    {
+      "name": "SpineReleaseReadinessEvidenceOverlay.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/SpineReleaseReadinessEvidenceOverlay.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "a0af822380fead4ccddbd8e13e49021fab6f1ad82a3d13274da752000195d1d2"
+    },
+    {
+      "name": "SubgroupComparison.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/SubgroupComparison.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "dfa0b0d65b9e08d73ecc989dfa985a172bf5cad2bc3f551fce0014607349ce74"
+    },
+    {
+      "name": "SubgroupDefinition.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/SubgroupDefinition.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "c3ec6f66244bfb18ff94ab5d33b49fb30e2b0686e2cce49e591715fcc310e05e"
+    },
+    {
+      "name": "SubgroupReviewPacket.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/SubgroupReviewPacket.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "e72eb956901c751ab1f8d209f124808a4296e2babfa95407c217970a826e4b49"
+    },
+    {
+      "name": "SusceptibilitySummary.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/SusceptibilitySummary.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "f558e1d5e8d84cdb6021afd1269e8ee77a3310ca0c2a401c2b105f0d7ed738b2"
+    },
+    {
+      "name": "TKParameterProvenance.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/TKParameterProvenance.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "f1ddcfa0941eef354ca38509e1763f52f4e328f6ec422d00d242416765039246"
+    },
+    {
+      "name": "ToxMcpObject.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ToxMcpObject.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "ce0622207fcd3aa87818efddecfdf1dfbee642e026fc43be0fc1b3d7a8290a83"
+    },
+    {
+      "name": "TransportCapability.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/TransportCapability.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "eec3d98e4d3f202f3e0509e6ebbb7d67997e41e16e3a34c4234f69f67f97ff1b"
+    },
+    {
+      "name": "UncertaintyRecord.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/UncertaintyRecord.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "269c44d765cb999cb6df6e498a82644cb47c709064e61da7ba9772b88ed5c921"
+    },
+    {
+      "name": "ValidationEvidenceBundle.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/ValidationEvidenceBundle.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "b2cbb339d97bdd4d5a653ff907777ad856a883d3b6fb3a19732b3a2972ac410e"
+    },
+    {
+      "name": "VariabilityDimension.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/VariabilityDimension.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "2308c3bb8748800c968be7bc741f671ce53b1e9225f67dd5d6be604a6ace443e"
+    },
+    {
+      "name": "WeightOfEvidenceEvaluation.v1",
+      "schemaId": "https://schemas.ngra.ai/toxmcp/WeightOfEvidenceEvaluation.v1.schema.json",
+      "schemaVersion": "1.0.0",
+      "digestAlgorithm": "sha256-json-stable-v1",
+      "digest": "a60507c0d0e9798f99dc216c29980aaf35fde6c38fb7828d0cb9bf59bc900cb6"
+    }
+  ]
+}

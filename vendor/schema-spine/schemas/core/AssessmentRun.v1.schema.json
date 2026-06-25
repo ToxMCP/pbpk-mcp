@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/AssessmentRun.v1.schema.json",
+  "title": "AssessmentRun.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "assessmentRunId",
+    "assessmentObjective",
+    "aiUse",
+    "modelUseRecords",
+    "humanReviewRecords",
+    "workflowVersion",
+    "mcpManifestDigests",
+    "sourceCorpusRefs",
+    "inputObjectRefs",
+    "outputObjectRefs",
+    "reproducibilityStatus",
+    "publicReleaseEligible"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/AssessmentRun.v1.schema.json"
+    },
+    "assessmentRunId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "assessmentObjective": {
+      "type": "string",
+      "minLength": 1
+    },
+    "aiUse": {
+      "enum": [
+        "none",
+        "assisted",
+        "generated",
+        "adjudication_support",
+        "unknown_with_blocker"
+      ]
+    },
+    "modelUseRecords": {
+      "type": "array",
+      "items": {
+        "$ref": "https://schemas.ngra.ai/toxmcp/AiModelUseRecord.v1.schema.json"
+      }
+    },
+    "humanReviewRecords": {
+      "type": "array",
+      "items": {
+        "$ref": "https://schemas.ngra.ai/toxmcp/HumanReviewRecord.v1.schema.json"
+      }
+    },
+    "workflowVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mcpManifestDigests": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    },
+    "sourceCorpusRefs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "inputObjectRefs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "outputObjectRefs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "reproducibilityStatus": {
+      "enum": [
+        "reproducible",
+        "partially_reproducible",
+        "not_reproducible",
+        "unknown_with_blocker"
+      ]
+    },
+    "publicReleaseEligible": {
+      "type": "boolean"
+    }
+  }
+}

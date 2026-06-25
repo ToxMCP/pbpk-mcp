@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/AiModelUseRecord.v1.schema.json",
+  "title": "AiModelUseRecord.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "modelUseId",
+    "provider",
+    "modelName",
+    "modelId",
+    "modelVersionOrSnapshot",
+    "endpointOrRuntime",
+    "assessmentRole",
+    "inputObjectRefs",
+    "outputObjectRefs",
+    "promptTemplateId",
+    "promptTemplateDigest",
+    "retrievalCorpusRefs",
+    "mcpServersUsed",
+    "mcpToolsUsed",
+    "toolAllowlistDigest",
+    "structuredOutputSchemaRefs",
+    "decodingParameters",
+    "safetySettings",
+    "knownNondeterminism",
+    "knownLimitations",
+    "dataRetentionPolicyRef",
+    "rawPromptRetentionPolicy",
+    "rawOutputRetentionPolicy",
+    "publicReleaseEligible"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/AiModelUseRecord.v1.schema.json"
+    },
+    "modelUseId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "provider": {
+      "enum": [
+        "OpenAI",
+        "Anthropic",
+        "Google",
+        "local",
+        "other",
+        "not_applicable",
+        "unknown_with_blocker"
+      ]
+    },
+    "modelName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "modelId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "modelVersionOrSnapshot": {
+      "type": "string",
+      "minLength": 1
+    },
+    "modelReleaseDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "endpointOrRuntime": {
+      "type": "string",
+      "minLength": 1
+    },
+    "deploymentRegion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "assessmentRole": {
+      "enum": [
+        "extraction",
+        "normalization",
+        "retrieval",
+        "synthesis",
+        "critique",
+        "adjudication_support",
+        "benchmark_grading",
+        "other"
+      ]
+    },
+    "inputObjectRefs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "outputObjectRefs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "promptTemplateId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "promptTemplateDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "systemPromptDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "developerPromptDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "userPromptDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "retrievalCorpusRefs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "mcpServersUsed": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "mcpToolsUsed": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "toolAllowlistDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "structuredOutputSchemaRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
+    },
+    "decodingParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["temperature", "topP", "maxTokens"],
+      "properties": {
+        "temperature": {
+          "type": "number",
+          "minimum": 0
+        },
+        "topP": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "maxTokens": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "safetySettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "policyRef"],
+      "properties": {
+        "profile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "policyRef": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "knownNondeterminism": {
+      "type": "string"
+    },
+    "knownLimitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "dataRetentionPolicyRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rawPromptRetentionPolicy": {
+      "enum": [
+        "retained",
+        "redacted_with_digest",
+        "not_retained_with_reason"
+      ]
+    },
+    "rawOutputRetentionPolicy": {
+      "enum": [
+        "retained",
+        "redacted_with_digest",
+        "not_retained_with_reason"
+      ]
+    },
+    "publicReleaseEligible": {
+      "type": "boolean"
+    }
+  }
+}

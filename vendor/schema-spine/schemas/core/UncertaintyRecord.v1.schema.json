@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/UncertaintyRecord.v1.schema.json",
+  "title": "UncertaintyRecord.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "uncertaintyId",
+    "driver",
+    "uncertaintyClass",
+    "direction",
+    "magnitudeBand",
+    "reducibility",
+    "propagationRule",
+    "consequence"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/UncertaintyRecord.v1.schema.json"
+    },
+    "uncertaintyId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "driver": {
+      "type": "string",
+      "minLength": 1
+    },
+    "uncertaintyClass": {
+      "enum": [
+        "measurement",
+        "model",
+        "extrapolation",
+        "semantic_mapping",
+        "missing_data",
+        "conflict",
+        "population_variability",
+        "not_assessed"
+      ]
+    },
+    "direction": {
+      "enum": [
+        "overestimate",
+        "underestimate",
+        "ambiguous",
+        "not_assessed"
+      ]
+    },
+    "magnitudeBand": {
+      "enum": [
+        "low",
+        "moderate",
+        "high",
+        "unknown",
+        "not_assessed"
+      ]
+    },
+    "reducibility": {
+      "enum": [
+        "reducible",
+        "partially_reducible",
+        "irreducible",
+        "not_assessed"
+      ]
+    },
+    "propagationRule": {
+      "enum": [
+        "propagate",
+        "cap_confidence",
+        "block_claim",
+        "review_required",
+        "not_assessed"
+      ]
+    },
+    "consequence": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

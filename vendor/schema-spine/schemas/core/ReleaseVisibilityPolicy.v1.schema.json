@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/ReleaseVisibilityPolicy.v1.schema.json",
+  "title": "ReleaseVisibilityPolicy.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "releasePolicyId",
+    "repoVisibility",
+    "intendedReleaseChannel",
+    "licenseClearance",
+    "dataRightsClearance",
+    "secretsScan",
+    "promptRetentionPolicy",
+    "publicReleaseApproval",
+    "publicReleaseEligible"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/ReleaseVisibilityPolicy.v1.schema.json"
+    },
+    "releasePolicyId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repoVisibility": {
+      "enum": [
+        "private",
+        "internal",
+        "public"
+      ]
+    },
+    "intendedReleaseChannel": {
+      "enum": [
+        "local",
+        "internal",
+        "private_beta",
+        "public_preview",
+        "public_release"
+      ]
+    },
+    "licenseClearance": {
+      "enum": [
+        "cleared",
+        "restricted",
+        "not_assessed",
+        "unknown_with_blocker"
+      ]
+    },
+    "dataRightsClearance": {
+      "enum": [
+        "cleared",
+        "restricted",
+        "not_assessed",
+        "unknown_with_blocker"
+      ]
+    },
+    "secretsScan": {
+      "enum": [
+        "passed",
+        "failed",
+        "not_run"
+      ]
+    },
+    "promptRetentionPolicy": {
+      "enum": [
+        "retained",
+        "redacted_with_digest",
+        "not_retained_with_reason",
+        "not_assessed"
+      ]
+    },
+    "publicReleaseApproval": {
+      "enum": [
+        "approved",
+        "not_requested",
+        "denied",
+        "unknown_with_blocker"
+      ]
+    },
+    "publicReleaseEligible": {
+      "type": "boolean"
+    }
+  }
+}

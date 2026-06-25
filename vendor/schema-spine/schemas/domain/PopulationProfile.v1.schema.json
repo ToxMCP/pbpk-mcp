@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/PopulationProfile.v1.schema.json",
+  "title": "PopulationProfile.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "populationProfileId",
+    "label",
+    "scope",
+    "geography",
+    "lifestage",
+    "sexBasis",
+    "samplingOrModelBasis",
+    "representativeness",
+    "comparatorRole",
+    "sourceRefs",
+    "uncertaintyRefs",
+    "limitations",
+    "notIndividualRiskPrediction"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/PopulationProfile.v1.schema.json"
+    },
+    "populationProfileId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope": {
+      "enum": [
+        "general_population",
+        "study_population",
+        "subgroup",
+        "model_reference",
+        "not_assessed"
+      ]
+    },
+    "geography": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lifestage": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sexBasis": {
+      "enum": [
+        "all",
+        "female",
+        "male",
+        "pregnancy_lactation",
+        "not_assessed",
+        "unknown_with_blocker"
+      ]
+    },
+    "samplingOrModelBasis": {
+      "enum": [
+        "observed_population",
+        "survey_weighted",
+        "modelled_population",
+        "default_reference",
+        "not_assessed",
+        "unknown_with_blocker"
+      ]
+    },
+    "representativeness": {
+      "enum": [
+        "adequate",
+        "limited",
+        "not_representative",
+        "not_assessed",
+        "unknown_with_blocker"
+      ]
+    },
+    "comparatorRole": {
+      "enum": [
+        "reference_population",
+        "target_subgroup",
+        "external_comparator",
+        "not_assessed"
+      ]
+    },
+    "sourceRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "uncertaintyRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "notIndividualRiskPrediction": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}

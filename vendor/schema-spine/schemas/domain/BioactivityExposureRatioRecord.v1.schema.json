@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/BioactivityExposureRatioRecord.v1.schema.json",
+  "title": "BioactivityExposureRatioRecord.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "bioactivityExposureRatioRecordId",
+    "podRef",
+    "internalExposureRef",
+    "comparabilityQualificationRef",
+    "berValue",
+    "berBasis",
+    "calculationMethod",
+    "uncertaintyRefs",
+    "confidenceCeilingRefs",
+    "interpretationClass",
+    "actionability",
+    "allowedDownstreamUses",
+    "prohibitedDownstreamUses",
+    "requiredReviewState",
+    "limitations",
+    "notARiskConclusion",
+    "notARegulatoryConclusion"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/BioactivityExposureRatioRecord.v1.schema.json"
+    },
+    "bioactivityExposureRatioRecordId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "podRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "internalExposureRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "comparabilityQualificationRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "berValue": {
+      "$ref": "https://schemas.ngra.ai/toxmcp/MeasurementValue.v1.schema.json"
+    },
+    "berBasis": {
+      "enum": [
+        "pod_over_css",
+        "pod_over_cmax",
+        "pod_over_auc",
+        "screening_ratio",
+        "not_assessed"
+      ]
+    },
+    "calculationMethod": {
+      "enum": [
+        "deterministic",
+        "monte_carlo",
+        "interval",
+        "screening",
+        "not_assessed"
+      ]
+    },
+    "uncertaintyRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "confidenceCeilingRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "interpretationClass": {
+      "enum": [
+        "screening_context",
+        "prioritization_context",
+        "requires_review",
+        "not_interpretable",
+        "not_assessed"
+      ]
+    },
+    "actionability": {
+      "enum": [
+        "none",
+        "screening",
+        "prioritization",
+        "requires_review",
+        "not_assessed",
+        "unknown_with_blocker"
+      ]
+    },
+    "allowedDownstreamUses": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "prohibitedDownstreamUses": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "requiredReviewState": {
+      "enum": [
+        "machine_checked",
+        "human_review_required",
+        "human_reviewed",
+        "adjudicated",
+        "blocked",
+        "not_assessed"
+      ]
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "notARiskConclusion": {
+      "type": "boolean",
+      "const": true
+    },
+    "notARegulatoryConclusion": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}

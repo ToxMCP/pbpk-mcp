@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/SensitiveDescriptorPolicy.v1.schema.json",
+  "title": "SensitiveDescriptorPolicy.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "sensitiveDescriptorPolicyId",
+    "descriptorClasses",
+    "useStatus",
+    "allowedRole",
+    "biologicalProxyProhibited",
+    "requiresHumanReview",
+    "rationaleRefs",
+    "prohibitedClaims",
+    "limitations"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/SensitiveDescriptorPolicy.v1.schema.json"
+    },
+    "sensitiveDescriptorPolicyId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "descriptorClasses": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "enum": [
+          "race",
+          "ethnicity",
+          "ancestry",
+          "nationality",
+          "geography",
+          "sex_gender",
+          "pregnancy_lactation",
+          "age_lifestage",
+          "socioeconomic",
+          "clinical_status",
+          "genetic_marker",
+          "none"
+        ]
+      }
+    },
+    "useStatus": {
+      "enum": [
+        "not_used",
+        "used_as_context",
+        "used_with_biological_rationale",
+        "blocked_proxy_use",
+        "not_assessed",
+        "unknown_with_blocker"
+      ]
+    },
+    "allowedRole": {
+      "enum": [
+        "none",
+        "stratification_context",
+        "effect_modifier_with_review",
+        "eligibility_context",
+        "not_assessed"
+      ]
+    },
+    "biologicalProxyProhibited": {
+      "type": "boolean",
+      "const": true
+    },
+    "requiresHumanReview": {
+      "type": "boolean"
+    },
+    "rationaleRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "prohibitedClaims": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

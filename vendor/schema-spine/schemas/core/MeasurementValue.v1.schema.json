@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/MeasurementValue.v1.schema.json",
+  "title": "MeasurementValue.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "measurementId",
+    "valueType",
+    "originalValue",
+    "originalUnit",
+    "normalizedValue",
+    "normalizedUnit",
+    "qualifier",
+    "censoring",
+    "uncertainty"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/MeasurementValue.v1.schema.json"
+    },
+    "measurementId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "valueType": {
+      "enum": [
+        "numeric",
+        "categorical",
+        "binary",
+        "text",
+        "interval",
+        "not_reported"
+      ]
+    },
+    "originalValue": {
+      "oneOf": [
+        { "type": "number" },
+        { "type": "string" },
+        {
+          "type": "object",
+          "additionalProperties": true
+        }
+      ]
+    },
+    "originalUnit": {
+      "type": "string"
+    },
+    "normalizedValue": {
+      "oneOf": [
+        { "type": "number" },
+        { "type": "string" },
+        {
+          "type": "object",
+          "additionalProperties": true
+        }
+      ]
+    },
+    "normalizedUnit": {
+      "type": "string"
+    },
+    "qualifier": {
+      "enum": [
+        "equal",
+        "less_than",
+        "greater_than",
+        "approximately",
+        "range",
+        "not_reported"
+      ]
+    },
+    "censoring": {
+      "enum": [
+        "none",
+        "left_censored",
+        "right_censored",
+        "interval_censored",
+        "not_assessed"
+      ]
+    },
+    "uncertainty": {
+      "type": "array",
+      "items": {
+        "$ref": "https://schemas.ngra.ai/toxmcp/UncertaintyRecord.v1.schema.json"
+      }
+    }
+  }
+}

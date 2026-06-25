@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/ConcentrationResponseDesign.v1.schema.json",
+  "title": "ConcentrationResponseDesign.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "concentrationResponseDesignId",
+    "bioactivityObservationRef",
+    "concentrationBasis",
+    "concentrationUnit",
+    "concentrationLevels",
+    "spacing",
+    "route",
+    "timeBasis",
+    "controlStatus",
+    "cytotoxicityConfounding",
+    "podEligibility",
+    "limitations"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/ConcentrationResponseDesign.v1.schema.json"
+    },
+    "concentrationResponseDesignId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "bioactivityObservationRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "concentrationBasis": {
+      "enum": [
+        "nominal",
+        "free_concentration",
+        "measured_media",
+        "estimated_internal",
+        "unknown_with_blocker",
+        "not_assessed"
+      ]
+    },
+    "concentrationUnit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "concentrationLevels": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "spacing": {
+      "enum": [
+        "log",
+        "linear",
+        "irregular",
+        "single_concentration",
+        "not_assessed"
+      ]
+    },
+    "route": {
+      "enum": [
+        "oral",
+        "inhalation",
+        "dermal",
+        "ocular",
+        "in_vitro",
+        "aggregate",
+        "not_applicable",
+        "not_assessed"
+      ]
+    },
+    "timeBasis": {
+      "type": "string",
+      "minLength": 1
+    },
+    "controlStatus": {
+      "enum": [
+        "passed",
+        "passed_with_limitations",
+        "failed",
+        "missing",
+        "not_assessed"
+      ]
+    },
+    "cytotoxicityConfounding": {
+      "enum": [
+        "ruled_out",
+        "possible",
+        "likely",
+        "not_assessed"
+      ]
+    },
+    "podEligibility": {
+      "enum": [
+        "pod_ready",
+        "screening_only",
+        "context_only",
+        "blocked",
+        "not_assessed"
+      ]
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

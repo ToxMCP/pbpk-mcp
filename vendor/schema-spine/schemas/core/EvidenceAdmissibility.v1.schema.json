@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ngra.ai/toxmcp/EvidenceAdmissibility.v1.schema.json",
+  "title": "EvidenceAdmissibility.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaId",
+    "admissibilityId",
+    "status",
+    "reason",
+    "claimImpact"
+  ],
+  "properties": {
+    "schemaId": {
+      "const": "https://schemas.ngra.ai/toxmcp/EvidenceAdmissibility.v1.schema.json"
+    },
+    "admissibilityId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidenceRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "admitted",
+        "excluded",
+        "deferred",
+        "advisory",
+        "not_assessed",
+        "unknown_with_blocker"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "claimImpact": {
+      "enum": [
+        "raises_support",
+        "lowers_support",
+        "sets_confidence_ceiling",
+        "blocks_claim",
+        "context_only",
+        "not_assessed"
+      ]
+    }
+  }
+}
