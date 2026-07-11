@@ -377,7 +377,12 @@ class ReviewSignoffTests(unittest.TestCase):
         auth_secret = "test-dev-secret-must-be-32-bytes"
         simulation_id = "sim-backend-signoff"
         model_root = (WORKSPACE_ROOT / "var" / "models").resolve()
-        model_path = model_root / "esqlabs" / "esqlabsR" / "simple.pkml"
+        model_path = (
+            model_root
+            / "rxode2"
+            / "reference_compound"
+            / "reference_compound_population_rxode2_model.R"
+        )
 
         def build_config(**overrides: object) -> AppConfig:
             return AppConfig.model_validate(

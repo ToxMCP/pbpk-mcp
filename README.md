@@ -534,6 +534,10 @@ Python import note: new internal code must import PBPK tools from `mcp_bridge.pb
 
 ## Output artifacts
 
+### Third-party model release boundary
+
+The public repository does **not** bundle the reviewed third-party esqLABS PKML models, their model-specific sidecars, or their smoke outputs. `var/models/esqlabs/index.json` retains a machine-neutral inventory with pinned source commits and content hashes, while `sources.json` records the current license evidence and review status. `python3 scripts/esqlabs_models.py check-public-tree` verifies that those assets remain absent. The separate `write-index --public-release` redistribution gate still fails until every source is explicitly approved and its required notices are packaged. Authorized private operators can supply a separate model root with `PBPK_ESQLABS_MODELS_ROOT`; this is a release-control boundary, not a legal conclusion.
+
 The server currently produces and exposes:
 
 - discovered model inventories with loaded/unloaded state

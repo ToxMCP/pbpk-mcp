@@ -1,8 +1,29 @@
-# esqLABS Open-Source PKML Catalog
+# esqLABS Third-Party Model Inventory
 
-This directory contains the public `esqLABS` PKML files that loaded as runnable simulation transfers with the current `ospsuite` runtime.
+This public directory contains provenance metadata only. The PKML files, model-specific sidecars, and smoke outputs were removed from the public repository tree because public availability of an upstream repository does not by itself grant redistribution permission.
 
-## Runnable simulation PKMLs
+**Release status: not approved for public redistribution.** `sources.json` records the reviewed source and license evidence. `index.json` preserves immutable source commits and content hashes for the privately retained files. These records support review; they are not legal advice.
+
+The public-tree check must pass:
+
+```bash
+python3 scripts/esqlabs_models.py check-public-tree
+```
+
+The redistribution gate remains intentionally closed:
+
+```bash
+python3 scripts/esqlabs_models.py write-index --public-release
+```
+
+For an authorized private runtime, supply a separate local model root explicitly:
+
+```bash
+export PBPK_ESQLABS_MODELS_ROOT=/private/path/to/esqlabs-models
+python3 scripts/esqlabs_models.py prepare-live-server
+```
+
+## Privately preserved inventory
 
 - `ESQapp/Aciclovir.pkml`
 - `PBPK-for-cross-species-extrapolation/Sim_Compound_PCBerezhkovskiy_CPPKSimStandard_Mouse.pkml`
@@ -37,9 +58,9 @@ This directory contains the public `esqLABS` PKML files that loaded as runnable 
 - `pregnancy-neonates-batch-run/Pregnant_simulation_R&R.pkml`
 - `pregnancy-neonates-batch-run/Pregnant_simulation_Schmitt.pkml`
 
-## Public PKMLs excluded from the runnable set
+## Other upstream PKMLs not included in the inventory
 
-These are public PKML files in `esqLABS` repos, but they do not load via `loadSimulation()` with the current runtime:
+These PKML files were visible in `esqLABS` repositories, but they do not load via `loadSimulation()` with the current runtime:
 
 - `Female-Reproductive-Tract-module-training/Extension modules/Cervicovaginal administration.pkml`
 - `Female-Reproductive-Tract-module-training/Extension modules/Female reproductive tract.pkml`

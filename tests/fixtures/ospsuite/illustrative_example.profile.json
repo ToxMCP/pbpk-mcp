@@ -1,0 +1,13 @@
+{
+  "contextOfUse": {
+    "status": "synthetic-test-fixture",
+    "scientificPurpose": "Verify sidecar discovery without bundling a third-party model.",
+    "decisionContext": "Software integration testing only.",
+    "regulatoryUse": "not-for-decision-support"
+  },
+  "applicabilityDomain": {
+    "type": "synthetic-test-fixture",
+    "qualificationLevel": "integration-example",
+    "summary": "Minimal repository-authored fixture with no predictive scientific content."
+  }
+}

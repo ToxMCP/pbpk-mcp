@@ -28,7 +28,9 @@ DEFAULT_S3_ENDPOINT_URL = "http://127.0.0.1:9000"
 DEFAULT_BUCKET = "pbpk-mcp-audit-smoke"
 DEFAULT_PREFIX = "bridge/audit"
 DEFAULT_REGION = "us-east-1"
-DEFAULT_MODEL_PATH = "/app/var/models/esqlabs/esqlabsR/simple.pkml"
+DEFAULT_MODEL_PATH = (
+    "/app/var/models/rxode2/reference_compound/reference_compound_population_rxode2_model.R"
+)
 
 
 def build_auth_headers(
@@ -225,7 +227,9 @@ def main() -> int:
                 "auditObjectCount": len(object_keys),
                 "firstAuditObjectKey": object_keys[0],
                 "signoffStatus": validation_payload["operatorReviewSignoff"]["status"],
-                "historyEntries": history_payload["operatorReviewSignoffHistory"]["returnedEntryCount"],
+                "historyEntries": history_payload["operatorReviewSignoffHistory"][
+                    "returnedEntryCount"
+                ],
                 "verifiedEvents": verification.checked_events,
             }
         )

@@ -183,7 +183,7 @@
       "classification": "supporting",
       "relativePath": "docs/architecture/release_bundle_manifest.json",
       "role": "whole release bundle hash inventory",
-      "sha256": "affc35b1d6e9cf3c19a49b2ff6d1d86cba04efb21b7b640abc831a3d8e422b3b"
+      "sha256": "0536036bc23a2951d8fe96854aade1cf62063b6a49a16b2da2a1acfbe1803aae"
     },
     {
       "classification": "supporting",
@@ -201,7 +201,7 @@
       "classification": "supporting",
       "relativePath": "docs/github_publication_checklist.md",
       "role": "publication checklist",
-      "sha256": "9bb983f5964d1bd08fae7f04cc56fe64a7e3e7fadcf438de114fed6d01ce306c"
+      "sha256": "4373065f37f06aa8833032a2440c85fe09991e27e64bf0df9813a66cc4d242c6"
     },
     {
       "classification": "supporting",
@@ -249,7 +249,7 @@
       "classification": "supporting",
       "relativePath": "scripts/release_readiness_check.py",
       "role": "live release readiness gate",
-      "sha256": "89987d8d1e102affb6c5aafe43dca6974bf7117fefdf2b04c5dc6e035e8274b3"
+      "sha256": "f35f5b7fcb4425063b44d4070cb58d4a225b4f0538b5df2546e65690afdbe4ea"
     },
     {
       "classification": "supporting",
@@ -291,7 +291,7 @@
       "classification": "supporting",
       "relativePath": "tests/test_release_readiness_script.py",
       "role": "release readiness regression test",
-      "sha256": "b0e849e70a20fd0168d5bc5c8c4410ea4802c403197d0cf3e7c0b82ee3bbe0c8"
+      "sha256": "09c9cfd55b9f7a24d2aa4c9d22d77b8a85c87fa413e2144a5ad3008b73ac2a2d"
     },
     {
       "classification": "supporting",
@@ -321,7 +321,7 @@
       "classification": "supporting",
       "relativePath": "tests/test_oecd_live_stack.py",
       "role": "live OECD workflow regression test",
-      "sha256": "ab0ee86f40e79fea459ea44a78fbf5579195870e7e31ec92a82f522501a14853"
+      "sha256": "d846d1a7f949b7621a088bff0fe363226aebd451ec26e363b8d0ed499a9370bd"
     }
   ]
 }

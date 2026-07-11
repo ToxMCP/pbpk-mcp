@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "pbpk-third-party-source-policy.v1",
+  "reviewedAt": "2026-07-10",
+  "scope": "Provenance and redistribution review for the preserved local esqLABS PKML catalog. This is a release-control record, not legal advice.",
+  "sources": {
+    "ESQapp": {
+      "repositoryUrl": "https://github.com/esqLABS/ESQapp",
+      "defaultBranch": "main",
+      "sourceCommit": "1571b57371c7942bd624249af74e6432d18a3e03",
+      "sourceMatchVerifiedAt": "2026-07-10",
+      "declaredLicense": "file LICENSE; no permission grant identified",
+      "licenseEvidenceUrl": "https://github.com/esqLABS/ESQapp/blob/1571b57371c7942bd624249af74e6432d18a3e03/LICENSE",
+      "licenseReviewStatus": "unresolved",
+      "redistributionStatus": "exclude_from_public_release",
+      "decisionBasis": "The repository points to a LICENSE file, but the reviewed file contains copyright metadata and no clear permission grant."
+    },
+    "PBPK-for-cross-species-extrapolation": {
+      "repositoryUrl": "https://github.com/esqLABS/PBPK-for-cross-species-extrapolation",
+      "defaultBranch": "main",
+      "sourceCommit": "9416691482edf61019ae97dc1c584c8f8c1ae7a8",
+      "sourceMatchVerifiedAt": "2026-07-10",
+      "declaredLicense": "not identified",
+      "licenseEvidenceUrl": null,
+      "licenseReviewStatus": "unresolved",
+      "redistributionStatus": "exclude_from_public_release",
+      "decisionBasis": "No license file or repository license metadata was identified in the reviewed commit."
+    },
+    "TissueTMDD": {
+      "repositoryUrl": "https://github.com/esqLABS/TissueTMDD",
+      "defaultBranch": "main",
+      "sourceCommit": "4b7c49cea9d11311b0a7784e73cf803f504262e3",
+      "sourceMatchVerifiedAt": "2026-07-10",
+      "declaredLicense": "MIT + file LICENSE",
+      "licenseEvidenceUrl": "https://github.com/esqLABS/TissueTMDD/blob/4b7c49cea9d11311b0a7784e73cf803f504262e3/DESCRIPTION",
+      "licenseReviewStatus": "license_identified_review_required",
+      "redistributionStatus": "review_required",
+      "decisionBasis": "An MIT declaration was identified, but attribution and release packaging still require an explicit review decision."
+    },
+    "esqlabsR": {
+      "repositoryUrl": "https://github.com/esqLABS/esqlabsR",
+      "defaultBranch": "main",
+      "sourceCommit": "91f4f9ec7e88d24cc07aee29f3c778873fcfb2cb",
+      "sourceMatchVerifiedAt": "2026-07-10",
+      "declaredLicense": "GPL-2",
+      "licenseEvidenceUrl": "https://github.com/esqLABS/esqlabsR/blob/91f4f9ec7e88d24cc07aee29f3c778873fcfb2cb/DESCRIPTION",
+      "licenseReviewStatus": "license_identified_review_required",
+      "redistributionStatus": "review_required",
+      "decisionBasis": "GPL-2 is declared; compatibility and distribution obligations require review before bundling in this Apache-2.0 project.",
+      "fileCommitOverrides": {
+        "inst/extdata/examples/TestProject/Models/Simulations/Aciclovir.pkml": "5020742007f556a25e3510d263fbabb3e29f0184"
+      }
+    },
+    "pregnancy-neonates-batch-run": {
+      "repositoryUrl": "https://github.com/esqLABS/pregnancy-neonates-batch-run",
+      "defaultBranch": "master",
+      "sourceCommit": "ec98bd704ef60cbd515f63471b6993123e45c03d",
+      "sourceMatchVerifiedAt": "2026-07-10",
+      "declaredLicense": "not identified",
+      "licenseEvidenceUrl": null,
+      "licenseReviewStatus": "unresolved",
+      "redistributionStatus": "exclude_from_public_release",
+      "decisionBasis": "No license file or repository license metadata was identified in the reviewed commit."
+    }
+  }
+}

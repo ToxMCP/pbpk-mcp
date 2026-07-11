@@ -226,68 +226,6 @@ class OecdLiveStackTests(unittest.TestCase):
         self.assertEqual(validation["assessment"]["decision"], "within-declared-guardrails")
         self.assertEqual(validation["assessment"]["oecdReadiness"], "research-use")
 
-    def test_pregnancy_sidecar_rejects_regulatory_use(self) -> None:
-        simulation_id = f"oecd-live-preg-{uuid4().hex[:8]}"
-        load_response = call_tool(
-            {
-                "tool": "load_simulation",
-                "critical": True,
-                "arguments": {
-                    "filePath": "/app/var/models/esqlabs/pregnancy-neonates-batch-run/Pregnant_simulation_PKSim.pkml",
-                    "simulationId": simulation_id,
-                },
-            }
-        )
-        self.assertEqual(load_response["status"], 200)
-        load_payload = load_response["body"]["structuredContent"]
-        self.assertEqual(load_payload["tool"], "load_simulation")
-        self.assertEqual(load_payload["contractVersion"], CONTRACT_VERSION)
-        self.assertEqual(load_payload["backend"], "ospsuite")
-        self.assertEqual(
-            load_payload["profile"]["workflowRole"]["workflow"],
-            "method-development-and-onboarding",
-        )
-        self.assertEqual(
-            load_payload["profile"]["modelPerformance"]["status"],
-            "not-bundled",
-        )
-        self.assertEqual(
-            load_payload["profile"]["parameterProvenance"]["status"],
-            "transfer-file-context-only",
-        )
-        self.assertEqual(
-            load_payload["profile"]["evidenceBasis"]["inVivoSupportStatus"],
-            "no-direct-in-vivo-support",
-        )
-        self.assertEqual(
-            load_payload["profile"]["platformQualification"]["status"],
-            "runtime-platform-documented",
-        )
-        self.assertEqual(
-            load_payload["profile"]["workflowClaimBoundaries"]["directRegulatoryDoseDerivation"],
-            "not-supported",
-        )
-
-        validation_response = call_tool(
-            {
-                "tool": "validate_simulation_request",
-                "arguments": {
-                    "simulationId": simulation_id,
-                    "request": {"contextOfUse": "regulatory-use"},
-                },
-            }
-        )
-        self.assertEqual(validation_response["status"], 200)
-        validation_payload = validation_response["body"]["structuredContent"]
-        self.assertEqual(validation_payload["tool"], "validate_simulation_request")
-        self.assertEqual(validation_payload["contractVersion"], CONTRACT_VERSION)
-        self.assertEqual(validation_payload["backend"], "ospsuite")
-        validation = validation_payload["validation"]
-        self.assertFalse(validation["ok"])
-        self.assertEqual(validation["assessment"]["decision"], "outside-declared-profile")
-        error_codes = {entry["code"] for entry in validation["errors"]}
-        self.assertIn("context_of_use_mismatch", error_codes)
-
     def test_export_oecd_report_returns_profile_and_parameter_table(self) -> None:
         simulation_id = f"oecd-live-report-{uuid4().hex[:8]}"
         load_response = call_tool(

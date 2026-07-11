@@ -808,11 +808,10 @@ class OecdBridgeTests(unittest.TestCase):
     def test_ospsuite_profile_marks_sidecar_source(self) -> None:
         example_model = (
             WORKSPACE_ROOT
-            / "var"
-            / "models"
-            / "esqlabs"
-            / "pregnancy-neonates-batch-run"
-            / "Pregnant_simulation_PKSim.pkml"
+            / "tests"
+            / "fixtures"
+            / "ospsuite"
+            / "illustrative_example.pkml"
         )
         payload = run_r_json(
             f"""

@@ -137,8 +137,8 @@ class ValidateModelManifestsScriptTests(unittest.TestCase):
             msg=f"stdout:\n{completed.stdout}\n\nstderr:\n{completed.stderr}",
         )
         payload = json.loads(completed.stdout)
-        self.assertEqual(payload["summary"]["valid"], 2)
-        self.assertEqual(payload["summary"]["explicitNgraDeclarations"], 2)
+        self.assertEqual(payload["summary"]["valid"], 1)
+        self.assertEqual(payload["summary"]["explicitNgraDeclarations"], 1)
         self.assertFalse(payload["gating"]["failed"])
 
     def test_strict_and_explicit_ngra_report_multiple_failure_codes(self) -> None:

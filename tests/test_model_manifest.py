@@ -15,28 +15,6 @@ MODEL_MANIFEST_PATH = SRC_ROOT / "mcp_bridge" / "model_manifest.py"
 REFERENCE_WORKSPACE_MODEL = (
     WORKSPACE_ROOT / "var" / "models" / "rxode2" / "reference_compound" / "reference_compound_population_rxode2_model.R"
 )
-PREGNANCY_WORKSPACE_MODEL = (
-    WORKSPACE_ROOT
-    / "var"
-    / "models"
-    / "esqlabs"
-    / "pregnancy-neonates-batch-run"
-    / "Pregnant_simulation_PKSim.pkml"
-)
-TMDD_WORKSPACE_MODEL = (
-    WORKSPACE_ROOT / "var" / "models" / "esqlabs" / "TissueTMDD" / "repeated dose model.pkml"
-)
-RAT_CROSS_SPECIES_WORKSPACE_MODEL = (
-    WORKSPACE_ROOT
-    / "var"
-    / "models"
-    / "esqlabs"
-    / "PBPK-for-cross-species-extrapolation"
-    / "Sim_Compound_PCPKSimStandard_CPPKSimStandard_Rat.pkml"
-)
-SIMPLE_MOBI_WORKSPACE_MODEL = (
-    WORKSPACE_ROOT / "var" / "models" / "esqlabs" / "esqlabsR" / "simple.pkml"
-)
 spec = importlib.util.spec_from_file_location("pbpk_packaged_model_manifest", MODEL_MANIFEST_PATH)
 if spec is None or spec.loader is None:  # pragma: no cover - import guard
     raise RuntimeError(f"Unable to load packaged module from {MODEL_MANIFEST_PATH}")
@@ -131,83 +109,6 @@ class ModelManifestTests(unittest.TestCase):
         self.assertNotIn("ngra_population_support_missing", codes)
         self.assertNotIn("ngra_evidence_basis_missing", codes)
         self.assertNotIn("ngra_workflow_claim_boundaries_missing", codes)
-
-    def test_workspace_pregnancy_sidecar_declares_ngra_fields(self) -> None:
-        payload = validate_model_manifest(PREGNANCY_WORKSPACE_MODEL)
-
-        manifest = payload["manifest"]
-        self.assertEqual(manifest["manifestStatus"], "valid")
-        self.assertEqual(payload["curationSummary"]["qualificationState"], "illustrative-example")
-        self.assertTrue(payload["curationSummary"]["ngraDeclarationsExplicit"])
-        self.assertIn("not regulatory-ready", payload["curationSummary"]["reviewLabel"].lower())
-        self.assertIn(
-            "non-regulatory-ready",
-            payload["curationSummary"]["misreadRiskSummary"]["requiredReviewerChecks"][-1].lower(),
-        )
-        self.assertEqual(
-            payload["curationSummary"]["renderingGuardrails"]["severity"],
-            "warning",
-        )
-        self.assertEqual(
-            payload["curationSummary"]["renderingGuardrails"]["actionIfRequiredFieldsMissing"],
-            "refuse-rendering",
-        )
-        self.assertEqual(
-            payload["curationSummary"]["summaryTransportRisk"]["riskLevel"],
-            "high",
-        )
-        self.assertEqual(
-            payload["curationSummary"]["cautionSummary"]["highestSeverity"],
-            "high",
-        )
-        self.assertIn(
-            "decision-readiness-overclaim",
-            {entry["code"] for entry in payload["curationSummary"]["cautionSummary"]["cautions"]},
-        )
-        self.assertIn("regulatoryBenchmarkReadiness", payload["curationSummary"])
-        self.assertTrue(payload["curationSummary"]["regulatoryBenchmarkReadiness"]["advisoryOnly"])
-        self.assertEqual(
-            payload["curationSummary"]["regulatoryBenchmarkReadiness"]["modelResemblance"],
-            "research-example",
-        )
-        self.assertTrue(payload["curationSummary"]["regulatoryBenchmarkReadiness"]["recommendedNextArtifacts"])
-        self.assertIn(
-            "decision-readiness-overclaim-blocked",
-            {entry["code"] for entry in payload["curationSummary"]["exportBlockPolicy"]["blockReasons"]},
-        )
-        self.assertTrue(manifest["ngraCoverage"]["allExplicitlyDeclared"])
-        self.assertEqual(manifest["ngraCoverage"]["declaredCount"], 4)
-        self.assertEqual(manifest["ngraCoverage"]["missingDeclarations"], [])
-        self.assertEqual(
-            manifest["ngraCoverage"]["populationSupport"]["declaredField"],
-            "profile.populationSupport",
-        )
-        codes = {issue["code"] for issue in manifest["issues"]}
-        self.assertNotIn("ngra_workflow_role_missing", codes)
-        self.assertNotIn("ngra_population_support_missing", codes)
-        self.assertNotIn("ngra_evidence_basis_missing", codes)
-        self.assertNotIn("ngra_workflow_claim_boundaries_missing", codes)
-
-    def test_workspace_curated_ospsuite_sidecars_are_valid_and_explicit(self) -> None:
-        for model_path in (
-            TMDD_WORKSPACE_MODEL,
-            RAT_CROSS_SPECIES_WORKSPACE_MODEL,
-            SIMPLE_MOBI_WORKSPACE_MODEL,
-        ):
-            with self.subTest(model=str(model_path.relative_to(WORKSPACE_ROOT))):
-                payload = validate_model_manifest(model_path)
-                manifest = payload["manifest"]
-                self.assertEqual(manifest["manifestStatus"], "valid")
-                self.assertEqual(manifest["qualificationState"]["state"], "illustrative-example")
-                self.assertTrue(manifest["ngraCoverage"]["allExplicitlyDeclared"])
-                self.assertEqual(manifest["ngraCoverage"]["declaredCount"], 4)
-                self.assertEqual(manifest["ngraCoverage"]["missingDeclarations"], [])
-                codes = {issue["code"] for issue in manifest["issues"]}
-                self.assertNotIn("section_missing", codes)
-                self.assertNotIn("ngra_workflow_role_missing", codes)
-                self.assertNotIn("ngra_population_support_missing", codes)
-                self.assertNotIn("ngra_evidence_basis_missing", codes)
-                self.assertNotIn("ngra_workflow_claim_boundaries_missing", codes)
 
     def test_pkml_sidecar_manifest_can_reach_qualified_within_context(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -134,28 +134,25 @@ When no sidecar is found:
 
 ## Example
 
-This workspace includes an example sidecar for:
+For a privately supplied model:
 
 ```text
-var/models/esqlabs/pregnancy-neonates-batch-run/Pregnant_simulation_PKSim.pkml
+/private/models/example.pkml
 ```
 
-at:
+place its sidecar at:
 
 ```text
-var/models/esqlabs/pregnancy-neonates-batch-run/Pregnant_simulation_PKSim.profile.json
+/private/models/example.profile.json
 ```
 
-That example is intentionally conservative and now carries model-specific scope statements, such as route, species, or example-model status where those can be inferred safely from the transfer file and filename. It still does not imply a formal qualification package.
+The sidecar should carry conservative, model-specific scope statements only where they can be supported from reviewed evidence. It does not imply a formal qualification package.
 
-## Curated Workspace Set
+## Public repository boundary
 
-The current workspace now ships sidecars for the curated profile/example models:
+The public repository does not ship the previously reviewed esqLABS PKML examples or their model-specific sidecars. Their source and hash inventory remains under:
 
-- `var/models/esqlabs/pregnancy-neonates-batch-run/Pregnant_simulation_PKSim.pkml`
-- `var/models/esqlabs/PBPK-for-cross-species-extrapolation/Sim_Compound_PCPKSimStandard_CPPKSimStandard_Rat.pkml`
-- `var/models/esqlabs/TissueTMDD/repeated dose model.pkml`
-- `var/models/esqlabs/esqlabsR/simple.pkml`
+- `var/models/esqlabs/index.json`
+- `var/models/esqlabs/sources.json`
 
-These sidecars are intentionally conservative, but they are no longer generic `demo-only` placeholders. They now distinguish illustrative scientific examples from pure integration fixtures and encode the strongest scope statement that can be supported from the workspace artifacts alone. They still do not claim formal scientific qualification.
-The curated sidecars now also carry explicit NGRA boundary fields plus conservative `modelPerformance`, `parameterProvenance`, and `platformQualification` sections so static manifest validation can return a complete curation record without implying regulatory readiness.
+Use `PBPK_ESQLABS_MODELS_ROOT` only with a separately reviewed private model directory. Do not copy that directory into a public release candidate.

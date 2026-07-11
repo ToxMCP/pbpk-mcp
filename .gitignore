@@ -44,6 +44,11 @@ var/snapshots/
 var/workspace_model_smoke*.json
 var/workspace_model_smoke*.txt
 var/models/discovery-tests/
+var/models/Pregnant_simulation_PKSim.pkml
+var/models/esqlabs/**/*.pkml
+var/models/esqlabs/**/*.profile.json
+var/models/esqlabs/smoke_run_report.json
+var/esqlabs_external_smoke_run_report.json
 output/
 
 # Local logs
