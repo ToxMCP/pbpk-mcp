@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
 import subprocess
 import sys
 import time
@@ -14,7 +16,10 @@ from typing import Any
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
-MODELS_ROOT = WORKSPACE_ROOT / "var" / "models" / "esqlabs"
+PUBLIC_METADATA_ROOT = WORKSPACE_ROOT / "var" / "models" / "esqlabs"
+SOURCE_POLICY_PATH = PUBLIC_METADATA_ROOT / "sources.json"
+DEFAULT_INDEX_PATH = PUBLIC_METADATA_ROOT / "index.json"
+MODELS_ROOT_ENV = "PBPK_ESQLABS_MODELS_ROOT"
 BRIDGE_PATH = WORKSPACE_ROOT / "scripts" / "ospsuite_bridge.R"
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
 DEFAULT_CONTAINER = "pbpk_mcp-api-1"
@@ -222,17 +227,86 @@ CATALOG: list[dict[str, str]] = [
 ]
 
 
-def enrich(entry: dict[str, str]) -> dict[str, str]:
+def load_source_policies() -> dict[str, dict[str, Any]]:
+    payload = json.loads(SOURCE_POLICY_PATH.read_text())
+    policies = payload.get("sources")
+    if not isinstance(policies, dict):
+        raise ValueError(f"Missing sources object in {SOURCE_POLICY_PATH}")
+    missing = sorted({entry["repo"] for entry in CATALOG} - set(policies))
+    if missing:
+        raise ValueError(f"Missing source policies for: {', '.join(missing)}")
+    return policies
+
+
+def source_commit(entry: dict[str, str], policy: dict[str, Any]) -> str:
+    overrides = policy.get("fileCommitOverrides", {})
+    return str(overrides.get(entry["repoPath"], policy["sourceCommit"]))
+
+
+def resolve_models_root(value: str | None) -> Path:
+    raw = value or os.getenv(MODELS_ROOT_ENV)
+    if not raw:
+        raise RuntimeError(
+            f"Third-party models are not bundled. Set {MODELS_ROOT_ENV} or pass --models-root "
+            "with an explicitly authorized private local model directory."
+        )
+    root = Path(raw).expanduser().resolve()
+    if not root.is_dir():
+        raise RuntimeError(f"Third-party model root does not exist or is not a directory: {root}")
+    return root
+
+
+def model_path(entry: dict[str, str], models_root: Path) -> Path:
+    return models_root / entry["repo"] / entry["filename"]
+
+
+def git_blob_sha1(data: bytes) -> str:
+    header = f"blob {len(data)}\0".encode()
+    return hashlib.sha1(header + data).hexdigest()
+
+
+def public_entry(
+    entry: dict[str, str],
+    policies: dict[str, dict[str, Any]],
+    models_root: Path,
+) -> dict[str, Any]:
+    repo = entry["repo"]
+    repo_path = entry["repoPath"]
+    policy = policies[repo]
+    commit = source_commit(entry, policy)
+    path = model_path(entry, models_root)
+    data = path.read_bytes()
+    raw_path = urllib.parse.quote(repo_path, safe="/")
+    return {
+        "simulationId": entry["simulationId"],
+        "repository": repo,
+        "repositoryUrl": policy["repositoryUrl"],
+        "sourceCommit": commit,
+        "sourcePath": repo_path,
+        "sourceUrl": f"https://raw.githubusercontent.com/esqLABS/{repo}/{commit}/{raw_path}",
+        "originalRelativePath": f"var/models/esqlabs/{repo}/{entry['filename']}",
+        "bytes": len(data),
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "gitBlobSha1": git_blob_sha1(data),
+        "sourceMatchVerifiedAt": policy["sourceMatchVerifiedAt"],
+        "declaredLicense": policy["declaredLicense"],
+        "licenseEvidenceUrl": policy.get("licenseEvidenceUrl"),
+        "licenseReviewStatus": policy["licenseReviewStatus"],
+        "redistributionStatus": policy["redistributionStatus"],
+    }
+
+
+def runtime_entry(entry: dict[str, str], policies: dict[str, dict[str, Any]]) -> dict[str, str]:
     repo = entry["repo"]
     filename = entry["filename"]
     repo_path = entry["repoPath"]
+    commit = source_commit(entry, policies[repo])
     raw_path = urllib.parse.quote(repo_path, safe="/")
     return {
         **entry,
-        "localPath": str(MODELS_ROOT / repo / filename),
         "containerPath": f"/app/var/models/esqlabs/{repo}/{filename}",
-        "sourceUrl": f"https://raw.githubusercontent.com/esqLABS/{repo}/HEAD/{raw_path}",
-        "repoUrl": f"https://github.com/esqLABS/{repo}",
+        "sourceUrl": f"https://raw.githubusercontent.com/esqLABS/{repo}/{commit}/{raw_path}",
+        "repoUrl": policies[repo]["repositoryUrl"],
     }
 
 
@@ -240,7 +314,9 @@ def run(args: list[str], *, check: bool = True) -> subprocess.CompletedProcess[s
     return subprocess.run(args, check=check, capture_output=True, text=True)
 
 
-def api_json(base_url: str, path: str, payload: dict[str, Any] | None = None, timeout: int = 60) -> Any:
+def api_json(
+    base_url: str, path: str, payload: dict[str, Any] | None = None, timeout: int = 60
+) -> Any:
     url = f"{base_url.rstrip('/')}{path}"
     data = None
     headers = {}
@@ -257,13 +333,55 @@ def loaded_ids(base_url: str) -> set[str]:
     return {item["simulationId"] for item in data.get("items", [])}
 
 
-def write_index(output: Path) -> None:
-    payload = [enrich(entry) for entry in CATALOG]
+def write_index(output: Path, models_root: Path) -> None:
+    policies = load_source_policies()
+    payload = {
+        "schemaVersion": "pbpk-third-party-model-index.v1",
+        "releaseDecision": "not-approved-for-public-redistribution",
+        "models": [public_entry(entry, policies, models_root) for entry in CATALOG],
+    }
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(payload, indent=2) + "\n")
 
 
-def prepare_live_server(container: str) -> None:
+def assert_public_release_approved() -> None:
+    policies = load_source_policies()
+    blocked = sorted(
+        repo
+        for repo, policy in policies.items()
+        if policy["redistributionStatus"] != "approved_for_public_release"
+    )
+    if blocked:
+        raise RuntimeError(
+            "Third-party model redistribution is not approved for: " + ", ".join(blocked)
+        )
+
+
+def assert_public_tree_excludes_third_party_assets() -> None:
+    forbidden: list[Path] = []
+    forbidden.extend(PUBLIC_METADATA_ROOT.rglob("*.pkml"))
+    forbidden.extend(PUBLIC_METADATA_ROOT.rglob("*.profile.json"))
+    smoke_report = PUBLIC_METADATA_ROOT / "smoke_run_report.json"
+    if smoke_report.exists():
+        forbidden.append(smoke_report)
+    duplicate = WORKSPACE_ROOT / "var" / "models" / "Pregnant_simulation_PKSim.pkml"
+    if duplicate.exists():
+        forbidden.append(duplicate)
+    if forbidden:
+        paths = sorted(path.relative_to(WORKSPACE_ROOT).as_posix() for path in set(forbidden))
+        raise RuntimeError(
+            "Public tree contains third-party model assets that are not approved for redistribution: "
+            + ", ".join(paths)
+        )
+
+    payload = json.loads(DEFAULT_INDEX_PATH.read_text())
+    if payload.get("releaseDecision") != "not-approved-for-public-redistribution":
+        raise RuntimeError(
+            "Third-party model inventory does not retain the fail-closed release decision"
+        )
+
+
+def prepare_live_server(container: str, models_root: Path) -> None:
     run(
         [
             "docker",
@@ -277,7 +395,7 @@ def prepare_live_server(container: str) -> None:
         ]
     )
     run(["docker", "cp", str(BRIDGE_PATH), f"{container}:/app/scripts/ospsuite_bridge.R"])
-    run(["docker", "cp", f"{MODELS_ROOT}/.", f"{container}:/app/var/models/esqlabs"])
+    run(["docker", "cp", f"{models_root}/.", f"{container}:/app/var/models/esqlabs"])
 
     patch_code = """
 from pathlib import Path
@@ -303,11 +421,14 @@ if path.exists():
     raise RuntimeError(f"Timed out waiting for {container} health") from last_error
 
 
-def load_models(base_url: str, model_ids: set[str] | None = None, skip_existing: bool = True) -> dict[str, Any]:
+def load_models(
+    base_url: str, model_ids: set[str] | None = None, skip_existing: bool = True
+) -> dict[str, Any]:
     existing = loaded_ids(base_url) if skip_existing else set()
     results: list[dict[str, Any]] = []
+    policies = load_source_policies()
 
-    for entry in map(enrich, CATALOG):
+    for entry in (runtime_entry(item, policies) for item in CATALOG):
         simulation_id = entry["simulationId"]
         if model_ids and simulation_id not in model_ids:
             continue
@@ -365,7 +486,10 @@ def smoke_run(base_url: str, model_ids: list[str]) -> list[dict[str, Any]]:
         submit = api_json(
             base_url,
             "/mcp/call_tool",
-            payload={"tool": "run_simulation", "arguments": {"simulationId": simulation_id, "runId": run_id}},
+            payload={
+                "tool": "run_simulation",
+                "arguments": {"simulationId": simulation_id, "runId": run_id},
+            },
             timeout=60,
         )
         job_id = submit["structuredContent"]["jobId"]
@@ -398,14 +522,28 @@ def smoke_run(base_url: str, model_ids: list[str]) -> list[dict[str, Any]]:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Manage open-source esqLABS PBPK models.")
+    parser = argparse.ArgumentParser(
+        description="Manage esqLABS PBPK provenance and authorized private model use."
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    index_parser = subparsers.add_parser("write-index", help="Write a machine-readable model index.")
+    index_parser = subparsers.add_parser(
+        "write-index", help="Write a machine-readable model index."
+    )
     index_parser.add_argument(
         "--output",
-        default=str(MODELS_ROOT / "index.json"),
+        default=str(DEFAULT_INDEX_PATH),
         help="Path to write the JSON index.",
+    )
+    index_parser.add_argument(
+        "--models-root",
+        default=None,
+        help=f"Private local model directory. Defaults to ${MODELS_ROOT_ENV}.",
+    )
+    index_parser.add_argument(
+        "--public-release",
+        action="store_true",
+        help="Refuse to write unless every third-party source is approved for public redistribution.",
     )
 
     prepare_parser = subparsers.add_parser(
@@ -413,6 +551,16 @@ def parse_args() -> argparse.Namespace:
         help="Sync models and bridge into the running API container and restart it.",
     )
     prepare_parser.add_argument("--container", default=DEFAULT_CONTAINER)
+    prepare_parser.add_argument(
+        "--models-root",
+        default=None,
+        help=f"Private local model directory. Defaults to ${MODELS_ROOT_ENV}.",
+    )
+
+    subparsers.add_parser(
+        "check-public-tree",
+        help="Fail if unapproved third-party model assets are present in the public repository tree.",
+    )
 
     load_parser = subparsers.add_parser("load", help="Load models into the MCP registry.")
     load_parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
@@ -427,7 +575,7 @@ def parse_args() -> argparse.Namespace:
     smoke_parser.add_argument("--model-id", action="append", default=[])
     smoke_parser.add_argument(
         "--output",
-        default=str(MODELS_ROOT / "smoke_run_report.json"),
+        default=str(WORKSPACE_ROOT / "var" / "esqlabs_external_smoke_run_report.json"),
         help="Path to write the smoke report JSON.",
     )
 
@@ -437,18 +585,45 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     if args.command == "write-index":
-        write_index(Path(args.output))
+        if args.public_release:
+            try:
+                assert_public_release_approved()
+            except RuntimeError as exc:
+                print(f"ERROR: {exc}", file=sys.stderr)
+                return 2
+        try:
+            models_root = resolve_models_root(args.models_root)
+        except RuntimeError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
+        write_index(Path(args.output), models_root)
         print(Path(args.output))
         return 0
 
     if args.command == "prepare-live-server":
-        prepare_live_server(args.container)
+        try:
+            models_root = resolve_models_root(args.models_root)
+        except RuntimeError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
+        prepare_live_server(args.container, models_root)
         print(f"prepared {args.container}")
+        return 0
+
+    if args.command == "check-public-tree":
+        try:
+            assert_public_tree_excludes_third_party_assets()
+        except RuntimeError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
+        print("public tree excludes unapproved third-party model assets")
         return 0
 
     if args.command == "load":
         selected = set(args.model_id) if args.model_id else None
-        result = load_models(args.base_url, model_ids=selected, skip_existing=not args.no_skip_existing)
+        result = load_models(
+            args.base_url, model_ids=selected, skip_existing=not args.no_skip_existing
+        )
         print(json.dumps(result, indent=2))
         return 0 if not result["errors"] else 1
 

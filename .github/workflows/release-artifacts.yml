@@ -34,6 +34,7 @@ jobs:
           make misuse-prevention-test PY=python
           python scripts/generate_contract_artifacts.py --check
           python scripts/check_release_metadata.py
+          python scripts/esqlabs_models.py check-public-tree
           python scripts/validate_model_manifests.py --strict --require-explicit-ngra --curated-publication-set
 
       - name: Build and validate release artifacts

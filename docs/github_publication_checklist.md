@@ -13,6 +13,9 @@
 - confirm the release version and docs are aligned
 - confirm no local runtime artifacts are being committed
 - confirm example models included in the repo are intended for public distribution
+- run `python3 scripts/esqlabs_models.py check-public-tree` and require it to pass
+- confirm `python3 scripts/esqlabs_models.py write-index --public-release` still refuses redistribution while any source lacks explicit approval
+- confirm `var/models/esqlabs/` contains provenance metadata only: no PKML files, model-specific sidecars, or smoke outputs
 - confirm no internal test-model assets or study-specific generated artifacts remain in the public release surface unless they are explicitly intended for public distribution
 - confirm no credentials, tokens, or machine-specific paths remain in docs or scripts
 - confirm the live GitHub `main` ruleset is active and matches `docs/github_branch_protection.md`

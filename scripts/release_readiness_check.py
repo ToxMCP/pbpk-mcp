@@ -27,8 +27,6 @@ from mcp_bridge.security.simple_jwt import jwt  # noqa: E402
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
 CONTRACT_VERSION = "pbpk-mcp.v1"
-OSPSUITE_LOAD_TIMEOUT_SECONDS = 420
-OSPSUITE_REPORT_TIMEOUT_SECONDS = 300
 ASYNC_REFERENCE_JOB_TIMEOUT_SECONDS = 360
 PUBLISHED_CONTRACT_MANIFEST = WORKSPACE_ROOT / "docs" / "architecture" / "contract_manifest.json"
 PUBLISHED_RELEASE_BUNDLE_MANIFEST = WORKSPACE_ROOT / "docs" / "architecture" / "release_bundle_manifest.json"
@@ -36,7 +34,6 @@ VALIDATE_MANIFESTS_SCRIPT = WORKSPACE_ROOT / "scripts" / "validate_model_manifes
 CURATED_WORKSPACE_MODELS = curated_publication_model_paths(WORKSPACE_ROOT)
 CURATED_RELATIVE_PATHS = curated_publication_model_relative_paths()
 REFERENCE_MODEL = "/app/var/models/rxode2/reference_compound/reference_compound_population_rxode2_model.R"
-PREGNANCY_PKML = "/app/var/models/esqlabs/pregnancy-neonates-batch-run/Pregnant_simulation_PKSim.pkml"
 PKSIM5_PROJECT = "/app/var/demos/cimetidine/Cimetidine-Model.pksim5"
 REQUIRED_TOOLS = frozenset(release_probe_required_tools())
 REQUIRED_SCHEMA_IDS = frozenset(published_schema_ids())
@@ -999,13 +996,12 @@ def run_release_check(
         {"backend": "ospsuite", "limit": 50},
         timeout=30,
     )
-    pkml_matches = [
-        item for item in ospsuite_catalog["items"] if item["filePath"] == PREGNANCY_PKML
+    unapproved_esqlabs_models = [
+        item for item in ospsuite_catalog["items"] if "/var/models/esqlabs/" in item["filePath"]
     ]
-    assert_true(bool(pkml_matches), "Reference .pkml model not discoverable through ospsuite catalog view")
     assert_true(
-        not bool(pkml_matches[0]["populationSimulation"]),
-        f"OSPSuite .pkml entry should not advertise generic population support: {pkml_matches[0]}",
+        not unapproved_esqlabs_models,
+        f"Public runtime discovered unapproved third-party model assets: {unapproved_esqlabs_models}",
     )
     assert_true(
         bool(reference_matches[0]["populationSimulation"]),
@@ -1014,7 +1010,8 @@ def run_release_check(
     summary["capabilityMatrix"] = {
         "discoverableRuntimeFormats": catalog_formats,
         "conversionOnlyFormatsExcludedFromCatalog": True,
-        "ospsuitePkmlPopulationSimulation": bool(pkml_matches[0]["populationSimulation"]),
+        "bundledOspsuiteModelCount": len(ospsuite_catalog["items"]),
+        "thirdPartyModelAssetsBundled": False,
         "rxode2ReferencePopulationSimulation": bool(reference_matches[0]["populationSimulation"]),
     }
 
@@ -1568,34 +1565,6 @@ def run_release_check(
         "Reference compound population result returned no aggregates",
     )
 
-    pkml_id = f"release-pkml-{uuid4().hex[:8]}"
-    pkml_load = call_tool(
-        base_url,
-        "load_simulation",
-        {"filePath": PREGNANCY_PKML, "simulationId": pkml_id},
-        critical=True,
-        timeout=OSPSUITE_LOAD_TIMEOUT_SECONDS,
-    )
-    assert_true(pkml_load["backend"] == "ospsuite", f"Unexpected PKML backend: {pkml_load}")
-
-    pkml_report = call_tool(
-        base_url,
-        "export_oecd_report",
-        {
-            "simulationId": pkml_id,
-            "request": {"contextOfUse": "research-only"},
-            "includeParameterTable": False,
-            "parameterLimit": 3,
-        },
-        timeout=OSPSUITE_REPORT_TIMEOUT_SECONDS,
-    )
-    pkml_report_payload = pkml_report["report"]
-    assert_true(pkml_report_payload["profile"]["profileSource"]["type"] == "sidecar", "OSPSuite sidecar provenance was not preserved")
-    assert_true(
-        pkml_report_payload["parameterTable"]["included"] is False,
-        "OSPSuite release-gate report should skip the live parameter-table preview and rely on the bridge regression instead",
-    )
-
     summary["reference_compound"] = {
         "simulationId": reference_id,
         "manifestState": manifest_check["manifest"]["qualificationState"]["state"],
@@ -1618,13 +1587,6 @@ def run_release_check(
         "resultSeries": len(reference_results["series"]),
         "populationAggregates": sorted((reference_population_results.get("aggregates") or {}).keys()),
     }
-    summary["ospsuite"] = {
-        "simulationId": pkml_id,
-        "reportDecision": pkml_report_payload["validation"]["assessment"]["decision"],
-        "profileSource": pkml_report_payload["profile"]["profileSource"]["type"],
-        "parameterRows": pkml_report_payload["parameterTable"]["returnedRows"],
-    }
-
     return summary
 
 

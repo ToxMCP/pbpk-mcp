@@ -1,7 +1,7 @@
 {
-  "bundleSha256": "549d42285315a2cf5253cb52e842ddcd14ad424878880677458fb5a6da224ca7",
+  "bundleSha256": "fb7b47322ee2a345372b32938476ff49875ec02a3f69e9239c893402a0d852fe",
   "contractVersion": "pbpk-mcp.v1",
-  "fileCount": 417,
+  "fileCount": 420,
   "files": [
     {
       "group": "root",
@@ -18,8 +18,8 @@
     {
       "group": "root",
       "relativePath": ".gitignore",
-      "sha256": "f3d7e00741deb461a46968475242580344c5a1dc449d6f5c182db4f7b6f5030d",
-      "sizeBytes": 693
+      "sha256": "797bf92e70a43c491385e066a45a490bffa1af34aea760f086970354bc794584",
+      "sizeBytes": 885
     },
     {
       "group": "root",
@@ -60,8 +60,8 @@
     {
       "group": "root",
       "relativePath": "README.md",
-      "sha256": "d037856bb12b546aabae5df5493ff5c73c3db02a06155c8f895e07fc396aa88c",
-      "sizeBytes": 57889
+      "sha256": "6befcfecf8c2fa23c72c2c7a492bc22b8620451a531e9ffc1115a5aca6523050",
+      "sizeBytes": 58673
     },
     {
       "group": "root",
@@ -156,8 +156,8 @@
     {
       "group": "governance",
       "relativePath": ".github/workflows/release-artifacts.yml",
-      "sha256": "8568d1e668844f199b409e7f1b610baee3a33f034459e97e3f313941e2aad1cd",
-      "sizeBytes": 1465
+      "sha256": "d00416a7f45a49f80e8cb17762c092491f653d6a15b0551cf89e41f37854f7fe",
+      "sizeBytes": 1526
     },
     {
       "group": "root",
@@ -228,8 +228,8 @@
     {
       "group": "documentation",
       "relativePath": "docs/github_publication_checklist.md",
-      "sha256": "9bb983f5964d1bd08fae7f04cc56fe64a7e3e7fadcf438de114fed6d01ce306c",
-      "sizeBytes": 5256
+      "sha256": "4373065f37f06aa8833032a2440c85fe09991e27e64bf0df9813a66cc4d242c6",
+      "sizeBytes": 5608
     },
     {
       "group": "documentation",
@@ -342,8 +342,8 @@
     {
       "group": "documentation",
       "relativePath": "docs/integration_guides/ospsuite_profile_sidecars.md",
-      "sha256": "f968f67bf69baf08ee70ee2a62997d915b744f280056f61dfb80e67e9bbde1a4",
-      "sizeBytes": 6952
+      "sha256": "54853315597bd943b454eaaf4a43299683c8df4962898bed5be4999b47157f24",
+      "sizeBytes": 6153
     },
     {
       "group": "documentation",
@@ -948,8 +948,8 @@
     {
       "group": "operations",
       "relativePath": "scripts/esqlabs_models.py",
-      "sha256": "c7927973573b2d5ecb955b8eba1db6c14088d532c0fb32d3ddc68f3d5c9d194e",
-      "sizeBytes": 18084
+      "sha256": "1ded7cfbc814a2879f62930f3c143c03e41d6a680b690d0f26e870c60b3f2557",
+      "sizeBytes": 24518
     },
     {
       "group": "operations",
@@ -1020,8 +1020,8 @@
     {
       "group": "operations",
       "relativePath": "scripts/release_readiness_check.py",
-      "sha256": "89987d8d1e102affb6c5aafe43dca6974bf7117fefdf2b04c5dc6e035e8274b3",
-      "sizeBytes": 73268
+      "sha256": "f35f5b7fcb4425063b44d4070cb58d4a225b4f0538b5df2546e65690afdbe4ea",
+      "sizeBytes": 71615
     },
     {
       "group": "operations",
@@ -1038,8 +1038,8 @@
     {
       "group": "operations",
       "relativePath": "scripts/s3_audit_smoke.py",
-      "sha256": "8edbce50c7fa40426907af842908eda76fd1c2ab5e58508ee0783eafcd9e0341",
-      "sizeBytes": 7973
+      "sha256": "a9b991da6eddc205b40d151b24b6a9fceafed03c1a9b61cbdaf6b1acfad1725e",
+      "sizeBytes": 8061
     },
     {
       "group": "operations",
@@ -1230,8 +1230,8 @@
     {
       "group": "source",
       "relativePath": "src/mcp_bridge/curated_publication.py",
-      "sha256": "03d4e07c141b61f096a7ef163f40cab62931dbd47c8b4a63831f9f1bb909ded9",
-      "sizeBytes": 909
+      "sha256": "f85bff414c511b19ed7284db4c07fc11be00344af0d0202444d7b5c3374004be",
+      "sizeBytes": 839
     },
     {
       "group": "source",
@@ -1877,6 +1877,12 @@
     },
     {
       "group": "verification",
+      "relativePath": "tests/test_esqlabs_provenance.py",
+      "sha256": "7bbc3abebbefafd37e97d5d35a32832cef555745390b537755d5b90ed7a0eaa9",
+      "sizeBytes": 3574
+    },
+    {
+      "group": "verification",
       "relativePath": "tests/test_export_api_docs.py",
       "sha256": "551a24392a43ee490630ed73a78aaa87c2362454a6025c0ab692a8ea43e11d37",
       "sizeBytes": 2197
@@ -1932,8 +1938,8 @@
     {
       "group": "verification",
       "relativePath": "tests/test_model_manifest.py",
-      "sha256": "b9dcd3ce10a29e96e179c6c3fd5d1a7e76c3da8067d7264963d0c3b039e7e725",
-      "sizeBytes": 52314
+      "sha256": "cc76ec6495d284d731daa1c84ddc41c6ec0bfc03732616aa8a2403fde178446d",
+      "sizeBytes": 47630
     },
     {
       "group": "verification",
@@ -1950,14 +1956,14 @@
     {
       "group": "verification",
       "relativePath": "tests/test_oecd_bridge.py",
-      "sha256": "32745e990b0434fa608db66b29667a4337834a42b1cfd86208bfb984b655308a",
-      "sizeBytes": 98108
+      "sha256": "14818e145b0613f9cc90c19d6e964959984de1b2ef4b36be01be59ac0f0783bc",
+      "sizeBytes": 98063
     },
     {
       "group": "verification",
       "relativePath": "tests/test_oecd_live_stack.py",
-      "sha256": "ab0ee86f40e79fea459ea44a78fbf5579195870e7e31ec92a82f522501a14853",
-      "sizeBytes": 44283
+      "sha256": "d846d1a7f949b7621a088bff0fe363226aebd451ec26e363b8d0ed499a9370bd",
+      "sizeBytes": 41564
     },
     {
       "group": "verification",
@@ -2028,8 +2034,8 @@
     {
       "group": "verification",
       "relativePath": "tests/test_release_readiness_script.py",
-      "sha256": "b0e849e70a20fd0168d5bc5c8c4410ea4802c403197d0cf3e7c0b82ee3bbe0c8",
-      "sizeBytes": 3501
+      "sha256": "09c9cfd55b9f7a24d2aa4c9d22d77b8a85c87fa413e2144a5ad3008b73ac2a2d",
+      "sizeBytes": 3535
     },
     {
       "group": "verification",
@@ -2040,8 +2046,8 @@
     {
       "group": "verification",
       "relativePath": "tests/test_review_signoff.py",
-      "sha256": "937852c96c7efc21504a09925d5322350c40369c0d8403c3c8383cae353e7f8a",
-      "sizeBytes": 20403
+      "sha256": "5fcecb6df471c9d4489211724405179375515899c4b7e1dd9c2659199c4ba08c",
+      "sizeBytes": 20505
     },
     {
       "group": "verification",
@@ -2094,7 +2100,7 @@
     {
       "group": "verification",
       "relativePath": "tests/test_validate_model_manifests_script.py",
-      "sha256": "ba103676a4865dd034a0cf94431a25499af07e9c9288ec103ffcda60bc82ece2",
+      "sha256": "41962cc5f845146c5ceefb9b73d6e8cf35002ff2625f24f284d982a1cc73fa19",
       "sizeBytes": 6712
     },
     {
@@ -2102,6 +2108,18 @@
       "relativePath": "tests/test_workspace_model_smoke_script.py",
       "sha256": "205c8fa0764954f2645e6ce5cd842775c781639ed589cfb8c9c4b56e22e10094",
       "sizeBytes": 1795
+    },
+    {
+      "group": "verification",
+      "relativePath": "tests/fixtures/ospsuite/illustrative_example.pkml",
+      "sha256": "1ab7042621461d1d8f723ec1f378de03cce398d8a053359ec4e46b959a9f298c",
+      "sizeBytes": 66
+    },
+    {
+      "group": "verification",
+      "relativePath": "tests/fixtures/ospsuite/illustrative_example.profile.json",
+      "sha256": "ce08e23af359f53ca9ed61d7733f691c1db41f65e8aa36ef4572a7abf57091fa",
+      "sizeBytes": 479
     },
     {
       "group": "verification",
@@ -2514,7 +2532,7 @@
     "operations": 34,
     "root": 97,
     "source": 122,
-    "verification": 57
+    "verification": 60
   },
   "id": "pbpk-release-bundle-manifest.v1",
   "packageVersion": "0.5.0",
@@ -2556,5 +2574,5 @@
     ],
     "mode": "staged-source-tree-equivalent"
   },
-  "totalBytes": 4202088
+  "totalBytes": 4204284
 }
