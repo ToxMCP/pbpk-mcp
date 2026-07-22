@@ -300,13 +300,13 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "docs/architecture/toxmcp_suite_index.md",
       "role": "cross-service suite routing guide",
-      "sha256": "7fc5041e99de9dfe2acf7f19cdd2158ab0678c653532abb6868b18d1dd3d09e3"
+      "sha256": "9a0715d60a30f72e64670d1d53a5f61602b47111fb0e0fbba99b0f472e344b75"
     },
     {
       "classification": "supporting",
       "relativePath": "docs/architecture/release_bundle_manifest.json",
       "role": "whole release bundle hash inventory",
-      "sha256": "0536036bc23a2951d8fe96854aade1cf62063b6a49a16b2da2a1acfbe1803aae"
+      "sha256": "1a8d1cc0b297d37fd7abfcd40cdc86607724e6c4a5c1c83c0007a3366038859b"
     },
     {
       "classification": "supporting",
@@ -452,7 +452,7 @@ _CONTRACT_MANIFEST_JSON = r"""
 
 _RELEASE_BUNDLE_MANIFEST_JSON = r"""
 {
-  "bundleSha256": "fb7b47322ee2a345372b32938476ff49875ec02a3f69e9239c893402a0d852fe",
+  "bundleSha256": "ce1a884d207c128951f31b9c38f9795aa690a7086f0199a19c529ebd22d96aec",
   "contractVersion": "pbpk-mcp.v1",
   "fileCount": 420,
   "files": [
@@ -765,8 +765,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "documentation",
       "relativePath": "docs/architecture/toxmcp_suite_index.md",
-      "sha256": "7fc5041e99de9dfe2acf7f19cdd2158ab0678c653532abb6868b18d1dd3d09e3",
-      "sizeBytes": 2684
+      "sha256": "9a0715d60a30f72e64670d1d53a5f61602b47111fb0e0fbba99b0f472e344b75",
+      "sizeBytes": 3300
     },
     {
       "group": "documentation",
@@ -3027,7 +3027,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     ],
     "mode": "staged-source-tree-equivalent"
   },
-  "totalBytes": 4204284
+  "totalBytes": 4204900
 }
 """
 
