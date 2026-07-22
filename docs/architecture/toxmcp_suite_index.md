@@ -17,8 +17,8 @@ Use it to answer three questions quickly:
 | `PBPK MCP` | Toxicokinetic simulation, internal-dose translation, qualification, and dossier export | Released sibling |
 | `Bioactivity-PoD MCP` | Bioactivity normalization, PoD derivation, backend governance, and downstream qualification evidence | Sibling service |
 | `ToxClaw` | Cross-service orchestration, refinement policy, case assembly, and reporting | Sibling orchestrator |
-| `Fate MCP` | Environmental release, multimedia transfer, concentration surfaces | Planned sibling |
-| `Dietary MCP` | Commodity residues, food-consumption mappings, dietary oral intake | Planned sibling |
+| [Environmental Fate MCP](https://github.com/ToxMCP/environmental-fate-mcp) | Environmental release, multimedia transfer, concentration surfaces | Released sibling ([`v0.5.0`](https://github.com/ToxMCP/environmental-fate-mcp/releases/tag/v0.5.0)) |
+| [Dietary Exposure MCP](https://github.com/ToxMCP/dietary-exposure-mcp) | Food-mediated oral screening, commodity residues, consumption mappings, dietary oral dose handoffs | Released screening sibling ([`v0.1.0`](https://github.com/ToxMCP/dietary-exposure-mcp/releases/tag/v0.1.0)) |
 | `Literature MCP` | Source normalization, extraction review, evidence-pack curation | Optional future sibling |
 
 ## Fast Routing Table
@@ -26,13 +26,15 @@ Use it to answer three questions quickly:
 - Internal dose, simulation, qualification, or PBPK dossier question -> `PBPK MCP`
 - External exposure scenario or direct-use worker screening question -> `Direct-Use Exposure MCP`
 - Bioactivity fitting or PoD derivation question -> `Bioactivity-PoD MCP`
-- Environmental release or multimedia concentration question -> `Fate MCP`
-- Dietary oral intake or food-residue question -> `Dietary MCP`
+- Environmental release or multimedia concentration question -> `Environmental Fate MCP`
+- Dietary oral intake or food-residue question -> `Dietary Exposure MCP`
 - Integrated case assembly, refinement choice, or final NGRA-facing reporting question -> `ToxClaw`
 
 ## Cross-MCP Handoff Pattern
 
 - `Direct-Use Exposure MCP` provides external-dose and scenario context.
+- `Environmental Fate MCP` provides governed environmental concentration context for downstream translation.
+- `Dietary Exposure MCP` provides normalized food-mediated oral dose bundles through the shared `pbpkExternalImportBundle` handoff without executing PBPK.
 - `Bioactivity-PoD MCP` provides PoD-side and review-side context.
 - `PBPK MCP` consumes external exposure and PoD references, then emits internal-dose and qualification outputs without claiming upstream ownership.
 - `ToxClaw` stays responsible for cross-service synthesis and final case reporting.
