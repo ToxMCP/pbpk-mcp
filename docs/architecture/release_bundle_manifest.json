@@ -1,5 +1,5 @@
 {
-  "bundleSha256": "fb7b47322ee2a345372b32938476ff49875ec02a3f69e9239c893402a0d852fe",
+  "bundleSha256": "ce1a884d207c128951f31b9c38f9795aa690a7086f0199a19c529ebd22d96aec",
   "contractVersion": "pbpk-mcp.v1",
   "fileCount": 420,
   "files": [
@@ -312,8 +312,8 @@
     {
       "group": "documentation",
       "relativePath": "docs/architecture/toxmcp_suite_index.md",
-      "sha256": "7fc5041e99de9dfe2acf7f19cdd2158ab0678c653532abb6868b18d1dd3d09e3",
-      "sizeBytes": 2684
+      "sha256": "9a0715d60a30f72e64670d1d53a5f61602b47111fb0e0fbba99b0f472e344b75",
+      "sizeBytes": 3300
     },
     {
       "group": "documentation",
@@ -2574,5 +2574,5 @@
     ],
     "mode": "staged-source-tree-equivalent"
   },
-  "totalBytes": 4204284
+  "totalBytes": 4204900
 }
