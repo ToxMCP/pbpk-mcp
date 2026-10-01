@@ -4,6 +4,8 @@ All notable changes to this project should be documented in this file.
 
 ## Unreleased
 
+## v0.5.0 - 2026-10-01
+
 ### Fixed
 
 - Local simulation and population deadlines now report timeout without waiting for an already-running backend; timed-out queued backend calls are cancelled and late results cannot overwrite terminal job states.
@@ -17,7 +19,7 @@ All notable changes to this project should be documented in this file.
 
 - Scheduled dependency-audit and Semgrep checks, with frozen-lock advisory auditing and focused deadline/JWT regression tests in CI.
 
-## v0.5.0 - 2026-04-17
+### Previously prepared changes
 
 ### Changed
 
