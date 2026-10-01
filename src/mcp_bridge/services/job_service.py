@@ -9,6 +9,7 @@ import threading
 import time
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import CancelledError as FuturesCancelledError
 from concurrent.futures import TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass, field
 from enum import Enum
@@ -66,6 +67,7 @@ class JobRecord:
     idempotency_fingerprint: Optional[str] = None
     external_job_id: Optional[str] = None
     _future: Optional[Future[Any]] = field(default=None, repr=False)
+    _backend_future: Optional[Future[Any]] = field(default=None, repr=False)
 
 
 class DurableJobRegistry:
@@ -679,19 +681,14 @@ class JobService:
                 return record
             record.cancel_requested = True
             future = record._future
+            backend_future = record._backend_future
         self._persist_record(record)
 
-        if future and future.cancel():
-            # Cancellation succeeded before the job started running.
-            with self._lock:
-                record.status = JobStatus.CANCELLED
-                record.finished_at = time.time()
-                record._future = None
-            self._persist_record(record)
-            _emit_job_event(
-                self._audit, record, f"job.{record.job_type}.cancelled", reason="future_cancelled"
-            )
-            self._apply_retention_policy()
+        backend_cancelled = backend_future is not None and backend_future.cancel()
+        coordinator_cancelled = future is not None and future.cancel()
+        if backend_cancelled or coordinator_cancelled:
+            # A running coordinator may still be waiting for a queued backend.
+            self._mark_cancelled(record)
         return record
 
     def get_job(self, job_id: str) -> JobRecord:
@@ -870,11 +867,15 @@ class JobService:
 
             try:
                 result = self._call_with_timeout(
+                    job_id,
                     adapter.run_simulation_sync,
                     record.timeout_seconds,
                     simulation_id,
                     run_id=run_id,
                 )
+            except FuturesCancelledError:
+                self._mark_cancelled(record)
+                return
             except FuturesTimeoutError:
                 self._mark_timeout(job_id)
                 return
@@ -920,10 +921,14 @@ class JobService:
 
             try:
                 result = self._call_with_timeout(
+                    job_id,
                     adapter.run_population_simulation_sync,
                     record.timeout_seconds,
                     config,
                 )
+            except FuturesCancelledError:
+                self._mark_cancelled(record)
+                return
             except FuturesTimeoutError:
                 self._mark_timeout(job_id)
                 return
@@ -1028,12 +1033,22 @@ class JobService:
 
     def _call_with_timeout(
         self,
+        job_id: str,
         func: Callable[..., Any],
         timeout_seconds: float,
         *args: Any,
         **kwargs: Any,
     ) -> Any:
-        future = self._backend_executor.submit(func, *args, **kwargs)
+        with self._lock:
+            record = self._jobs[job_id]
+            if self._shutting_down or self._is_terminal(record) or record.cancel_requested:
+                raise FuturesCancelledError()
+            # Register atomically with the cancellation check so cancel_job cannot
+            # miss a backend call that has been queued by a running coordinator.
+            future = self._backend_executor.submit(
+                self._run_backend_if_active, record, func, *args, **kwargs
+            )
+            record._backend_future = future
         try:
             return future.result(timeout=timeout_seconds if timeout_seconds > 0 else None)
         except FuturesTimeoutError:
@@ -1041,6 +1056,20 @@ class JobService:
             # bounded pool. Do not wait for it or let its late result change state.
             future.cancel()
             raise
+        finally:
+            with self._lock:
+                if record._backend_future is future:
+                    record._backend_future = None
+
+    def _run_backend_if_active(
+        self, record: JobRecord, func: Callable[..., Any], *args: Any, **kwargs: Any
+    ) -> Any:
+        # A worker can dequeue its future before cancel_job calls Future.cancel.
+        # Recheck the job at that handoff before starting scientific execution.
+        with self._lock:
+            if self._shutting_down or self._is_terminal(record) or record.cancel_requested:
+                raise FuturesCancelledError()
+        return func(*args, **kwargs)
 
 
 class CeleryJobService:

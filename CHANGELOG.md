@@ -8,7 +8,9 @@ All notable changes to this project should be documented in this file.
 
 - Local simulation and population deadlines now report timeout without waiting for an already-running backend; timed-out queued backend calls are cancelled and late results cannot overwrite terminal job states.
 - Local backend execution uses one bounded shared pool, and shutdown persists cancelled job states before closing the registry.
+- Explicit cancellation prevents a queued local simulation or population backend from starting, including cancellation during worker handoff.
 - Replaced python-jose with patched PyJWT and its cryptography backend, removing the unmaintained ECDSA signing dependency while retaining explicit RS256 production and HS256 development authentication.
+- JWT validation retains the configured clock-skew allowance for expiry, not-before, and issued-at claims in production and development.
 - Refreshed affected runtime and development dependencies in the committed lock, including AnyIO, cryptography, aiohttp, checkpoint SQLite, PyJWT, urllib3, pytest, Black, and setuptools.
 
 ### Added

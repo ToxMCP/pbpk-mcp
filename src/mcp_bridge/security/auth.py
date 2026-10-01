@@ -111,6 +111,7 @@ class JWTValidator:
                     token,
                     secret,
                     algorithms=["HS256"],
+                    leeway=self._clock_skew,
                     options={"verify_aud": False},
                 )
             except jwt_error as exc:
@@ -125,6 +126,7 @@ class JWTValidator:
                 algorithms=["RS256"],
                 audience=self._config.auth_audience,
                 issuer=self._config.auth_issuer_url,
+                leeway=self._clock_skew,
                 options={"verify_at_hash": False},
             )
         except jwt_error as exc:

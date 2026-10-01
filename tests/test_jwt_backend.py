@@ -76,6 +76,48 @@ def test_invalid_registered_claims_are_rejected(validator, signing_keys, claims)
     assert error.value.status_code == 401
 
 
+@pytest.mark.parametrize("environment", ["production", "development"])
+@pytest.mark.parametrize("timestamp", ["iat", "nbf", "exp"])
+@pytest.mark.parametrize(
+    "clock_skew,offset,accepted", [(60, 30, True), (60, 120, False), (0, 30, False)]
+)
+def test_configured_clock_skew_is_enforced_for_signed_tokens(
+    monkeypatch, signing_keys, environment, timestamp, clock_skew, offset, accepted
+):
+    secret = "a-development-secret-that-is-long-enough"
+    monkeypatch.setattr(auth, "_JWT_BACKEND", None)
+    monkeypatch.setattr(auth, "_get_jwks", lambda *_args: {"keys": signing_keys[1]})
+    config = AppConfig(
+        environment=environment,
+        auth_issuer_url="https://issuer.example",
+        auth_jwks_url="https://issuer.example/jwks",
+        auth_audience="pbpk",
+        auth_dev_secret=secret if environment == "development" else None,
+        auth_clock_skew_seconds=clock_skew,
+    )
+    now = int(time.time())
+    claims = {
+        "sub": "scientist",
+        "iss": "https://issuer.example",
+        "aud": "pbpk",
+        "iat": now,
+        "exp": now + 300,
+        timestamp: now - offset if timestamp == "exp" else now + offset,
+    }
+    encoded = jwt.encode(
+        claims,
+        secret if environment == "development" else signing_keys[0][0],
+        algorithm="HS256" if environment == "development" else "RS256",
+        headers={"kid": "key-0"},
+    )
+    if accepted:
+        assert auth.JWTValidator(config).validate(encoded).subject == "scientist"
+    else:
+        with pytest.raises(auth.AuthError) as error:
+            auth.JWTValidator(config).validate(encoded)
+        assert error.value.status_code == 401
+
+
 def test_untrusted_signature_and_unknown_key_are_rejected(validator, signing_keys):
     wrong_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     for encoded in [token(wrong_key), token(signing_keys[0][0], kid="unknown")]:
