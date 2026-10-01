@@ -306,7 +306,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "docs/architecture/release_bundle_manifest.json",
       "role": "whole release bundle hash inventory",
-      "sha256": "8e073864cce8e3127986b1c33e90bddd1edf6df74a7326cb83392c1784edb2ea"
+      "sha256": "d3a3f647fe71269ae5756ff425b0838546e239859dfdd6a591f55dcbc72d642b"
     },
     {
       "classification": "supporting",
@@ -452,7 +452,7 @@ _CONTRACT_MANIFEST_JSON = r"""
 
 _RELEASE_BUNDLE_MANIFEST_JSON = r"""
 {
-  "bundleSha256": "5a3ae1e49c330fb97c57019e4f5b0a3408e0ef55b0dbb9e260ca24d4817cc953",
+  "bundleSha256": "3f2040db3433cd92e57bd077d6e03e5c08fe5702c9d958bd2509acaa8eca3c06",
   "contractVersion": "pbpk-mcp.v1",
   "fileCount": 424,
   "files": [
@@ -477,8 +477,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "root",
       "relativePath": "CHANGELOG.md",
-      "sha256": "de5fa15b575f5d4b28c71ee25ca9453b80a570b710cf699f7be9e6c375dfd25f",
-      "sizeBytes": 27930
+      "sha256": "f4677c57dc5e010c30c45fd1c2cfe27295fa7b9915819b8b078fed1ee51efb8c",
+      "sizeBytes": 27963
     },
     {
       "group": "root",
@@ -3051,7 +3051,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     ],
     "mode": "staged-source-tree-equivalent"
   },
-  "totalBytes": 4254609
+  "totalBytes": 4254642
 }
 """
 
