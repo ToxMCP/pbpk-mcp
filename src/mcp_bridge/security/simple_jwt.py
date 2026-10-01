@@ -1,4 +1,4 @@
-"""Minimal JWT helpers used when python-jose is unavailable."""
+"""Minimal development-token helpers used when PyJWT is unavailable."""
 
 from __future__ import annotations
 

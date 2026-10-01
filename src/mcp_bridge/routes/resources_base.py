@@ -239,7 +239,9 @@ RELEASE_BUNDLE_MANIFEST_PATH = _resolve_existing_path(
 
 def _weak_etag(tokens: Sequence[str]) -> str:
     payload = "|".join(tokens) if tokens else "empty"
-    digest = hashlib.sha1(payload.encode("utf-8")).hexdigest()
+    # Weak HTTP cache validator, not a cryptographic trust assertion.
+    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
+    digest = hashlib.sha1(payload.encode("utf-8"), usedforsecurity=False).hexdigest()
     return f'W/"{digest}"'
 
 
@@ -250,7 +252,9 @@ def _fingerprint_metadata(metadata: dict[str, Any]) -> str:
         serialised = json.dumps(metadata, sort_keys=True, default=str)
     except TypeError:
         serialised = str(sorted(metadata.items()))
-    return hashlib.sha1(serialised.encode("utf-8")).hexdigest()
+    # Cache fingerprint only; resource integrity is checked separately with SHA-256.
+    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
+    return hashlib.sha1(serialised.encode("utf-8"), usedforsecurity=False).hexdigest()
 
 
 def _load_json_file(path: Path) -> dict[str, Any]:
@@ -358,8 +362,11 @@ def _schema_index() -> list[dict[str, Any]]:
                     ),
                     "schema": document,
                     "example": example,
+                    # Cache fingerprint; the sha256 fields above protect resource integrity.
+                    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
                     "_fingerprint": hashlib.sha1(
-                        json.dumps({"schema": document, "example": example}, sort_keys=True).encode("utf-8")
+                        json.dumps({"schema": document, "example": example}, sort_keys=True).encode("utf-8"),
+                        usedforsecurity=False,
                     ).hexdigest(),
                     "_last_modified": 0.0,
                 }

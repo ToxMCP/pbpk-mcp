@@ -37,6 +37,39 @@ _RATE_LIMIT_LOCK = threading.Lock()
 _JWT_BACKEND: tuple[type[Exception], Any] | None = None
 
 
+class _PyJWTBackend:
+    """Adapt the trusted JWKS payload to PyJWT's verified-key API."""
+
+    @staticmethod
+    def decode(token: str, key: Any, **kwargs: Any) -> dict[str, Any]:
+        import jwt
+
+        if isinstance(key, dict):
+            header = jwt.get_unverified_header(token)
+            keys = jwt.PyJWKSet.from_dict(key)
+            kid = header.get("kid")
+            if kid is not None:
+                try:
+                    key = keys[kid].key
+                except KeyError as exc:
+                    raise jwt.InvalidTokenError("Token key identifier is not trusted") from exc
+            elif len(keys.keys) == 1:
+                key = keys.keys[0].key
+            else:
+                # Legacy issuers may omit kid while rotating trusted signing keys.
+                # Only explicitly allowed algorithms are candidates; every attempt
+                # still verifies the signature and the registered claims.
+                for candidate in keys.keys:
+                    if candidate.algorithm_name not in kwargs["algorithms"]:
+                        continue
+                    try:
+                        return jwt.decode(token, candidate.key, **kwargs)
+                    except jwt.InvalidSignatureError:
+                        continue
+                raise jwt.InvalidTokenError("Token signature does not match the trusted JWKS")
+        return jwt.decode(token, key, **kwargs)
+
+
 def _anonymous_context() -> AuthContext:
     """Return the least-privilege anonymous principal used for local development."""
 
@@ -50,11 +83,14 @@ def _anonymous_context() -> AuthContext:
 def _get_jwt_backend() -> tuple[type[Exception], Any]:
     global _JWT_BACKEND
     if _JWT_BACKEND is None:
-        try:  # pragma: no cover - exercised when python-jose is available
-            from jose import JWTError, jwt
+        try:
+            from jwt import PyJWTError
         except ImportError:  # pragma: no cover - fallback for constrained environments
             from .simple_jwt import JWTError, jwt
-        _JWT_BACKEND = (JWTError, jwt)
+
+            _JWT_BACKEND = (JWTError, jwt)
+        else:
+            _JWT_BACKEND = (PyJWTError, _PyJWTBackend())
     return _JWT_BACKEND
 
 
@@ -75,6 +111,7 @@ class JWTValidator:
                     token,
                     secret,
                     algorithms=["HS256"],
+                    leeway=self._clock_skew,
                     options={"verify_aud": False},
                 )
             except jwt_error as exc:
@@ -89,6 +126,7 @@ class JWTValidator:
                 algorithms=["RS256"],
                 audience=self._config.auth_audience,
                 issuer=self._config.auth_issuer_url,
+                leeway=self._clock_skew,
                 options={"verify_at_hash": False},
             )
         except jwt_error as exc:

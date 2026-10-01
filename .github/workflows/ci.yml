@@ -61,6 +61,9 @@ jobs:
       - name: Run runtime contract tests
         run: make runtime-contract-test
 
+      - name: Test local deadlines and shutdown behavior
+        run: python -m pytest tests/test_local_job_deadlines.py tests/test_celery_runtime_contract.py tests/test_jwt_backend.py tests/test_security_posture.py -q
+
       - name: Retain validated distribution artifacts
         run: |
           python scripts/check_distribution_artifacts.py \

@@ -108,8 +108,8 @@ EXPECTED_VIEWER_TOOLS = {
 def _mint_privileged_token() -> str:
     """Mint a short-lived dev HS256 token carrying the privileged role set."""
 
-    try:  # pragma: no cover - exercised when python-jose is installed
-        from jose import jwt
+    try:
+        import jwt
     except ImportError:  # pragma: no cover - constrained-env fallback
         from mcp_bridge.security.simple_jwt import jwt
 

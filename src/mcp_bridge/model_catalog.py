@@ -142,7 +142,9 @@ def model_catalog_fingerprint(items: Sequence[Mapping[str, Any]]) -> str:
         payload = json.dumps(list(items), sort_keys=True, default=str)
     except TypeError:
         payload = json.dumps([str(item) for item in items], sort_keys=True)
-    return hashlib.sha1(payload.encode("utf-8")).hexdigest()
+    # Cache fingerprint only; integrity/qualification evidence uses SHA-256.
+    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
+    return hashlib.sha1(payload.encode("utf-8"), usedforsecurity=False).hexdigest()
 
 
 def ospsuite_profile_sidecar_candidates(file_path: Path) -> tuple[Path, ...]:
@@ -316,7 +318,11 @@ def _suggested_simulation_id(relative_path: Path) -> str:
     candidate = "-".join(tokens) or _normalise_token(without_suffix.stem) or "model"
     if len(candidate) <= 64:
         return candidate
-    digest = hashlib.sha1(without_suffix.as_posix().encode("utf-8")).hexdigest()[:8]
+    # Preserve stable display identifiers; this suffix is not an integrity check.
+    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
+    digest = hashlib.sha1(
+        without_suffix.as_posix().encode("utf-8"), usedforsecurity=False
+    ).hexdigest()[:8]
     return f"{candidate[:55].rstrip('-')}-{digest}"
 
 
