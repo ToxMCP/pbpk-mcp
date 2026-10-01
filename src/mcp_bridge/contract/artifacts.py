@@ -306,7 +306,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "docs/architecture/release_bundle_manifest.json",
       "role": "whole release bundle hash inventory",
-      "sha256": "c8e2aaaa83b3e23652cd544e7a7d6b179d02351d4567d2fbe82938c32ebcf919"
+      "sha256": "8e073864cce8e3127986b1c33e90bddd1edf6df74a7326cb83392c1784edb2ea"
     },
     {
       "classification": "supporting",
@@ -452,7 +452,7 @@ _CONTRACT_MANIFEST_JSON = r"""
 
 _RELEASE_BUNDLE_MANIFEST_JSON = r"""
 {
-  "bundleSha256": "9a026ab32e8ec36d40d73b3bd890b1d2ac27a3510b33e0d1bfb379178cfe2ab5",
+  "bundleSha256": "5a3ae1e49c330fb97c57019e4f5b0a3408e0ef55b0dbb9e260ca24d4817cc953",
   "contractVersion": "pbpk-mcp.v1",
   "fileCount": 424,
   "files": [
@@ -597,7 +597,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "governance",
       "relativePath": ".github/workflows/ci.yml",
-      "sha256": "9c2fbcf5859922cae1a6a2e0f512c73151697be30f8f379be271af2930ab3f52",
+      "sha256": "6b9c028284331259fa17885a3810340f027e17d7d2a7b9e3717fc05a2d0e3291",
       "sizeBytes": 4112
     },
     {
