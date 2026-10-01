@@ -83,6 +83,8 @@ See `docs/architecture/exposure_led_ngra_role.md` for the explicit boundary stat
 See `docs/architecture/toxmcp_suite_index.md` for the shortest cross-service routing guide inside the ToxMCP suite.
 See `benchmarks/regulatory_goldset/regulatory_goldset_summary.md` for the current gold-set documentation benchmark summary derived from the fetched public-code PBPK corpus. Internal examples such as the bundled synthetic reference model remain bounded MCP rehearsal models, not benchmark exemplars.
 
+Local jobs report their deadline as `timeout` promptly. A running backend call cannot be terminated by a Python thread timeout: its result is discarded and it continues to occupy one slot in the bounded backend pool until it exits. Backend calls still queued at the deadline are cancelled. Use backend-enforced process/job cancellation when a workload requires hard termination; shutdown of the local service also does not kill a running simulation.
+
 ## What's new in v0.5.0
 
 - Enforced single-use replay rejection for bearer tokens that carry `jti` claims, so repeated presentation of the same token identifier is now treated as an auth failure instead of silently succeeding.

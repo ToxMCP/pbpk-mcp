@@ -459,7 +459,11 @@ class BaseJobService(Protocol):
 
 
 class JobService:
-    """Simple thread-pool based job execution service."""
+    """Local jobs with deadline reporting and a bounded backend thread pool.
+
+    A timeout cannot terminate an already-running Python/backend call. Its late
+    result is discarded, and it occupies a backend slot until the call exits.
+    """
 
     def __init__(
         self,
@@ -475,10 +479,16 @@ class JobService:
         population_retention_seconds: float | None = None,
     ) -> None:
         self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="job")
+        self._backend_executor = ThreadPoolExecutor(
+            max_workers=max_workers, thread_name_prefix="job-backend"
+        )
         self._default_timeout = float(default_timeout)
         self._default_retries = max(0, max_retries)
         self._jobs: dict[str, JobRecord] = {}
         self._lock = threading.Lock()
+        self._persistence_lock = threading.Lock()
+        self._shutting_down = False
+        self._closed = False
         self._audit = audit_trail
         self._registry_owner: tempfile.TemporaryDirectory[str] | None = None
         if registry is None:
@@ -513,6 +523,10 @@ class JobService:
     ) -> JobRecord:
         """Queue a simulation job for asynchronous execution."""
 
+        with self._lock:
+            if self._shutting_down:
+                raise RuntimeError("Job service has shut down")
+
         if idempotency_key:
             existing = self._registry.get_by_idempotency(idempotency_key)
             if existing:
@@ -538,6 +552,8 @@ class JobService:
         )
 
         with self._lock:
+            if self._shutting_down:
+                raise RuntimeError("Job service has shut down")
             self._jobs[job_id] = record
         _emit_job_event(self._audit, record, "job.simulation.queued")
         self._persist_record(record)
@@ -564,14 +580,19 @@ class JobService:
             self._jobs[record.job_id] = record
 
     def _persist_record(self, record: JobRecord) -> None:
-        try:
-            self._registry.upsert(record)
-        except Exception as exc:  # pragma: no cover - persistence failures logged
-            logger.warning("job_registry.persist_failed", jobId=record.job_id, reason=str(exc))
+        with self._persistence_lock:
+            if self._closed:
+                return
+            try:
+                self._registry.upsert(record)
+            except Exception as exc:  # pragma: no cover - persistence failures logged
+                logger.warning("job_registry.persist_failed", jobId=record.job_id, reason=str(exc))
 
     def _apply_retention_policy(self) -> None:
         """Purge expired job metadata and population artefacts."""
 
+        if self._shutting_down:
+            return
         cutoff = None
         if self._retention_seconds > 0:
             cutoff = time.time() - self._retention_seconds
@@ -610,6 +631,10 @@ class JobService:
     ) -> JobRecord:
         """Queue a population simulation job for asynchronous execution."""
 
+        with self._lock:
+            if self._shutting_down:
+                raise RuntimeError("Job service has shut down")
+
         if idempotency_key:
             existing = self._registry.get_by_idempotency(idempotency_key)
             if existing:
@@ -635,6 +660,8 @@ class JobService:
         )
 
         with self._lock:
+            if self._shutting_down:
+                raise RuntimeError("Job service has shut down")
             self._jobs[job_id] = record
         _emit_job_event(self._audit, record, "job.population.queued")
         self._persist_record(record)
@@ -648,6 +675,8 @@ class JobService:
 
         with self._lock:
             record = self._jobs[job_id]
+            if self._is_terminal(record):
+                return record
             record.cancel_requested = True
             future = record._future
         self._persist_record(record)
@@ -659,7 +688,9 @@ class JobService:
                 record.finished_at = time.time()
                 record._future = None
             self._persist_record(record)
-            _emit_job_event(self._audit, record, f"job.{record.job_type}.cancelled", reason="future_cancelled")
+            _emit_job_event(
+                self._audit, record, f"job.{record.job_type}.cancelled", reason="future_cancelled"
+            )
             self._apply_retention_policy()
         return record
 
@@ -683,10 +714,6 @@ class JobService:
                 record = self._jobs[job_id]
                 future = record._future
                 status = record.status
-            if future is not None:
-                remaining = None if deadline is None else max(0.0, deadline - time.time())
-                future.result(timeout=remaining)
-                break
             if status in {
                 JobStatus.SUCCEEDED,
                 JobStatus.FAILED,
@@ -694,19 +721,46 @@ class JobService:
                 JobStatus.TIMEOUT,
             }:
                 break
+            if future is not None:
+                remaining = None if deadline is None else max(0.0, deadline - time.time())
+                future.result(timeout=remaining)
+                break
             if deadline is not None and time.time() >= deadline:
                 raise FuturesTimeoutError()
             time.sleep(0.01)
         return self.get_job(job_id)
 
     def shutdown(self) -> None:
+        with self._lock:
+            if self._shutting_down:
+                return
+            self._shutting_down = True
+            cancelled = []
+            for record in self._jobs.values():
+                if not self._is_terminal(record):
+                    record.cancel_requested = True
+                    record.status = JobStatus.CANCELLED
+                    record.finished_at = time.time()
+                    record.error = {
+                        "message": "Job service shut down; a running backend may continue"
+                    }
+                    record._future = None
+                    cancelled.append(record)
+        for record in cancelled:
+            self._persist_record(record)
+            _emit_job_event(
+                self._audit, record, f"job.{record.job_type}.cancelled", reason="shutdown"
+            )
         if self._scheduler is not None:
             try:
                 self._scheduler.shutdown()
             except Exception:  # pragma: no cover - defensive guard
                 logger.warning("job_scheduler.shutdown_failed")
         self._executor.shutdown(wait=False, cancel_futures=True)
-        self._registry.close()
+        self._backend_executor.shutdown(wait=False, cancel_futures=True)
+        with self._persistence_lock:
+            self._closed = True
+            self._registry.close()
         if self._registry_owner is not None:
             self._registry_owner.cleanup()
             self._registry_owner = None
@@ -725,16 +779,19 @@ class JobService:
         run_id: Optional[str],
     ) -> None:
         def start_execution() -> None:
-            future = self._executor.submit(
-                self._execute_run_simulation,
-                record.job_id,
-                adapter,
-                simulation_id,
-                run_id,
-            )
             with self._lock:
+                if self._shutting_down or self._is_terminal(record):
+                    return
+                future = self._executor.submit(
+                    self._execute_run_simulation,
+                    record.job_id,
+                    adapter,
+                    simulation_id,
+                    run_id,
+                )
                 tracked = self._jobs[record.job_id]
-                tracked._future = future
+                if not self._is_terminal(tracked):
+                    tracked._future = future
             self._persist_record(self._jobs[record.job_id])
 
         if self._scheduler is not None:
@@ -749,15 +806,18 @@ class JobService:
         config: PopulationSimulationConfig,
     ) -> None:
         def start_execution() -> None:
-            future = self._executor.submit(
-                self._execute_population_simulation,
-                record.job_id,
-                adapter,
-                config,
-            )
             with self._lock:
+                if self._shutting_down or self._is_terminal(record):
+                    return
+                future = self._executor.submit(
+                    self._execute_population_simulation,
+                    record.job_id,
+                    adapter,
+                    config,
+                )
                 tracked = self._jobs[record.job_id]
-                tracked._future = future
+                if not self._is_terminal(tracked):
+                    tracked._future = future
             self._persist_record(self._jobs[record.job_id])
 
         if self._scheduler is not None:
@@ -793,12 +853,15 @@ class JobService:
             attempts += 1
             with self._lock:
                 record = self._jobs[job_id]
-                record.attempts = attempts
-                if record.cancel_requested:
-                    self._mark_cancelled(record)
+                if self._shutting_down or self._is_terminal(record):
                     return
+                record.attempts = attempts
+                cancelled = record.cancel_requested
                 record.status = JobStatus.RUNNING
                 record.started_at = time.time()
+            if cancelled:
+                self._mark_cancelled(record)
+                return
             self._persist_record(record)
             _emit_job_event(self._audit, record, f"job.{record.job_type}.running")
 
@@ -816,8 +879,7 @@ class JobService:
                 self._mark_timeout(job_id)
                 return
             except AdapterError as exc:
-                if attempts <= record.max_retries:
-                    self._record_retry(job_id, exc)
+                if attempts <= record.max_retries and self._record_retry(job_id, exc):
                     continue
                 self._mark_failed(job_id, exc)
                 return
@@ -842,12 +904,15 @@ class JobService:
             attempts += 1
             with self._lock:
                 record = self._jobs[job_id]
-                record.attempts = attempts
-                if record.cancel_requested:
-                    self._mark_cancelled(record)
+                if self._shutting_down or self._is_terminal(record):
                     return
+                record.attempts = attempts
+                cancelled = record.cancel_requested
                 record.status = JobStatus.RUNNING
                 record.started_at = time.time()
+            if cancelled:
+                self._mark_cancelled(record)
+                return
             self._persist_record(record)
 
             if self._check_cancel_requested(job_id):
@@ -863,8 +928,7 @@ class JobService:
                 self._mark_timeout(job_id)
                 return
             except AdapterError as exc:
-                if attempts <= record.max_retries:
-                    self._record_retry(job_id, exc)
+                if attempts <= record.max_retries and self._record_retry(job_id, exc):
                     continue
                 self._mark_failed(job_id, exc)
                 return
@@ -878,17 +942,31 @@ class JobService:
             self._mark_succeeded(job_id, result)
             return
 
-    def _record_retry(self, job_id: str, exc: Exception) -> None:
+    @staticmethod
+    def _is_terminal(record: JobRecord) -> bool:
+        return record.status in {
+            JobStatus.SUCCEEDED,
+            JobStatus.FAILED,
+            JobStatus.CANCELLED,
+            JobStatus.TIMEOUT,
+        }
+
+    def _record_retry(self, job_id: str, exc: Exception) -> bool:
         with self._lock:
             record = self._jobs[job_id]
+            if self._shutting_down or self._is_terminal(record):
+                return False
             record.status = JobStatus.QUEUED
             record.error = {"message": str(exc)}
         self._persist_record(record)
         _emit_job_event(self._audit, record, f"job.{record.job_type}.retry", reason=str(exc))
+        return True
 
     def _mark_succeeded(self, job_id: str, result: Any) -> None:
         with self._lock:
             record = self._jobs[job_id]
+            if self._shutting_down or self._is_terminal(record):
+                return
             record.status = JobStatus.SUCCEEDED
             record.finished_at = time.time()
             record.result_id = getattr(result, "results_id", None)
@@ -901,6 +979,8 @@ class JobService:
     def _mark_failed(self, job_id: str, exc: Exception) -> None:
         with self._lock:
             record = self._jobs[job_id]
+            if self._shutting_down or self._is_terminal(record):
+                return
             record.status = JobStatus.FAILED
             record.finished_at = time.time()
             record.error = {"message": str(exc)}
@@ -912,18 +992,25 @@ class JobService:
     def _mark_timeout(self, job_id: str) -> None:
         with self._lock:
             record = self._jobs[job_id]
+            if self._shutting_down or self._is_terminal(record):
+                return
             record.status = JobStatus.TIMEOUT
             record.finished_at = time.time()
-            record.error = {"message": "Job execution exceeded timeout"}
+            record.error = {
+                "message": "Job execution exceeded timeout; a running backend may continue"
+            }
             record._future = None
         self._persist_record(record)
         _emit_job_event(self._audit, record, f"job.{record.job_type}.timeout")
         self._apply_retention_policy()
 
     def _mark_cancelled(self, record: JobRecord) -> None:
-        record.status = JobStatus.CANCELLED
-        record.finished_at = time.time()
-        record._future = None
+        with self._lock:
+            if self._shutting_down or self._is_terminal(record):
+                return
+            record.status = JobStatus.CANCELLED
+            record.finished_at = time.time()
+            record._future = None
         self._persist_record(record)
         _emit_job_event(self._audit, record, f"job.{record.job_type}.cancelled")
         self._apply_retention_policy()
@@ -931,37 +1018,29 @@ class JobService:
     def _check_cancel_requested(self, job_id: str) -> bool:
         with self._lock:
             record = self._jobs[job_id]
+            if self._shutting_down or self._is_terminal(record):
+                return True
             cancelled = record.cancel_requested
-            future = record._future
         if cancelled:
-            if future and not future.cancelled():
-                with self._lock:
-                    self._jobs[job_id].status = JobStatus.CANCELLED
-                    self._jobs[job_id].finished_at = time.time()
-                self._jobs[job_id]._future = None
-            self._persist_record(self._jobs[job_id])
-            _emit_job_event(
-                self._audit,
-                self._jobs[job_id],
-                f"job.{self._jobs[job_id].job_type}.cancelled",
-                reason="checked",
-            )
-            self._apply_retention_policy()
+            self._mark_cancelled(record)
             return True
         return False
 
-    @staticmethod
     def _call_with_timeout(
+        self,
         func: Callable[..., Any],
         timeout_seconds: float,
         *args: Any,
         **kwargs: Any,
     ) -> Any:
-        if timeout_seconds <= 0:
-            return func(*args, **kwargs)
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(func, *args, **kwargs)
-            return future.result(timeout=timeout_seconds)
+        future = self._backend_executor.submit(func, *args, **kwargs)
+        try:
+            return future.result(timeout=timeout_seconds if timeout_seconds > 0 else None)
+        except FuturesTimeoutError:
+            # Cancels a queued call; an already-running backend stays in the
+            # bounded pool. Do not wait for it or let its late result change state.
+            future.cancel()
+            raise
 
 
 class CeleryJobService:

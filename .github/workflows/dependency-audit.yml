@@ -1,0 +1,32 @@
+name: Dependency Audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "19 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.8.15"
+      - name: Export the committed runtime and development lock
+        run: uv export --frozen --extra dev --no-emit-project --no-hashes --output-file audit-requirements.txt
+      - name: Audit exact locked versions against the live advisory database
+        run: uvx --python 3.11 pip-audit==2.9.0 --strict --desc --disable-pip --no-deps --requirement audit-requirements.txt --format json --output dependency-audit.json
+      - name: Retain audit findings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit
+          path: dependency-audit.json
+          if-no-files-found: warn
