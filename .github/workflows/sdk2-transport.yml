@@ -1,0 +1,84 @@
+name: Isolated SDK2 transport
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "29 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  clients:
+    if: github.event_name != 'schedule'
+    name: Installed SDK1/SDK2 clients (${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.12.21"
+          python-version: ${{ matrix.python }}
+      - name: Install three separate frozen environments
+        run: |
+          uv sync --frozen --extra dev
+          uv sync --frozen --extra dev --project sdk2
+          uv sync --frozen --project sdk2/tests/compatibility/legacy-client
+      - name: Check transport formatting and security boundaries
+        run: |
+          sdk2/.venv/bin/python -m black --check sdk2
+          sdk2/.venv/bin/python -m pytest sdk2/tests -q
+      - name: Build and install an independent transport wheel
+        run: |
+          uv build --project sdk2 --out-dir "$RUNNER_TEMP/transport-dist"
+          uv export --frozen --project sdk2 --no-dev --no-emit-project --output-file "$RUNNER_TEMP/transport-runtime.txt"
+          uv venv --python ${{ matrix.python }} "$RUNNER_TEMP/transport-env"
+          uv pip install --python "$RUNNER_TEMP/transport-env/bin/python" --require-hashes --no-config -r "$RUNNER_TEMP/transport-runtime.txt"
+          uv pip install --python "$RUNNER_TEMP/transport-env/bin/python" --no-deps "$RUNNER_TEMP"/transport-dist/*.whl
+          uv pip check --python "$RUNNER_TEMP/transport-env/bin/python"
+      - name: Verify installed transport against the existing backend
+        run: |
+          sdk2/.venv/bin/python sdk2/scripts/verify_protocol_clients.py \
+            --server-python "$RUNNER_TEMP/transport-env/bin/python" \
+            --backend-python "$GITHUB_WORKSPACE/.venv/bin/python" --backend-root "$GITHUB_WORKSPACE/src" \
+            --legacy-python "$GITHUB_WORKSPACE/sdk2/tests/compatibility/legacy-client/.venv/bin/python" \
+            --output-dir "$RUNNER_TEMP/client-results"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pbpk-sdk2-${{ matrix.python }}
+          path: |
+            ${{ runner.temp }}/client-results
+            ${{ runner.temp }}/transport-dist
+          if-no-files-found: warn
+
+  security:
+    name: Isolated transport dependency and source audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.12.21"
+      - name: Audit both complete lockfiles
+        run: |
+          uv run --no-project --python 3.12 --with pip-audit==2.10.1 sdk2/scripts/audit_locks.py sdk2/uv.lock sdk2/tests/compatibility/legacy-client/uv.lock
+      - name: Scan production transport
+        run: uvx --python 3.12 bandit==1.9.4 -r sdk2/src -ll -ii
+
+  container:
+    if: github.event_name != 'schedule'
+    name: Optional transport container
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - run: docker build -t pbpk-sdk2-transport sdk2
+      - name: Verify the SDK namespace and independent package
+        run: docker run --rm --entrypoint python pbpk-sdk2-transport -c 'from importlib.metadata import version; from pbpk_mcp_sdk2.http import create_app; assert version("mcp")=="2.2.0"; assert version("pbpk-mcp-sdk2")=="0.1.0"; assert create_app() is not None'
