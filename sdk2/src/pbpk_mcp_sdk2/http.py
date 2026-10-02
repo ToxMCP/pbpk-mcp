@@ -5,14 +5,13 @@ from contextlib import asynccontextmanager
 
 import httpx2
 from mcp.server.transport_security import TransportSecuritySettings
-from mcp.shared.exceptions import MCPError
 from mcp_types import PROTOCOL_VERSION_META_KEY
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
-from .backend import Backend
+from .backend import Backend, peer_headers
 from .body_limit import MCPBodyLimitMiddleware
 from .server import create_server
 from .settings import Settings
@@ -89,9 +88,16 @@ class SDKResponse(Response):
             return await receive()
 
         # The alias keeps its public URL; the SDK's internal route is /mcp.
+        state = scope.setdefault("state", {})
         sdk_scope = {**scope, "path": "/mcp", "raw_path": b"/mcp"}
 
         async def cors_send(message):
+            if message["type"] == "http.response.start" and "pbpk_auth_status" in state:
+                status = state["pbpk_auth_status"]
+                headers = list(message.get("headers", []))
+                if status == 401:
+                    headers.append((b"www-authenticate", b"Bearer"))
+                message = {**message, "status": status, "headers": headers}
             if self.origin and message["type"] == "http.response.start":
                 message = {
                     **message,
@@ -135,8 +141,11 @@ def create_app(settings: Settings | None = None, backend: Backend | None = None)
         if request.url.query:
             path += "?" + request.url.query
         headers = {
-            name: value for name, value in request.headers.items() if name not in HOP_HEADERS
+            name: value
+            for name, value in request.headers.items()
+            if name not in HOP_HEADERS and name != "x-forwarded-for"
         }
+        headers.update(peer_headers(request))
         try:
             response = await backend.client.request(
                 request.method,
@@ -183,40 +192,6 @@ def create_app(settings: Settings | None = None, backend: Backend | None = None)
         body = await request.body()
         if not modern_request(request, body):
             return await forward(request, body)
-        try:
-            payload = json.loads(body)
-        except ValueError:
-            payload = {}
-        if isinstance(payload, dict) and payload.get("method") in {
-            "tools/list",
-            "tools/call",
-            "prompts/list",
-            "prompts/get",
-        }:
-            try:
-                await backend.authenticate(request)
-            except MCPError as error:
-                code = 401 if error.code == -32000 else 403 if error.code == -32001 else 502
-                headers = {"WWW-Authenticate": "Bearer"} if code == 401 else {}
-                origin = request.headers.get("origin", "")
-                if allowed_origin(origin, settings.origins()):
-                    headers.update(
-                        {
-                            "Access-Control-Allow-Origin": origin,
-                            "Access-Control-Allow-Credentials": "true",
-                            "Access-Control-Expose-Headers": "WWW-Authenticate",
-                            "Vary": "Origin",
-                        }
-                    )
-                return JSONResponse(
-                    {
-                        "jsonrpc": "2.0",
-                        "id": payload.get("id"),
-                        "error": {"code": error.code, "message": error.message},
-                    },
-                    status_code=code,
-                    headers=headers,
-                )
         origin = request.headers.get("origin", "")
         return SDKResponse(
             sdk, body, origin if allowed_origin(origin, settings.origins()) else None

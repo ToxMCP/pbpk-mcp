@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import time
+import uuid
 from contextlib import asynccontextmanager
 from importlib.metadata import version
 from pathlib import Path
@@ -16,12 +17,13 @@ from mcp.client.stdio import stdio_client
 SECRET = "pbpk-sdk2-offline-fixture-secret-32bytes!!"
 
 
-def token(role):
+def token(role, single_use=False):
     roles = ["viewer"] if role == "viewer" else ["viewer", "operator", "admin"]
     return jwt.encode(
         {
             "sub": "offline-transport-fixture",
             "roles": roles,
+            **({"jti": str(uuid.uuid4())} if single_use else {}),
             "iat": int(time.time()),
             "exp": int(time.time()) + 3600,
         },
@@ -31,8 +33,8 @@ def token(role):
 
 
 @asynccontextmanager
-async def connection(args, role="privileged"):
-    bearer = token(role)
+async def connection(args, role="privileged", single_use=False):
+    bearer = token(role, single_use)
     env = {
         key: value for key, value in os.environ.items() if key not in {"PYTHONPATH", "VIRTUAL_ENV"}
     }
@@ -246,7 +248,13 @@ async def collect(args):
             assert exc.error.code == -32001
         else:
             raise AssertionError("Confirmation bypassed viewer role")
+    async with connection(args, single_use=True) as (client, _):
+        single_use_catalog = wire(await client.list_tools())["tools"]
+        assert (
+            len(single_use_catalog) == 19
+        ), "Transport consumed the single-use token before the actual RPC"
     return {
+        "singleUseTokenAccepted": True,
         "clientSDK": version("mcp"),
         "protocol": protocol,
         "catalog": catalog,

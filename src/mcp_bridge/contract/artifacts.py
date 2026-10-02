@@ -306,7 +306,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "docs/architecture/release_bundle_manifest.json",
       "role": "whole release bundle hash inventory",
-      "sha256": "39b151022c48ee162ada3167c19a7360815d041ed151c1a0b11d56e3e417c886"
+      "sha256": "e986710285db68060804564a9b58e681383da796a75c65e0f4579aa4bbde37b7"
     },
     {
       "classification": "supporting",
@@ -452,9 +452,9 @@ _CONTRACT_MANIFEST_JSON = r"""
 
 _RELEASE_BUNDLE_MANIFEST_JSON = r"""
 {
-  "bundleSha256": "de65ba114bd46ce2c090952f39465e1e0f0c37bedc1a0712399de513a72d0e17",
+  "bundleSha256": "0c6b59bdb98757c40a023cbb9687d62d283d2af5e5a169eec0e63b1792f432ef",
   "contractVersion": "pbpk-mcp.v1",
-  "fileCount": 447,
+  "fileCount": 448,
   "files": [
     {
       "group": "root",
@@ -1563,8 +1563,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "root",
       "relativePath": "sdk2/README.md",
-      "sha256": "1d24039bc5ffa5f0882db6f3a133c1467ef03b6ee644067b4a017fedec6a09be",
-      "sizeBytes": 3561
+      "sha256": "39f46792ac5c49b0a8689fbfd74bd2e809017a77f8fb15364865389c1c76704c",
+      "sizeBytes": 3891
     },
     {
       "group": "root",
@@ -1593,8 +1593,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "root",
       "relativePath": "sdk2/scripts/protocol_probe.py",
-      "sha256": "b16c7ce473072993e7e4ed0833ae6a34915826b08e4ae216223050c66b4decca",
-      "sizeBytes": 9978
+      "sha256": "8864ac353964678575c54b71a58b94989ee2ffdbfe1ec19b33fe66488f1f3abb",
+      "sizeBytes": 10413
     },
     {
       "group": "root",
@@ -1617,8 +1617,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "root",
       "relativePath": "sdk2/src/pbpk_mcp_sdk2/backend.py",
-      "sha256": "4f326bd52a9882e80fc98996533ffeb0b7cee5e161b8c7e11cc3532753ca08fb",
-      "sizeBytes": 4271
+      "sha256": "ea17c22bffcf897953dce16a705067c4e96cec50f5d849fcdbabd141a5d5f34d",
+      "sizeBytes": 5219
     },
     {
       "group": "root",
@@ -1629,8 +1629,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "root",
       "relativePath": "sdk2/src/pbpk_mcp_sdk2/http.py",
-      "sha256": "e0a40fe6b0a2f606aac482e306e13c68c96dd1054b2d353a252d50a387906a13",
-      "sizeBytes": 8602
+      "sha256": "27dc65c54d8c500e4d9b8d356a16e07bfdbf9a14e4370261cf6a5b96cb304a5d",
+      "sizeBytes": 7682
     },
     {
       "group": "root",
@@ -1653,14 +1653,20 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "root",
       "relativePath": "sdk2/tests/test_browser.py",
-      "sha256": "b5919a1ee9ccbf402dd8562185a8618836d5bd0ebfb7e51f9dec198869c2c4ce",
-      "sizeBytes": 2505
+      "sha256": "78bcb144f930fd7b186c2473d231b809a5ec645ddc7ed604e4ce90f951e9e5ee",
+      "sizeBytes": 2922
+    },
+    {
+      "group": "root",
+      "relativePath": "sdk2/tests/test_single_use_auth.py",
+      "sha256": "97b8cf92f0bfd277049fe44cb38433f5ff807eb8075cf2da7627ae4ca021cde0",
+      "sizeBytes": 3530
     },
     {
       "group": "root",
       "relativePath": "sdk2/tests/test_transport.py",
-      "sha256": "01ad347e224a61589f2d1b86adc7fb89ad557a2f06308f7cb9ba4d6033b64690",
-      "sizeBytes": 8240
+      "sha256": "ff22b3eaa972b7b20aebb56fc63b346c8fcfac57bc9c8c1df88561dd0471779a",
+      "sizeBytes": 9279
     },
     {
       "group": "root",
@@ -3145,7 +3151,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     "documentation": 80,
     "governance": 10,
     "operations": 34,
-    "root": 119,
+    "root": 120,
     "source": 122,
     "verification": 62
   },
@@ -3189,7 +3195,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     ],
     "mode": "staged-source-tree-equivalent"
   },
-  "totalBytes": 4679499
+  "totalBytes": 4685278
 }
 """
 

@@ -175,14 +175,24 @@ def test_limit_precedes_both_parsers_and_counts_chunked_bytes(path):
         assert client.post(path, content=iter([b"x" * 6, b"x" * 6])).status_code == 413
 
 
-@pytest.mark.parametrize("code", [401, 403])
+@pytest.mark.parametrize("code", [401, 403, 429])
 def test_modern_auth_status_preserves_role_boundary(code):
     gateway = backend(lambda request: httpx2.Response(code), bearer_token="owner")
     with TestClient(create_app(gateway.settings, gateway), base_url="http://localhost") as client:
         response = client.post(
             "/mcp",
             headers={"mcp-protocol-version": "2026-07-28", "mcp-method": "tools/list"},
-            json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/list",
+                "params": {
+                    "_meta": {
+                        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                        "io.modelcontextprotocol/clientCapabilities": {},
+                    }
+                },
+            },
         )
     assert response.status_code == code
     if code == 401:
@@ -221,7 +231,17 @@ def test_modern_host_origin_and_browser_routing_headers():
             client.post(
                 "/mcp",
                 headers={**headers, "host": "attacker.example"},
-                json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/list",
+                    "params": {
+                        "_meta": {
+                            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                            "io.modelcontextprotocol/clientCapabilities": {},
+                        }
+                    },
+                },
             ).status_code
             == 421
         )
@@ -229,7 +249,17 @@ def test_modern_host_origin_and_browser_routing_headers():
             client.post(
                 "/mcp",
                 headers={**headers, "origin": "https://attacker.example"},
-                json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/list",
+                    "params": {
+                        "_meta": {
+                            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                            "io.modelcontextprotocol/clientCapabilities": {},
+                        }
+                    },
+                },
             ).status_code
             == 403
         )

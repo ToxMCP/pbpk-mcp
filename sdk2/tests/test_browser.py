@@ -61,8 +61,22 @@ def test_allowed_browser_can_read_authentication_challenge():
     with TestClient(create_app(settings, gateway), base_url="http://localhost") as client:
         response = client.post(
             "/mcp",
-            headers={"origin": "http://localhost:1234", "mcp-protocol-version": "2026-07-28"},
-            json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+            headers={
+                "origin": "http://localhost:1234",
+                "mcp-protocol-version": "2026-07-28",
+                "mcp-method": "tools/list",
+            },
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/list",
+                "params": {
+                    "_meta": {
+                        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                        "io.modelcontextprotocol/clientCapabilities": {},
+                    }
+                },
+            },
         )
         assert response.status_code == 401
-        assert response.headers["access-control-expose-headers"] == "WWW-Authenticate"
+        assert "www-authenticate" in response.headers["access-control-expose-headers"].lower()

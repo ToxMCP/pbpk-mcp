@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+import ipaddress
 from typing import Any
 
 import httpx2
@@ -19,6 +20,15 @@ FORWARDED_CONTEXT_HEADERS = {
 }
 
 
+def peer_headers(request: Request) -> dict[str, str]:
+    if request.client is not None:
+        try:
+            return {"x-forwarded-for": str(ipaddress.ip_address(request.client.host))}
+        except ValueError:
+            pass
+    return {}
+
+
 class Backend:
     def __init__(self, settings: Settings, client: httpx2.AsyncClient | None = None):
         self.settings = settings
@@ -34,28 +44,30 @@ class Backend:
         # An unauthenticated HTTP caller must never inherit the owner's token.
         if request is not None:
             return {
-                name: value
-                for name, value in request.headers.items()
-                if name in FORWARDED_CONTEXT_HEADERS
+                **{
+                    name: value
+                    for name, value in request.headers.items()
+                    if name in FORWARDED_CONTEXT_HEADERS
+                },
+                **peer_headers(request),
             }
         token = self.settings.bearer_token
         return {"authorization": "Bearer " + token.get_secret_value()} if token else {}
 
-    async def authenticate(self, request: Request | None):
-        try:
-            response = await self.client.get("/mcp/list_tools", headers=self.headers(request))
-        except httpx2.HTTPError as error:
-            raise MCPError(-32002, "PBPK backend is unavailable.") from error
-        if response.status_code == 401:
-            raise MCPError(-32000, "Authentication required.")
-        if response.status_code == 403:
-            raise MCPError(-32001, "Access denied.")
-        if response.status_code != 200:
-            raise MCPError(-32002, "PBPK backend is unavailable.")
+    def authentication_error(self, status: int, request: Request | None):
+        # Preserve HTTP authentication/rate status after the SDK has validated
+        # the envelope and invoked the backend exactly once. State is local to
+        # this ASGI request, never cached across callers or tokens.
+        if request is not None:
+            request.state.pbpk_auth_status = status
+        code, message = {
+            401: (-32000, "Authentication required."),
+            403: (-32001, "Access denied."),
+            429: (-32003, "Rate limit exceeded."),
+        }[status]
+        return MCPError(code, message)
 
     async def invoke(self, method: str, params: dict[str, Any], request: Request | None):
-        if method in {"tools/list", "tools/call", "prompts/list", "prompts/get"}:
-            await self.authenticate(request)
         request_id = next(self.ids)
         headers = {
             **self.headers(request),
@@ -68,6 +80,8 @@ class Backend:
                 headers=headers,
                 json={"jsonrpc": "2.0", "id": request_id, "method": method, "params": params},
             )
+            if response.status_code in {401, 403, 429}:
+                raise self.authentication_error(response.status_code, request)
             payload = response.json()
         except (httpx2.HTTPError, ValueError) as error:
             raise MCPError(-32002, "PBPK backend is unavailable.") from error
@@ -91,6 +105,14 @@ class Backend:
                 -32002: "PBPK tool execution failed.",
             }
             if code == -32603:
+                # The released backend serializes AuthError as an internal RPC
+                # error with a status-prefixed string. Recognize only these
+                # known status prefixes and expose a generic auth message.
+                detail = payload["error"].get("data")
+                if response.status_code == 500 and isinstance(detail, str):
+                    for status in (401, 403, 429):
+                        if detail.startswith(str(status) + ": "):
+                            raise self.authentication_error(status, request)
                 raise MCPError(code, "PBPK request failed.")
             # Expected domain errors carry actionable validation/confirmation
             # details. Only unexpected backend failures lose raw details.
