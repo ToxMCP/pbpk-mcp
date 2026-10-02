@@ -183,7 +183,7 @@
       "classification": "supporting",
       "relativePath": "docs/architecture/release_bundle_manifest.json",
       "role": "whole release bundle hash inventory",
-      "sha256": "d3a3f647fe71269ae5756ff425b0838546e239859dfdd6a591f55dcbc72d642b"
+      "sha256": "39b151022c48ee162ada3167c19a7360815d041ed151c1a0b11d56e3e417c886"
     },
     {
       "classification": "supporting",

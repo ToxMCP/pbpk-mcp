@@ -60,3 +60,4 @@ include tests/test_reviewer_advisory.py
 include tests/test_runtime_security_live_stack.py
 include tests/test_model_discovery_live_stack.py
 include tests/test_oecd_live_stack.py
+recursive-include sdk2 *.py *.toml *.lock *.md Dockerfile .dockerignore .gitignore
