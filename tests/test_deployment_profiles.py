@@ -236,7 +236,7 @@ print(json.dumps(sys.path[:3]))
             text,
         )
         self.assertIn("make misuse-prevention-test PY=python", text)
-        self.assertIn("actions/upload-artifact@v4", text)
+        self.assertRegex(text, r"actions/upload-artifact@[0-9a-f]{40}(?:\s|$)")
         self.assertIn("dist/*.tar.gz", text)
         self.assertIn("dist/*.whl", text)
         self.assertIn("dist/release-artifact-report.json", text)
