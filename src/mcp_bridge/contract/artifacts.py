@@ -306,7 +306,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "docs/architecture/release_bundle_manifest.json",
       "role": "whole release bundle hash inventory",
-      "sha256": "8cc3932e53c75c0d46c50c2565cc44e829d0e771a6f325922c5e6aa9d3da6927"
+      "sha256": "6885da30bc1b9ed38bdf2998852a267f47a28ba6c2647b4e4fa2c76618f85704"
     },
     {
       "classification": "supporting",
@@ -452,7 +452,7 @@ _CONTRACT_MANIFEST_JSON = r"""
 
 _RELEASE_BUNDLE_MANIFEST_JSON = r"""
 {
-  "bundleSha256": "67518158fa65d2dbe99bb870556472842f880a65fa4a14191f75990f3f289d11",
+  "bundleSha256": "f32aa85977697b7adef6f0579be62ca32edddee0c8f0d376ec7c63613649612d",
   "contractVersion": "pbpk-mcp.v1",
   "fileCount": 448,
   "files": [
@@ -2463,8 +2463,8 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "verification",
       "relativePath": "tests/test_deployment_profiles.py",
-      "sha256": "ae966d15cd292c385975100ddd93cb1baa52732d3b3340f5047f9fd397a25fb8",
-      "sizeBytes": 14940
+      "sha256": "176f06047235537a81f2dc363330691f15f6ae92c4da9199424ed1257f0c3799",
+      "sizeBytes": 14962
     },
     {
       "group": "verification",
@@ -3195,7 +3195,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     ],
     "mode": "staged-source-tree-equivalent"
   },
-  "totalBytes": 4686175
+  "totalBytes": 4686197
 }
 """
 
