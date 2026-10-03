@@ -21,8 +21,8 @@ jobs:
       matrix:
         python: ["3.11", "3.12"]
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           version: "0.12.21"
           python-version: ${{ matrix.python }}
@@ -50,7 +50,7 @@ jobs:
             --backend-python "$GITHUB_WORKSPACE/.venv/bin/python" --backend-root "$GITHUB_WORKSPACE/src" \
             --legacy-python "$GITHUB_WORKSPACE/sdk2/tests/compatibility/legacy-client/.venv/bin/python" \
             --output-dir "$RUNNER_TEMP/client-results"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: pbpk-sdk2-${{ matrix.python }}
@@ -63,8 +63,8 @@ jobs:
     name: Isolated transport dependency and source audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           version: "0.12.21"
       - name: Audit both complete lockfiles
@@ -78,7 +78,7 @@ jobs:
     name: Optional transport container
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: docker build -t pbpk-sdk2-transport sdk2
       - name: Verify the SDK namespace and independent package
         run: docker run --rm --entrypoint python pbpk-sdk2-transport -c 'from importlib.metadata import version; from pbpk_mcp_sdk2.http import create_app; assert version("mcp")=="2.2.0"; assert version("pbpk-mcp-sdk2")=="0.1.0"; assert create_app() is not None'
