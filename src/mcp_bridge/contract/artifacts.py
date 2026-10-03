@@ -306,7 +306,7 @@ _CONTRACT_MANIFEST_JSON = r"""
       "classification": "supporting",
       "relativePath": "docs/architecture/release_bundle_manifest.json",
       "role": "whole release bundle hash inventory",
-      "sha256": "e986710285db68060804564a9b58e681383da796a75c65e0f4579aa4bbde37b7"
+      "sha256": "8cc3932e53c75c0d46c50c2565cc44e829d0e771a6f325922c5e6aa9d3da6927"
     },
     {
       "classification": "supporting",
@@ -452,7 +452,7 @@ _CONTRACT_MANIFEST_JSON = r"""
 
 _RELEASE_BUNDLE_MANIFEST_JSON = r"""
 {
-  "bundleSha256": "0c6b59bdb98757c40a023cbb9687d62d283d2af5e5a169eec0e63b1792f432ef",
+  "bundleSha256": "67518158fa65d2dbe99bb870556472842f880a65fa4a14191f75990f3f289d11",
   "contractVersion": "pbpk-mcp.v1",
   "fileCount": 448,
   "files": [
@@ -597,37 +597,37 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     {
       "group": "governance",
       "relativePath": ".github/workflows/ci.yml",
-      "sha256": "6b9c028284331259fa17885a3810340f027e17d7d2a7b9e3717fc05a2d0e3291",
-      "sizeBytes": 4112
+      "sha256": "2825ac2bc71c2a42667d5aed0da97528eb096a22db964878bd6c50c69f58c828",
+      "sizeBytes": 4489
     },
     {
       "group": "governance",
       "relativePath": ".github/workflows/dependency-audit.yml",
-      "sha256": "b8f57e51d7e29a66f3e7e9ec08bdd7a4e19dcb7d1be912fd5a33cc4f37aeaddc",
-      "sizeBytes": 1025
+      "sha256": "86f80956e34741b28e487a1e4d137fd05eeffa5aa15747f5968bd50ae4634aa3",
+      "sizeBytes": 1120
     },
     {
       "group": "governance",
       "relativePath": ".github/workflows/model-smoke.yml",
-      "sha256": "aacb3ba83d2e2bb468fb2003ceeb04c9be899ed811cd473726d1c3a13fbdecd6",
-      "sizeBytes": 2512
+      "sha256": "958b9e38bb181aa08af3c96959ed714d97ad0f1ce1c5fdf40e78eb1450ba05a4",
+      "sizeBytes": 2653
     },
     {
       "group": "governance",
       "relativePath": ".github/workflows/release-artifacts.yml",
-      "sha256": "d00416a7f45a49f80e8cb17762c092491f653d6a15b0551cf89e41f37854f7fe",
-      "sizeBytes": 1526
+      "sha256": "caf76c3fd7d1ee09a92d465d529c92afd2d02475af66c952f29b0fbb206905fe",
+      "sizeBytes": 1667
     },
     {
       "group": "governance",
       "relativePath": ".github/workflows/sdk2-transport.yml",
-      "sha256": "6d0c19b0b9d12db83fea8cfbd0a5099a3ae86514734c4f33452171473d756d6e",
-      "sizeBytes": 3679
+      "sha256": "8ac42c752a2608bdb2660aa7d9b0eceefd3860373bfa79372ce249c1925dc5e9",
+      "sizeBytes": 3822
     },
     {
       "group": "governance",
       "relativePath": ".github/workflows/semgrep.yml",
-      "sha256": "4876363aab0a66e4af9f09240a7a9272da94871f00157ed1acc1e654c4c41a73",
+      "sha256": "9d5c44cf33328d6395c19c26607499bfe0d28d307a2aca8ffffb73fd194fdbbe",
       "sizeBytes": 480
     },
     {
@@ -3195,7 +3195,7 @@ _RELEASE_BUNDLE_MANIFEST_JSON = r"""
     ],
     "mode": "staged-source-tree-equivalent"
   },
-  "totalBytes": 4685278
+  "totalBytes": 4686175
 }
 """
 
