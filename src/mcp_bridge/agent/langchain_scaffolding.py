@@ -576,9 +576,9 @@ class _BackwardCompatibleMemorySaver(MemorySaver):
         safe_config = _augment_config(config)
         return super().put(safe_config, checkpoint, metadata, new_versions)
 
-    def put_writes(self, config, writes, task_id):  # type: ignore[override]
+    def put_writes(self, config, writes, task_id, task_path=""):  # type: ignore[override]
         safe_config = _augment_config(config)
-        return super().put_writes(safe_config, writes, task_id)
+        return super().put_writes(safe_config, writes, task_id, task_path)
 
     def get_tuple(self, config):  # type: ignore[override]
         safe_config = _augment_config(config)
@@ -620,15 +620,17 @@ class _BackwardCompatibleSqliteSaver(SqliteSaver):
         self._node_names = names
         self.setup()
 
-    def put(self, config, checkpoint, metadata):  # type: ignore[override]
+    def put(self, config, checkpoint, metadata, new_versions=None):  # type: ignore[override]
         checkpoint = _seed_versions(dict(checkpoint), self._node_names)
+        if new_versions is None:
+            new_versions = dict(checkpoint.get("channel_versions", {}))
         safe_config = _augment_config(config)
-        return super().put(safe_config, checkpoint, metadata)
+        return super().put(safe_config, checkpoint, metadata, new_versions)
 
-    def put_writes(self, config, writes, task_id):  # type: ignore[override]
+    def put_writes(self, config, writes, task_id, task_path=""):  # type: ignore[override]
         safe_config = _augment_config(config)
         try:
-            return super().put_writes(safe_config, writes, task_id)
+            return super().put_writes(safe_config, writes, task_id, task_path)
         except NotImplementedError:  # pragma: no cover - sqlite saver ignores writes
             return None
 
